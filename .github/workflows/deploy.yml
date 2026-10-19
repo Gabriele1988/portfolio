@@ -37,9 +37,8 @@ jobs:
 
       - name: Controllo variabili
         run: |
-          for v in SITE_URL CMS_URL; do
-            if [ -z "${!v}" ]; then echo "::error::Variabile $v mancante (Settings → Secrets and variables → Actions → Variables)"; exit 1; fi
-          done
+          if [ -z "$SITE_URL" ]; then echo "::error::Variabile SITE_URL mancante (Settings → Secrets and variables → Actions → Variables)"; exit 1; fi
+          if [ -z "$CMS_URL" ]; then echo "::warning::CMS_URL vuota: il sito viene generato senza progetti."; fi
           echo "SITE_URL=$SITE_URL  CMS_URL=$CMS_URL  NOINDEX=${NOINDEX:-true}"
 
       - run: npm ci
