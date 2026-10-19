@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+import { sito } from '../site.config';
+---
+
+<Base title="Privacy e cookie" description="Informativa sul trattamento dei dati personali.">
+  <section class="wrap section prose">
+    <h1>Privacy e cookie</h1>
+    <p><strong>Bozza da completare</strong> (ad esempio con Complianz o iubenda) prima della pubblicazione sul dominio definitivo.</p>
+    <p>Titolare del trattamento: {sito.nome}, {sito.citta}. Contatto: <a href={`mailto:${sito.email}`}>{sito.email}</a>.</p>
+    <p>
+      Questo sito non usa cookie di profilazione né font o servizi esterni di tracciamento. I dati inviati con il modulo
+      contatti servono solo a rispondere alla richiesta.
+    </p>
+  </section>
+</Base>

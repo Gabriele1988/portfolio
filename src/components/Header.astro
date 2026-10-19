@@ -1,0 +1,28 @@
+---
+import { sito } from '../site.config';
+
+const voci = [
+  { href: '/progetti/', label: 'Progetti' },
+  { href: '/contatti/', label: 'Contatti' },
+];
+const path = Astro.url.pathname;
+---
+
+<a class="visually-hidden" href="#contenuto">Vai al contenuto</a>
+<header class="wrap">
+  <a class="logo" href="/">{sito.nome}</a>
+  <nav aria-label="Principale">
+    {voci.map((v) => (
+      <a href={v.href} aria-current={path.startsWith(v.href) ? 'page' : undefined}>{v.label}</a>
+    ))}
+    <a class="btn" href="/contatti/">Richiedi un preventivo</a>
+  </nav>
+</header>
+
+<style>
+  header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.25rem; flex-wrap: wrap; }
+  .logo { font-weight: 700; color: var(--text); text-decoration: none; font-size: 1.125rem; }
+  nav { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+  nav a:not(.btn) { color: var(--muted); text-decoration: none; }
+  nav a[aria-current='page'] { color: var(--text); font-weight: 600; }
+</style>

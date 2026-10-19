@@ -1,0 +1,78 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { Image, getImage } from 'astro:assets';
+import Base from '../../layouts/Base.astro';
+import { getProgetti, type Progetto } from '../../lib/wp';
+
+export const getStaticPaths = (async () => {
+  const progetti = await getProgetti();
+  return progetti.map((progetto) => ({ params: { slug: progetto.slug }, props: { progetto } }));
+}) satisfies GetStaticPaths;
+
+const { progetto: p } = Astro.props as { progetto: Progetto };
+
+const og = p.copertina
+  ? await getImage({ src: p.copertina.src, width: 1200, height: 630, fit: 'cover', format: 'jpg' })
+  : undefined;
+---
+
+<Base title={p.titolo} description={p.estratto} image={og?.src}>
+  <article class="wrap section">
+    <p><a href="/progetti/">← Tutti i progetti</a></p>
+    <h1>{p.titolo}</h1>
+    {p.estratto && <p class="lead muted">{p.estratto}</p>}
+
+    <dl class="scheda">
+      {p.cliente && <div><dt>Cliente</dt><dd>{p.cliente}</dd></div>}
+      {p.anno && <div><dt>Anno</dt><dd>{p.anno}</dd></div>}
+      {p.ruolo && <div><dt>Ruolo</dt><dd>{p.ruolo}</dd></div>}
+      {p.servizi.length > 0 && <div><dt>Servizi</dt><dd>{p.servizi.map((s) => s.nome).join(', ')}</dd></div>}
+      {p.url && <div><dt>Online</dt><dd><a href={p.url} rel="noopener" target="_blank">Visita il sito</a></dd></div>}
+    </dl>
+
+    {p.copertina && (
+      <Image
+        class="cover"
+        src={p.copertina.src}
+        alt={p.copertina.alt || p.titolo}
+        width={p.copertina.width ?? 1600}
+        height={p.copertina.height ?? 1000}
+        widths={[640, 1024, 1600]}
+        sizes="(min-width: 72rem) 70rem, 100vw"
+        loading="eager"
+        fetchpriority="high"
+      />
+    )}
+
+    {p.tecnologie.length > 0 && (
+      <ul class="tags" aria-label="Tecnologie">
+        {p.tecnologie.map((t) => <li>{t}</li>)}
+      </ul>
+    )}
+
+    <div class="prose" set:html={p.contenuto} />
+
+    {p.risultato && (
+      <aside class="risultato">
+        <h2>Risultato</h2>
+        <p>{p.risultato}</p>
+      </aside>
+    )}
+
+    <p class="cta">
+      <a class="btn" href="/contatti/">Hai un progetto simile? Richiedi un preventivo</a>
+    </p>
+  </article>
+</Base>
+
+<style>
+  .lead { font-size: 1.25rem; max-width: 44rem; }
+  .scheda { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1rem; margin: 2rem 0; }
+  dt { font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  dd { margin: 0; font-weight: 600; }
+  .cover { width: 100%; border-radius: var(--radius); margin: 2rem 0; }
+  .tags { margin-bottom: 2rem; }
+  .risultato { margin-top: 3rem; padding: 1.5rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); max-width: 44rem; }
+  .risultato h2 { margin-top: 0; font-size: 1.25rem; }
+  .cta { margin-top: 3rem; }
+</style>

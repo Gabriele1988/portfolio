@@ -1,0 +1,79 @@
+---
+import { TURNSTILE_SITE_KEY } from 'astro:env/client';
+---
+
+<form id="contatto" novalidate>
+  <label>Nome <input name="nome" autocomplete="name" required maxlength="120" /></label>
+  <label>Email <input name="email" type="email" autocomplete="email" required maxlength="200" /></label>
+  <label>Messaggio <textarea name="messaggio" rows="6" required maxlength="5000"></textarea></label>
+
+  <!-- Campo trappola per i bot: le persone non lo vedono. -->
+  <label class="hp" aria-hidden="true">Sito web <input name="sito_web" tabindex="-1" autocomplete="off" /></label>
+
+  <label class="check">
+    <input name="privacy" type="checkbox" required />
+    <span>Ho letto l'<a href="/privacy/">informativa privacy</a> e acconsento al trattamento dei dati per ricevere una risposta.</span>
+  </label>
+
+  {TURNSTILE_SITE_KEY && <div class="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} data-language="it"></div>}
+
+  <button class="btn" type="submit">Invia richiesta</button>
+  <p class="esito" role="status" aria-live="polite"></p>
+</form>
+
+{TURNSTILE_SITE_KEY && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
+
+<script>
+  import { CMS_URL } from 'astro:env/client';
+
+  const form = document.querySelector<HTMLFormElement>('#contatto')!;
+  const esito = form.querySelector<HTMLElement>('.esito')!;
+  const bottone = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+  const caricatoIl = Date.now();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    const dati = Object.fromEntries(new FormData(form)) as Record<string, string>;
+    bottone.disabled = true;
+    esito.textContent = 'Invio in corso…';
+    try {
+      const res = await fetch(`${CMS_URL}/wp-json/portfolio/v1/contatto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: dati.nome,
+          email: dati.email,
+          messaggio: dati.messaggio,
+          privacy: dati.privacy === 'on',
+          sito_web: dati.sito_web ?? '',
+          turnstile: dati['cf-turnstile-response'] ?? '',
+          tempo: Math.round((Date.now() - caricatoIl) / 1000),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message || 'Invio non riuscito.');
+      form.reset();
+      esito.textContent = 'Grazie! Ho ricevuto il tuo messaggio e ti risponderò a breve.';
+    } catch (err) {
+      esito.textContent = `${(err as Error).message} Riprova oppure scrivimi via email.`;
+    } finally {
+      bottone.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  form { display: grid; gap: 1rem; max-width: 36rem; margin-top: 2rem; }
+  label { display: grid; gap: 0.35rem; font-weight: 600; }
+  input, textarea { font: inherit; padding: 0.7rem 0.85rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .check { display: flex; gap: 0.6rem; align-items: flex-start; font-weight: 400; font-size: 0.9375rem; }
+  .check input { margin-top: 0.3rem; }
+  .hp { position: absolute; left: -9999px; }
+  button { justify-self: start; }
+  button:disabled { opacity: 0.6; cursor: wait; }
+  .esito:empty { display: none; }
+</style>

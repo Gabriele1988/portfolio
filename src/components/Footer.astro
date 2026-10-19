@@ -1,0 +1,21 @@
+---
+import { sito } from '../site.config';
+const anno = new Date().getFullYear();
+---
+
+<footer class="wrap">
+  <p>
+    © {anno} {sito.nome} · {sito.citta} · <a href={`mailto:${sito.email}`}>{sito.email}</a>
+    {sito.telefono && <> · <a href={`tel:${sito.telefono.replace(/\s/g, '')}`}>{sito.telefono}</a></>}
+  </p>
+  <p>
+    {sito.social.github && <a href={sito.social.github} rel="me">GitHub</a>}
+    {sito.social.linkedin && <> · <a href={sito.social.linkedin} rel="me">LinkedIn</a></>}
+    · <a href="/privacy/">Privacy</a>
+  </p>
+</footer>
+
+<style>
+  footer { padding-block: 3rem; border-top: 1px solid var(--border); margin-top: 4rem; color: var(--muted); font-size: 0.9375rem; }
+  footer p { margin: 0.25rem 0; }
+</style>

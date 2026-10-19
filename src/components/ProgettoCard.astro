@@ -1,0 +1,47 @@
+---
+import { Image } from 'astro:assets';
+import type { Progetto } from '../lib/wp';
+
+interface Props {
+  progetto: Progetto;
+  eager?: boolean;
+}
+const { progetto: p, eager = false } = Astro.props;
+---
+
+<article>
+  <a href={`/progetti/${p.slug}/`}>
+    {p.copertina ? (
+      <Image
+        src={p.copertina.src}
+        alt={p.copertina.alt || p.titolo}
+        width={p.copertina.width ?? 1200}
+        height={p.copertina.height ?? 750}
+        widths={[400, 800, 1200]}
+        sizes="(min-width: 72rem) 22rem, (min-width: 42rem) 45vw, 100vw"
+        loading={eager ? 'eager' : 'lazy'}
+        fetchpriority={eager ? 'high' : undefined}
+      />
+    ) : (
+      <div class="placeholder" aria-hidden="true" />
+    )}
+    <h3>{p.titolo}</h3>
+  </a>
+  {(p.cliente || p.anno) && <p class="muted">{[p.cliente, p.anno].filter(Boolean).join(' · ')}</p>}
+  {p.estratto && <p>{p.estratto}</p>}
+  {p.servizi.length > 0 && (
+    <ul class="tags">
+      {p.servizi.map((s) => <li>{s.nome}</li>)}
+    </ul>
+  )}
+</article>
+
+<style>
+  article { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; padding-bottom: 1.25rem; }
+  article > *:not(a) { margin-inline: 1.25rem; }
+  a { color: inherit; text-decoration: none; }
+  a:hover h3 { color: var(--accent); }
+  img, .placeholder { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--border); }
+  h3 { margin: 1rem 1.25rem 0.25rem; }
+  p { margin-block: 0.25rem 0.75rem; }
+</style>

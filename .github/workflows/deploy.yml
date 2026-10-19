@@ -1,0 +1,76 @@
+name: Build e deploy
+
+on:
+  # Modifiche al codice
+  push:
+    branches: [main]
+  # Rebuild dal CMS (mu-plugin portfolio-core: pubblicazione o pulsante "Ripubblica sito")
+  repository_dispatch:
+    types: [cms-update]
+  # Avvio manuale da GitHub → Actions
+  workflow_dispatch:
+
+# Una build alla volta: se ne arriva una nuova, quella in corso viene annullata.
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SITE_URL: ${{ vars.SITE_URL }}
+      CMS_URL: ${{ vars.CMS_URL }}
+      NOINDEX: ${{ vars.NOINDEX }}
+      TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Controllo variabili
+        run: |
+          for v in SITE_URL CMS_URL; do
+            if [ -z "${!v}" ]; then echo "::error::Variabile $v mancante (Settings → Secrets and variables → Actions → Variables)"; exit 1; fi
+          done
+          echo "SITE_URL=$SITE_URL  CMS_URL=$CMS_URL  NOINDEX=${NOINDEX:-true}"
+
+      - run: npm ci
+
+      # Le immagini ottimizzate vengono messe in cache tra una build e l'altra.
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.astro
+          key: astro-assets-${{ github.run_id }}
+          restore-keys: astro-assets-
+
+      - run: npm run build
+
+      # Pubblica dist/ sul branch "deploy", che Plesk scarica tramite webhook.
+      # Lo storico del branch viene mantenuto (niente force push), così il pull di Plesk è sempre lineare.
+      - name: Pubblica sul branch deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads "$REPO" deploy >/dev/null; then
+            git clone --quiet --depth 1 --branch deploy "$REPO" ../deploy
+          else
+            git init --quiet -b deploy ../deploy
+          fi
+          cd ../deploy
+          git rm -rq --ignore-unmatch . || true
+          cp -a "$GITHUB_WORKSPACE/dist/." .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "Nessuna modifica da pubblicare."; exit 0; fi
+          git commit --quiet -m "Deploy ${GITHUB_SHA::7} (${GITHUB_EVENT_NAME})"
+          git push --quiet "$REPO" deploy
