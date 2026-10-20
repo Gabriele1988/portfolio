@@ -1,18 +1,17 @@
-// Simulazione di fluido ("fumo") in WebGL, basata sul metodo Stable Fluids:
-// advezione, vorticità, divergenza, pressione (Jacobi) e sottrazione del gradiente.
-// Parametri e comportamento ricalcano la demo "Smoke/Fluid Motion" di BlackStar1991
-// (https://www.cssscript.com/smoke-fluid-motion/, MIT), a sua volta derivata da
-// WebGL-Fluid-Simulation di Pavel Dobryakov (MIT).
+// Effetto fumo della hero: porting fedele di "Smoke Streams" di Andry Zirka (BlackStar1991),
+// https://codepen.io/BlackStar1991/pen/VYvXYNa, licenza MIT (vedi in fondo al file).
+// Shader, parametri e ordine dei passaggi sono identici all'originale. Cambia solo il contorno:
+// - la canvas e l'elemento che ascolta il mouse vengono passati dalla hero;
+// - mouse e touch passano da Pointer Events, senza bloccare lo scorrimento su mobile;
+// - l'animazione si ferma quando la hero non è visibile o la scheda è nascosta;
+// - se WebGL non è disponibile restituisce null (la hero mostra uno sfondo statico).
 
 export interface FluidOptions {
   /** Elemento che riceve i movimenti del puntatore (di solito la sezione hero). */
   target: HTMLElement;
-  background?: [number, number, number];
 }
 
-// Stessi valori della demo. Le dissipazioni sono moltiplicatori per frame:
-// più vicini a 1 = scia più lunga.
-const CONFIG = {
+const config = {
   TEXTURE_DOWNSAMPLE: 1,
   DENSITY_DISSIPATION: 0.98,
   VELOCITY_DISSIPATION: 0.99,
@@ -20,404 +19,305 @@ const CONFIG = {
   PRESSURE_ITERATIONS: 25,
   CURL: 35,
   SPLAT_RADIUS: 0.002,
-  /** Ogni quanti movimenti del mouse cambia colore. */
-  COLOR_EVERY_MOVES: 25,
 };
 
-const baseVertex = `
-  precision highp float;
-  attribute vec2 aPosition;
-  varying vec2 vUv, vL, vR, vT, vB;
-  uniform vec2 texelSize;
-  void main () {
-    vUv = aPosition * 0.5 + 0.5;
-    vL = vUv - vec2(texelSize.x, 0.0);
-    vR = vUv + vec2(texelSize.x, 0.0);
-    vT = vUv + vec2(0.0, texelSize.y);
-    vB = vUv - vec2(0.0, texelSize.y);
-    gl_Position = vec4(aPosition, 0.0, 1.0);
-  }`;
+const baseVertexSrc =
+  "precision highp float; precision mediump sampler2D; attribute vec2 aPosition; varying vec2 vUv; varying vec2 vL; varying vec2 vR; varying vec2 vT; varying vec2 vB; uniform vec2 texelSize; void main () {     vUv = aPosition * 0.5 + 0.5;     vL = vUv - vec2(texelSize.x, 0.0);     vR = vUv + vec2(texelSize.x, 0.0);     vT = vUv + vec2(0.0, texelSize.y);     vB = vUv - vec2(0.0, texelSize.y);     gl_Position = vec4(aPosition, 0.0, 1.0); }";
+const clearSrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; uniform float value; void main () {     gl_FragColor = value * texture2D(uTexture, vUv); }";
+const displaySrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; void main () {     gl_FragColor = texture2D(uTexture, vUv); }";
+const splatSrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTarget; uniform float aspectRatio; uniform vec3 color; uniform vec2 point; uniform float radius; void main () {     vec2 p = vUv - point.xy;     p.x *= aspectRatio;     vec3 splat = exp(-dot(p, p) / radius) * color;     vec3 base = texture2D(uTarget, vUv).xyz;     gl_FragColor = vec4(base + splat, 1.0); }";
+const advectionManualFilteringSrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uVelocity; uniform sampler2D uSource; uniform vec2 texelSize; uniform float dt; uniform float dissipation; vec4 bilerp (in sampler2D sam, in vec2 p) {     vec4 st;     st.xy = floor(p - 0.5) + 0.5;     st.zw = st.xy + 1.0;     vec4 uv = st * texelSize.xyxy;     vec4 a = texture2D(sam, uv.xy);     vec4 b = texture2D(sam, uv.zy);     vec4 c = texture2D(sam, uv.xw);     vec4 d = texture2D(sam, uv.zw);     vec2 f = p - st.xy;     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y); } void main () {     vec2 coord = gl_FragCoord.xy - dt * texture2D(uVelocity, vUv).xy;     gl_FragColor = dissipation * bilerp(uSource, coord);     gl_FragColor.a = 1.0; }";
+const advectionSrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uVelocity; uniform sampler2D uSource; uniform vec2 texelSize; uniform float dt; uniform float dissipation; void main () {     vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * texelSize;     gl_FragColor = dissipation * texture2D(uSource, coord); }";
+const divergenceSrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; varying vec2 vL; varying vec2 vR; varying vec2 vT; varying vec2 vB; uniform sampler2D uVelocity; vec2 sampleVelocity (in vec2 uv) {     vec2 multiplier = vec2(1.0, 1.0);     if (uv.x < 0.0) { uv.x = 0.0; multiplier.x = -1.0; }     if (uv.x > 1.0) { uv.x = 1.0; multiplier.x = -1.0; }     if (uv.y < 0.0) { uv.y = 0.0; multiplier.y = -1.0; }     if (uv.y > 1.0) { uv.y = 1.0; multiplier.y = -1.0; }     return multiplier * texture2D(uVelocity, uv).xy; } void main () {     float L = sampleVelocity(vL).x;     float R = sampleVelocity(vR).x;     float T = sampleVelocity(vT).y;     float B = sampleVelocity(vB).y;     float div = 0.5 * (R - L + T - B);     gl_FragColor = vec4(div, 0.0, 0.0, 1.0); }";
+const curlSrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; varying vec2 vL; varying vec2 vR; varying vec2 vT; varying vec2 vB; uniform sampler2D uVelocity; void main () {     float L = texture2D(uVelocity, vL).y;     float R = texture2D(uVelocity, vR).y;     float T = texture2D(uVelocity, vT).x;     float B = texture2D(uVelocity, vB).x;     float vorticity = R - L - T + B;     gl_FragColor = vec4(vorticity, 0.0, 0.0, 1.0); }";
+const vorticitySrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; varying vec2 vL; varying vec2 vR; varying vec2 vT; varying vec2 vB; uniform sampler2D uVelocity; uniform sampler2D uCurl; uniform float curl; uniform float dt; void main () {     float L = texture2D(uCurl, vL).y;     float R = texture2D(uCurl, vR).y;     float T = texture2D(uCurl, vT).x;     float B = texture2D(uCurl, vB).x;     float C = texture2D(uCurl, vUv).x;     vec2 force = vec2(abs(T) - abs(B), abs(R) - abs(L));     force *= 1.0 / length(force + 0.00001) * curl * C;     vec2 vel = texture2D(uVelocity, vUv).xy;     gl_FragColor = vec4(vel + force * dt, 0.0, 1.0); }";
+const pressureSrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; varying vec2 vL; varying vec2 vR; varying vec2 vT; varying vec2 vB; uniform sampler2D uPressure; uniform sampler2D uDivergence; vec2 boundary (in vec2 uv) {     uv = min(max(uv, 0.0), 1.0);     return uv; } void main () {     float L = texture2D(uPressure, boundary(vL)).x;     float R = texture2D(uPressure, boundary(vR)).x;     float T = texture2D(uPressure, boundary(vT)).x;     float B = texture2D(uPressure, boundary(vB)).x;     float C = texture2D(uPressure, vUv).x;     float divergence = texture2D(uDivergence, vUv).x;     float pressure = (L + R + B + T - divergence) * 0.25;     gl_FragColor = vec4(pressure, 0.0, 0.0, 1.0); }";
+const gradientSubtractSrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; varying vec2 vL; varying vec2 vR; varying vec2 vT; varying vec2 vB; uniform sampler2D uPressure; uniform sampler2D uVelocity; vec2 boundary (in vec2 uv) {     uv = min(max(uv, 0.0), 1.0);     return uv; } void main () {     float L = texture2D(uPressure, boundary(vL)).x;     float R = texture2D(uPressure, boundary(vR)).x;     float T = texture2D(uPressure, boundary(vT)).x;     float B = texture2D(uPressure, boundary(vB)).x;     vec2 velocity = texture2D(uVelocity, vUv).xy;     velocity.xy -= vec2(R - L, T - B);     gl_FragColor = vec4(velocity, 0.0, 1.0); }";
 
-const head = `precision highp float; precision highp sampler2D; varying vec2 vUv, vL, vR, vT, vB;`;
+type FBO = [WebGLTexture, WebGLFramebuffer, number];
+type DoubleFBO = { readonly first: FBO; readonly second: FBO; swap(): void };
 
-const shaders = {
-  clear: `${head}
-    uniform sampler2D uTexture; uniform float value;
-    void main () { gl_FragColor = value * texture2D(uTexture, vUv); }`,
-
-  splat: `${head}
-    uniform sampler2D uTarget; uniform float aspectRatio; uniform vec3 color; uniform vec2 point; uniform float radius;
-    void main () {
-      vec2 p = vUv - point;
-      p.x *= aspectRatio;
-      vec3 splat = exp(-dot(p, p) / radius) * color;
-      gl_FragColor = vec4(texture2D(uTarget, vUv).xyz + splat, 1.0);
-    }`,
-
-  advection: `${head}
-    uniform sampler2D uVelocity, uSource; uniform vec2 texelSize; uniform float dt, dissipation;
-    void main () {
-      vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * texelSize;
-      gl_FragColor = dissipation * texture2D(uSource, coord);
-    }`,
-
-  divergence: `${head}
-    uniform sampler2D uVelocity;
-    void main () {
-      float L = texture2D(uVelocity, vL).x;
-      float R = texture2D(uVelocity, vR).x;
-      float T = texture2D(uVelocity, vT).y;
-      float B = texture2D(uVelocity, vB).y;
-      vec2 C = texture2D(uVelocity, vUv).xy;
-      if (vL.x < 0.0) { L = -C.x; }
-      if (vR.x > 1.0) { R = -C.x; }
-      if (vT.y > 1.0) { T = -C.y; }
-      if (vB.y < 0.0) { B = -C.y; }
-      gl_FragColor = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);
-    }`,
-
-  curl: `${head}
-    uniform sampler2D uVelocity;
-    void main () {
-      float L = texture2D(uVelocity, vL).y;
-      float R = texture2D(uVelocity, vR).y;
-      float T = texture2D(uVelocity, vT).x;
-      float B = texture2D(uVelocity, vB).x;
-      gl_FragColor = vec4(0.5 * (R - L - T + B), 0.0, 0.0, 1.0);
-    }`,
-
-  vorticity: `${head}
-    uniform sampler2D uVelocity, uCurl; uniform float curl, dt;
-    void main () {
-      float L = texture2D(uCurl, vL).x;
-      float R = texture2D(uCurl, vR).x;
-      float T = texture2D(uCurl, vT).x;
-      float B = texture2D(uCurl, vB).x;
-      float C = texture2D(uCurl, vUv).x;
-      vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
-      force /= length(force) + 0.0001;
-      force *= curl * C;
-      force.y *= -1.0;
-      vec2 vel = texture2D(uVelocity, vUv).xy + force * dt;
-      gl_FragColor = vec4(clamp(vel, -1000.0, 1000.0), 0.0, 1.0);
-    }`,
-
-  pressure: `${head}
-    uniform sampler2D uPressure, uDivergence;
-    void main () {
-      float L = texture2D(uPressure, vL).x;
-      float R = texture2D(uPressure, vR).x;
-      float T = texture2D(uPressure, vT).x;
-      float B = texture2D(uPressure, vB).x;
-      float div = texture2D(uDivergence, vUv).x;
-      gl_FragColor = vec4((L + R + B + T - div) * 0.25, 0.0, 0.0, 1.0);
-    }`,
-
-  gradientSubtract: `${head}
-    uniform sampler2D uPressure, uVelocity;
-    void main () {
-      float L = texture2D(uPressure, vL).x;
-      float R = texture2D(uPressure, vR).x;
-      float T = texture2D(uPressure, vT).x;
-      float B = texture2D(uPressure, vB).x;
-      vec2 vel = texture2D(uVelocity, vUv).xy - vec2(R - L, T - B);
-      gl_FragColor = vec4(vel, 0.0, 1.0);
-    }`,
-
-  display: `${head}
-    uniform sampler2D uTexture; uniform vec3 background;
-    void main () {
-      vec3 c = texture2D(uTexture, vUv).rgb;
-      gl_FragColor = vec4(min(background + c, vec3(1.0)), 1.0);
-    }`,
-};
-
-type Program = { program: WebGLProgram; uniforms: Record<string, WebGLUniformLocation | null> };
-type FBO = {
-  texture: WebGLTexture;
-  fbo: WebGLFramebuffer;
-  width: number;
-  height: number;
-  texelSizeX: number;
-  texelSizeY: number;
-  attach(id: number): number;
-};
-type DoubleFBO = { width: number; height: number; texelSizeX: number; texelSizeY: number; read: FBO; write: FBO; swap(): void };
-
-/** Avvia l'effetto. Restituisce una funzione di stop, oppure null se il browser non lo supporta. */
 export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() => void) | null {
-  const params = { alpha: false, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false };
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+
+  const params = { alpha: false, depth: false, stencil: false, antialias: false };
   let gl = canvas.getContext('webgl2', params) as WebGL2RenderingContext | WebGLRenderingContext | null;
   const isWebGL2 = !!gl;
-  if (!gl) gl = canvas.getContext('webgl', params) as WebGLRenderingContext | null;
+  if (!isWebGL2) gl = canvas.getContext('webgl', params) as WebGLRenderingContext | null;
   if (!gl) return null;
-
-  // Texture half-float con filtro lineare: indispensabili per un fumo morbido.
-  let internalFormat: number;
-  let halfFloat: number;
-  if (isWebGL2) {
-    const gl2 = gl as WebGL2RenderingContext;
-    if (!gl2.getExtension('EXT_color_buffer_float') && !gl2.getExtension('EXT_color_buffer_half_float')) return null;
-    internalFormat = gl2.RGBA16F;
-    halfFloat = gl2.HALF_FLOAT;
-  } else {
-    const ext = gl.getExtension('OES_texture_half_float');
-    if (!ext || !gl.getExtension('OES_texture_half_float_linear')) return null;
-    internalFormat = gl.RGBA;
-    halfFloat = ext.HALF_FLOAT_OES;
-  }
   const g = gl;
 
-  const background = opts.background ?? [0, 0, 0];
-
-  function compile(type: number, source: string) {
-    const s = g.createShader(type)!;
-    g.shaderSource(s, source);
-    g.compileShader(s);
-    if (!g.getShaderParameter(s, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(s) ?? 'shader');
-    return s;
+  const halfFloat = g.getExtension('OES_texture_half_float');
+  let supportLinearFloat: unknown = g.getExtension('OES_texture_half_float_linear');
+  if (isWebGL2) {
+    g.getExtension('EXT_color_buffer_float');
+    supportLinearFloat = g.getExtension('OES_texture_float_linear');
+  } else if (!halfFloat) {
+    return null;
   }
-  const vertex = compile(g.VERTEX_SHADER, baseVertex);
-  function program(fragment: string): Program {
-    const p = g.createProgram()!;
-    g.attachShader(p, vertex);
-    g.attachShader(p, compile(g.FRAGMENT_SHADER, fragment));
-    g.bindAttribLocation(p, 0, 'aPosition');
-    g.linkProgram(p);
-    if (!g.getProgramParameter(p, g.LINK_STATUS)) throw new Error(g.getProgramInfoLog(p) ?? 'program');
-    const uniforms: Program['uniforms'] = {};
-    const n = g.getProgramParameter(p, g.ACTIVE_UNIFORMS);
-    for (let i = 0; i < n; i++) {
-      const name = g.getActiveUniform(p, i)!.name;
-      uniforms[name] = g.getUniformLocation(p, name);
+  g.clearColor(0, 0, 0, 1);
+
+  const g2 = g as WebGL2RenderingContext;
+  const ext = {
+    internalFormat: isWebGL2 ? g2.RGBA16F : g.RGBA,
+    internalFormatRG: isWebGL2 ? g2.RG16F : g.RGBA,
+    formatRG: isWebGL2 ? g2.RG : g.RGBA,
+    texType: isWebGL2 ? g2.HALF_FLOAT : halfFloat!.HALF_FLOAT_OES,
+  };
+
+  function compileShader(type: number, source: string) {
+    const shader = g.createShader(type)!;
+    g.shaderSource(shader, source);
+    g.compileShader(shader);
+    if (!g.getShaderParameter(shader, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(shader) ?? 'shader');
+    return shader;
+  }
+
+  class GLProgram {
+    uniforms: Record<string, WebGLUniformLocation | null> = {};
+    program: WebGLProgram;
+    constructor(vertexShader: WebGLShader, fragmentShader: WebGLShader) {
+      this.program = g.createProgram()!;
+      g.attachShader(this.program, vertexShader);
+      g.attachShader(this.program, fragmentShader);
+      g.linkProgram(this.program);
+      if (!g.getProgramParameter(this.program, g.LINK_STATUS)) throw new Error(g.getProgramInfoLog(this.program) ?? 'program');
+      const uniformCount = g.getProgramParameter(this.program, g.ACTIVE_UNIFORMS);
+      for (let i = 0; i < uniformCount; i++) {
+        const name = g.getActiveUniform(this.program, i)!.name;
+        this.uniforms[name] = g.getUniformLocation(this.program, name);
+      }
     }
-    return { program: p, uniforms };
+    bind() {
+      g.useProgram(this.program);
+    }
   }
 
-  let progs: Record<keyof typeof shaders, Program>;
+  let clearProgram: GLProgram, displayProgram: GLProgram, splatProgram: GLProgram, advectionProgram: GLProgram;
+  let divergenceProgram: GLProgram, curlProgram: GLProgram, vorticityProgram: GLProgram, pressureProgram: GLProgram;
+  let gradienSubtractProgram: GLProgram;
   try {
-    progs = Object.fromEntries(Object.entries(shaders).map(([k, src]) => [k, program(src)])) as typeof progs;
+    const baseVertexShader = compileShader(g.VERTEX_SHADER, baseVertexSrc);
+    const frag = (s: string) => compileShader(g.FRAGMENT_SHADER, s);
+    clearProgram = new GLProgram(baseVertexShader, frag(clearSrc));
+    displayProgram = new GLProgram(baseVertexShader, frag(displaySrc));
+    splatProgram = new GLProgram(baseVertexShader, frag(splatSrc));
+    advectionProgram = new GLProgram(
+      baseVertexShader,
+      frag(supportLinearFloat ? advectionSrc : advectionManualFilteringSrc),
+    );
+    divergenceProgram = new GLProgram(baseVertexShader, frag(divergenceSrc));
+    curlProgram = new GLProgram(baseVertexShader, frag(curlSrc));
+    vorticityProgram = new GLProgram(baseVertexShader, frag(vorticitySrc));
+    pressureProgram = new GLProgram(baseVertexShader, frag(pressureSrc));
+    gradienSubtractProgram = new GLProgram(baseVertexShader, frag(gradientSubtractSrc));
   } catch {
     return null;
   }
 
-  // Quadrato a tutto schermo.
+  let textureWidth = 0;
+  let textureHeight = 0;
+  let density: DoubleFBO, velocity: DoubleFBO, divergence: FBO, curl: FBO, pressure: DoubleFBO;
+
+  function createFBO(texId: number, w: number, h: number, internalFormat: number, format: number, type: number, param: number): FBO {
+    g.activeTexture(g.TEXTURE0 + texId);
+    const texture = g.createTexture()!;
+    g.bindTexture(g.TEXTURE_2D, texture);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, param);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, param);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
+    g.texImage2D(g.TEXTURE_2D, 0, internalFormat, w, h, 0, format, type, null);
+    const fbo = g.createFramebuffer()!;
+    g.bindFramebuffer(g.FRAMEBUFFER, fbo);
+    g.framebufferTexture2D(g.FRAMEBUFFER, g.COLOR_ATTACHMENT0, g.TEXTURE_2D, texture, 0);
+    g.viewport(0, 0, w, h);
+    g.clear(g.COLOR_BUFFER_BIT);
+    return [texture, fbo, texId];
+  }
+
+  function createDoubleFBO(texId: number, w: number, h: number, internalFormat: number, format: number, type: number, param: number): DoubleFBO {
+    let fbo1 = createFBO(texId, w, h, internalFormat, format, type, param);
+    let fbo2 = createFBO(texId + 1, w, h, internalFormat, format, type, param);
+    return {
+      get first() { return fbo1; },
+      get second() { return fbo2; },
+      swap() { [fbo1, fbo2] = [fbo2, fbo1]; },
+    };
+  }
+
+  function initFramebuffers() {
+    textureWidth = g.drawingBufferWidth >> config.TEXTURE_DOWNSAMPLE;
+    textureHeight = g.drawingBufferHeight >> config.TEXTURE_DOWNSAMPLE;
+    const { internalFormat: iFormat, internalFormatRG: iFormatRG, formatRG, texType } = ext;
+    const filter = supportLinearFloat ? g.LINEAR : g.NEAREST;
+    density = createDoubleFBO(0, textureWidth, textureHeight, iFormat, g.RGBA, texType, filter);
+    velocity = createDoubleFBO(2, textureWidth, textureHeight, iFormatRG, formatRG, texType, filter);
+    divergence = createFBO(4, textureWidth, textureHeight, iFormatRG, formatRG, texType, g.NEAREST);
+    curl = createFBO(5, textureWidth, textureHeight, iFormatRG, formatRG, texType, g.NEAREST);
+    pressure = createDoubleFBO(6, textureWidth, textureHeight, iFormatRG, formatRG, texType, g.NEAREST);
+    return g.checkFramebufferStatus(g.FRAMEBUFFER) === g.FRAMEBUFFER_COMPLETE;
+  }
+  if (!initFramebuffers()) return null;
+
   g.bindBuffer(g.ARRAY_BUFFER, g.createBuffer());
   g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), g.STATIC_DRAW);
   g.bindBuffer(g.ELEMENT_ARRAY_BUFFER, g.createBuffer());
   g.bufferData(g.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), g.STATIC_DRAW);
   g.vertexAttribPointer(0, 2, g.FLOAT, false, 0, 0);
   g.enableVertexAttribArray(0);
-
-  function blit(target: FBO | null) {
-    if (target) {
-      g.viewport(0, 0, target.width, target.height);
-      g.bindFramebuffer(g.FRAMEBUFFER, target.fbo);
-    } else {
-      g.viewport(0, 0, g.drawingBufferWidth, g.drawingBufferHeight);
-      g.bindFramebuffer(g.FRAMEBUFFER, null);
-    }
+  const blit = (destination: WebGLFramebuffer | null) => {
+    g.bindFramebuffer(g.FRAMEBUFFER, destination);
     g.drawElements(g.TRIANGLES, 6, g.UNSIGNED_SHORT, 0);
-  }
+  };
 
-  function createFBO(w: number, h: number): FBO {
-    g.activeTexture(g.TEXTURE0);
-    const texture = g.createTexture()!;
-    g.bindTexture(g.TEXTURE_2D, texture);
-    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR);
-    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR);
-    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE);
-    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
-    g.texImage2D(g.TEXTURE_2D, 0, internalFormat, w, h, 0, g.RGBA, halfFloat, null);
-    const fbo = g.createFramebuffer()!;
-    g.bindFramebuffer(g.FRAMEBUFFER, fbo);
-    g.framebufferTexture2D(g.FRAMEBUFFER, g.COLOR_ATTACHMENT0, g.TEXTURE_2D, texture, 0);
-    g.viewport(0, 0, w, h);
-    g.clear(g.COLOR_BUFFER_BIT);
-    return {
-      texture,
-      fbo,
-      width: w,
-      height: h,
-      texelSizeX: 1 / w,
-      texelSizeY: 1 / h,
-      attach(id) {
-        g.activeTexture(g.TEXTURE0 + id);
-        g.bindTexture(g.TEXTURE_2D, texture);
-        return id;
-      },
-    };
-  }
-
-  function createDoubleFBO(w: number, h: number): DoubleFBO {
-    let a = createFBO(w, h);
-    let b = createFBO(w, h);
-    return {
-      width: w,
-      height: h,
-      texelSizeX: a.texelSizeX,
-      texelSizeY: a.texelSizeY,
-      get read() { return a; },
-      get write() { return b; },
-      swap() { [a, b] = [b, a]; },
-    };
-  }
-
-  let dye: DoubleFBO, velocity: DoubleFBO, divergence: FBO, curl: FBO, pressure: DoubleFBO;
-
-  function initFramebuffers() {
-    const w = g.drawingBufferWidth >> CONFIG.TEXTURE_DOWNSAMPLE;
-    const h = g.drawingBufferHeight >> CONFIG.TEXTURE_DOWNSAMPLE;
-    dye = createDoubleFBO(w, h);
-    velocity = createDoubleFBO(w, h);
-    divergence = createFBO(w, h);
-    curl = createFBO(w, h);
-    pressure = createDoubleFBO(w, h);
-    // Se il framebuffer half-float non è utilizzabile, rinunciamo all'effetto.
-    return g.checkFramebufferStatus(g.FRAMEBUFFER) === g.FRAMEBUFFER_COMPLETE;
-  }
-
-  // Come nella demo, la canvas ha la dimensione CSS (niente devicePixelRatio):
-  // il fumo è morbido comunque e si risparmia GPU.
   function resizeCanvas() {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (w && h && (canvas.width !== w || canvas.height !== h)) {
-      canvas.width = w;
-      canvas.height = h;
-      return true;
+    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+      initFramebuffers();
     }
-    return false;
-  }
-
-  resizeCanvas();
-  if (!initFramebuffers()) return null;
-
-  function use(p: Program) {
-    g.useProgram(p.program);
-    return p.uniforms;
   }
 
   function splat(x: number, y: number, dx: number, dy: number, color: number[]) {
-    let u = use(progs.splat);
-    g.uniform1i(u.uTarget, velocity.read.attach(0));
-    g.uniform1f(u.aspectRatio, canvas.width / canvas.height);
-    g.uniform2f(u.point, x / canvas.width, 1 - y / canvas.height);
-    g.uniform3f(u.color, dx, -dy, 1);
-    g.uniform1f(u.radius, CONFIG.SPLAT_RADIUS);
-    blit(velocity.write);
+    splatProgram.bind();
+    g.uniform1i(splatProgram.uniforms.uTarget, velocity.first[2]);
+    g.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
+    g.uniform2f(splatProgram.uniforms.point, x / canvas.width, 1.0 - y / canvas.height);
+    g.uniform3f(splatProgram.uniforms.color, dx, -dy, 1.0);
+    g.uniform1f(splatProgram.uniforms.radius, config.SPLAT_RADIUS);
+    blit(velocity.second[1]);
     velocity.swap();
 
-    u = use(progs.splat);
-    g.uniform1i(u.uTarget, dye.read.attach(0));
-    g.uniform3f(u.color, color[0] * 0.3, color[1] * 0.3, color[2] * 0.3);
-    blit(dye.write);
-    dye.swap();
+    g.uniform1i(splatProgram.uniforms.uTarget, density.first[2]);
+    g.uniform3f(splatProgram.uniforms.color, color[0] * 0.3, color[1] * 0.3, color[2] * 0.3);
+    blit(density.second[1]);
+    density.swap();
   }
 
-  const randomColor = () => [Math.random() + 0.2, Math.random() + 0.2, Math.random() + 0.2];
+  // Come l'originale: un solo puntatore, al massimo uno splat per frame, colore nuovo ogni 25 movimenti.
+  const pointer = { x: 0, y: 0, dx: 0, dy: 0, moved: false, color: [30, 0, 300] };
+  let count = 0;
+  let colorArr = [Math.random() + 0.2, Math.random() + 0.2, Math.random() + 0.2];
 
-  function step(dt: number) {
-    g.disable(g.BLEND);
-    const tx = velocity.texelSizeX;
-    const ty = velocity.texelSizeY;
+  function update(dt: number) {
+    resizeCanvas();
+    g.viewport(0, 0, textureWidth, textureHeight);
 
-    let u = use(progs.curl);
-    g.uniform2f(u.texelSize, tx, ty);
-    g.uniform1i(u.uVelocity, velocity.read.attach(0));
-    blit(curl);
-
-    u = use(progs.vorticity);
-    g.uniform2f(u.texelSize, tx, ty);
-    g.uniform1i(u.uVelocity, velocity.read.attach(0));
-    g.uniform1i(u.uCurl, curl.attach(1));
-    g.uniform1f(u.curl, CONFIG.CURL);
-    g.uniform1f(u.dt, dt);
-    blit(velocity.write);
+    advectionProgram.bind();
+    g.uniform2f(advectionProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+    g.uniform1i(advectionProgram.uniforms.uVelocity, velocity.first[2]);
+    g.uniform1i(advectionProgram.uniforms.uSource, velocity.first[2]);
+    g.uniform1f(advectionProgram.uniforms.dt, dt);
+    g.uniform1f(advectionProgram.uniforms.dissipation, config.VELOCITY_DISSIPATION);
+    blit(velocity.second[1]);
     velocity.swap();
 
-    u = use(progs.divergence);
-    g.uniform2f(u.texelSize, tx, ty);
-    g.uniform1i(u.uVelocity, velocity.read.attach(0));
-    blit(divergence);
+    g.uniform1i(advectionProgram.uniforms.uVelocity, velocity.first[2]);
+    g.uniform1i(advectionProgram.uniforms.uSource, density.first[2]);
+    g.uniform1f(advectionProgram.uniforms.dissipation, config.DENSITY_DISSIPATION);
+    blit(density.second[1]);
+    density.swap();
 
-    u = use(progs.clear);
-    g.uniform1i(u.uTexture, pressure.read.attach(0));
-    g.uniform1f(u.value, CONFIG.PRESSURE_DISSIPATION);
-    blit(pressure.write);
+    if (pointer.moved) {
+      splat(pointer.x, pointer.y, pointer.dx, pointer.dy, pointer.color);
+      pointer.moved = false;
+    }
+
+    curlProgram.bind();
+    g.uniform2f(curlProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+    g.uniform1i(curlProgram.uniforms.uVelocity, velocity.first[2]);
+    blit(curl[1]);
+
+    vorticityProgram.bind();
+    g.uniform2f(vorticityProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+    g.uniform1i(vorticityProgram.uniforms.uVelocity, velocity.first[2]);
+    g.uniform1i(vorticityProgram.uniforms.uCurl, curl[2]);
+    g.uniform1f(vorticityProgram.uniforms.curl, config.CURL);
+    g.uniform1f(vorticityProgram.uniforms.dt, dt);
+    blit(velocity.second[1]);
+    velocity.swap();
+
+    divergenceProgram.bind();
+    g.uniform2f(divergenceProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+    g.uniform1i(divergenceProgram.uniforms.uVelocity, velocity.first[2]);
+    blit(divergence[1]);
+
+    clearProgram.bind();
+    let pressureTexId = pressure.first[2];
+    g.activeTexture(g.TEXTURE0 + pressureTexId);
+    g.bindTexture(g.TEXTURE_2D, pressure.first[0]);
+    g.uniform1i(clearProgram.uniforms.uTexture, pressureTexId);
+    g.uniform1f(clearProgram.uniforms.value, config.PRESSURE_DISSIPATION);
+    blit(pressure.second[1]);
     pressure.swap();
 
-    u = use(progs.pressure);
-    g.uniform2f(u.texelSize, tx, ty);
-    g.uniform1i(u.uDivergence, divergence.attach(0));
-    for (let i = 0; i < CONFIG.PRESSURE_ITERATIONS; i++) {
-      g.uniform1i(u.uPressure, pressure.read.attach(1));
-      blit(pressure.write);
+    pressureProgram.bind();
+    g.uniform2f(pressureProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+    g.uniform1i(pressureProgram.uniforms.uDivergence, divergence[2]);
+    pressureTexId = pressure.first[2];
+    g.activeTexture(g.TEXTURE0 + pressureTexId);
+    for (let i = 0; i < config.PRESSURE_ITERATIONS; i++) {
+      g.bindTexture(g.TEXTURE_2D, pressure.first[0]);
+      g.uniform1i(pressureProgram.uniforms.uPressure, pressureTexId);
+      blit(pressure.second[1]);
       pressure.swap();
     }
 
-    u = use(progs.gradientSubtract);
-    g.uniform2f(u.texelSize, tx, ty);
-    g.uniform1i(u.uPressure, pressure.read.attach(0));
-    g.uniform1i(u.uVelocity, velocity.read.attach(1));
-    blit(velocity.write);
+    gradienSubtractProgram.bind();
+    g.uniform2f(gradienSubtractProgram.uniforms.texelSize, 1.0 / textureWidth, 1.0 / textureHeight);
+    g.uniform1i(gradienSubtractProgram.uniforms.uPressure, pressure.first[2]);
+    g.uniform1i(gradienSubtractProgram.uniforms.uVelocity, velocity.first[2]);
+    blit(velocity.second[1]);
     velocity.swap();
 
-    u = use(progs.advection);
-    g.uniform2f(u.texelSize, tx, ty);
-    const v = velocity.read.attach(0);
-    g.uniform1i(u.uVelocity, v);
-    g.uniform1i(u.uSource, v);
-    g.uniform1f(u.dt, dt);
-    g.uniform1f(u.dissipation, CONFIG.VELOCITY_DISSIPATION);
-    blit(velocity.write);
-    velocity.swap();
-
-    g.uniform1i(u.uVelocity, velocity.read.attach(0));
-    g.uniform1i(u.uSource, dye.read.attach(1));
-    g.uniform1f(u.dissipation, CONFIG.DENSITY_DISSIPATION);
-    blit(dye.write);
-    dye.swap();
-  }
-
-  function render() {
-    const u = use(progs.display);
-    g.uniform1i(u.uTexture, dye.read.attach(0));
-    g.uniform3f(u.background, ...background);
+    g.viewport(0, 0, g.drawingBufferWidth, g.drawingBufferHeight);
+    displayProgram.bind();
+    g.uniform1i(displayProgram.uniforms.uTexture, density.first[2]);
     blit(null);
   }
 
-  // Puntatore: come nella demo, il fumo segue il mouse senza bisogno di cliccare
-  // (spostamento in pixel × 10) e il colore cambia ogni 25 movimenti.
-  // Le coordinate sono relative alla canvas, quindi funziona anche sopra testo e pulsanti.
-  let last: { x: number; y: number } | null = null;
-  let color = randomColor();
-  let moves = 0;
-
+  // Coordinate relative alla canvas, così il fumo segue il mouse anche sopra testo e pulsanti.
+  let hasLast = false;
   function onMove(e: PointerEvent) {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
-      last = null;
-      return;
+    count++;
+    if (count > 25) {
+      colorArr = [Math.random() + 0.2, Math.random() + 0.2, Math.random() + 0.2];
+      count = 0;
     }
-    if (++moves > CONFIG.COLOR_EVERY_MOVES) {
-      moves = 0;
-      color = randomColor();
-    }
-    if (last) splat(x, y, (x - last.x) * 10, (y - last.y) * 10, color);
-    last = { x, y };
+    pointer.color = colorArr;
+    pointer.moved = true;
+    pointer.dx = hasLast ? (x - pointer.x) * 10.0 : 0;
+    pointer.dy = hasLast ? (y - pointer.y) * 10.0 : 0;
+    pointer.x = x;
+    pointer.y = y;
+    hasLast = true;
   }
   function onLeave() {
-    last = null;
+    hasLast = false;
   }
-
   opts.target.addEventListener('pointermove', onMove, { passive: true });
   opts.target.addEventListener('pointerleave', onLeave);
 
   // Gira solo quando la hero è visibile e la scheda è attiva.
   let visible = true;
+  let raf = 0;
+  let stopped = false;
+  let lastTime = Date.now();
   const io = new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting;
     if (visible) schedule();
@@ -426,26 +326,18 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
   const onVisibility = () => document.visibilityState === 'visible' && schedule();
   document.addEventListener('visibilitychange', onVisibility);
 
-  let raf = 0;
-  let lastTime = performance.now();
-  let stopped = false;
-
   function schedule() {
     if (!raf && !stopped) {
-      lastTime = performance.now();
+      lastTime = Date.now();
       raf = requestAnimationFrame(frame);
     }
   }
-
-  function frame(now: number) {
+  function frame() {
     raf = 0;
     if (stopped || !visible || document.visibilityState !== 'visible') return;
-    const dt = Math.min((now - lastTime) / 1000, 0.016);
-    lastTime = now;
-
-    if (resizeCanvas()) initFramebuffers();
-    step(dt);
-    render();
+    const dt = Math.min((Date.now() - lastTime) / 1000, 0.016);
+    lastTime = Date.now();
+    update(dt);
     raf = requestAnimationFrame(frame);
   }
   schedule();
@@ -459,3 +351,27 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     opts.target.removeEventListener('pointerleave', onLeave);
   };
 }
+
+/*
+The MIT License (MIT)
+
+Copyright (c) 2025 Andry Zirka (https://codepen.io/BlackStar1991/pen/VYvXYNa)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
