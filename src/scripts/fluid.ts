@@ -13,12 +13,13 @@ export interface FluidOptions {
 const CONFIG = {
   SIM_RESOLUTION: 128,
   DYE_RESOLUTION: 1024,
-  DENSITY_DISSIPATION: 0.9,
-  VELOCITY_DISSIPATION: 0.25,
+  DENSITY_DISSIPATION: 0.35, // più basso = scia più lunga
+  VELOCITY_DISSIPATION: 0.15,
   PRESSURE: 0.8,
   PRESSURE_ITERATIONS: 20,
   CURL: 28,
-  SPLAT_RADIUS: 0.22,
+  SPLAT_RADIUS: 0.18,
+  DYE_INTENSITY: 0.05, // quantità di colore per movimento del mouse
   SPLAT_FORCE: 6000,
   AMBIENT_EVERY_MS: 2600,
 };
@@ -327,7 +328,7 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     dye.swap();
   }
 
-  function randomColor(intensity = 0.15): [number, number, number] {
+  function randomColor(intensity = CONFIG.DYE_INTENSITY): [number, number, number] {
     // Tonalità fredde e viola, in tema con il sito; ogni tanto un tocco caldo.
     const h = Math.random() < 0.8 ? 0.55 + Math.random() * 0.3 : Math.random() * 0.1;
     const i = Math.floor(h * 6);
@@ -345,7 +346,7 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
       Math.random(),
       (Math.random() - 0.5) * 1000 * strength,
       (Math.random() - 0.5) * 1000 * strength,
-      randomColor(0.6 * strength),
+      randomColor(0.4 * strength),
       1.4,
     );
   }
@@ -442,7 +443,7 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
       if (aspect > 1) dy /= aspect;
       if (dx || dy) {
         // Sopra il testo il fumo è più denso: è lì che si vede il testo cambiare colore.
-        const boost = opts.boostSelector && (e.target as Element)?.closest?.(opts.boostSelector) ? 1.8 : 1;
+        const boost = opts.boostSelector && (e.target as Element)?.closest?.(opts.boostSelector) ? 1.5 : 1;
         const c = color.map((v) => v * boost) as [number, number, number];
         splat(x, y, dx * CONFIG.SPLAT_FORCE, dy * CONFIG.SPLAT_FORCE, c, boost > 1 ? 1.4 : 1);
       }
