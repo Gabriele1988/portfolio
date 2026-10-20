@@ -1,35 +1,23 @@
 ---
 import Base from '../layouts/Base.astro';
+import HeroFluid from '../components/HeroFluid.astro';
 import ProgettoCard from '../components/ProgettoCard.astro';
 import { getProgettiInEvidenza } from '../lib/wp';
-import { sito } from '../site.config';
 
 const progetti = await getProgettiInEvidenza(3);
 ---
 
-<Base>
-  <section class="wrap section hero">
-    <p class="muted">{sito.ruolo} · {sito.citta}</p>
-    <h1>Siti veloci e applicazioni web su misura.</h1>
-    <p class="lead">{sito.descrizione}</p>
-    <p class="cta">
-      <a class="btn" href="/contatti/">Richiedi un preventivo</a>
-      <a class="btn btn-ghost" href="/progetti/">Guarda i progetti</a>
-    </p>
-  </section>
+<Base overlayHeader>
+  <HeroFluid />
 
-  {progetti.length > 0 && (
-    <section class="wrap section">
-      <h2>Progetti in evidenza</h2>
+  <section id="lavori" class="wrap section">
+    <h2>Progetti in evidenza</h2>
+    {progetti.length > 0 ? (
       <div class="grid">
-        {progetti.map((p, i) => <ProgettoCard progetto={p} eager={i === 0} />)}
+        {progetti.map((p) => <ProgettoCard progetto={p} />)}
       </div>
-    </section>
-  )}
+    ) : (
+      <p class="muted">I progetti arriveranno presto.</p>
+    )}
+  </section>
 </Base>
-
-<style>
-  .hero { padding-top: 5rem; }
-  .lead { font-size: 1.25rem; max-width: 40rem; color: var(--muted); }
-  .cta { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 2rem; }
-</style>

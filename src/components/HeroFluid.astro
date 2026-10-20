@@ -1,0 +1,97 @@
+---
+import { sito } from '../site.config';
+---
+
+<section class="hero" data-hero>
+  <canvas class="fluid" aria-hidden="true"></canvas>
+  <div class="wrap content">
+    <p class="kicker" data-fluid-boost>{sito.ruolo} · {sito.citta}</p>
+    <h1 data-fluid-boost>Siti veloci e applicazioni web su misura.</h1>
+    <p class="lead" data-fluid-boost>{sito.descrizione}</p>
+    <p class="cta">
+      <a class="btn" href="/contatti/">Richiedi un preventivo</a>
+      <a class="btn btn-ghost" href="/progetti/">Guarda i progetti</a>
+    </p>
+  </div>
+  <a class="scroll" href="#lavori" aria-label="Scorri ai progetti">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+  </a>
+</section>
+
+<script>
+  import { startFluid } from '../scripts/fluid';
+
+  const hero = document.querySelector<HTMLElement>('[data-hero]')!;
+  const canvas = hero.querySelector<HTMLCanvasElement>('canvas')!;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduce) {
+    const stop = startFluid(canvas, { target: hero, boostSelector: '[data-fluid-boost]' });
+    if (stop) hero.classList.add('is-live');
+  }
+</script>
+
+<style>
+  /* La hero è sempre scura: il fumo rende meglio e il testo "in negativo" funziona solo su fondo scuro. */
+  .hero {
+    position: relative;
+    isolation: isolate;
+    min-height: 100vh;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    color: #fff;
+    background:
+      radial-gradient(60% 50% at 20% 30%, rgb(70 60 200 / 0.35), transparent 70%),
+      radial-gradient(50% 45% at 80% 70%, rgb(20 140 200 / 0.3), transparent 70%),
+      #0b0b10;
+    touch-action: pan-y;
+  }
+  /* Niente z-index su canvas e contenuto: devono stare nello stesso contesto
+     perché il testo possa fondersi con il fumo (mix-blend-mode). */
+  .fluid {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+  .hero.is-live .fluid { opacity: 1; }
+
+  .content {
+    position: relative;
+    width: 100%;
+    padding-block: 7rem 5rem;
+  }
+  /* Testo bianco in "difference": dove passa il fumo il testo assume il colore opposto,
+     come se testo e sfondo fossero un'unica superficie. */
+  [data-fluid-boost] {
+    color: #fff;
+    mix-blend-mode: difference;
+  }
+  h1 {
+    font-size: clamp(2.75rem, 8vw, 6.5rem);
+    line-height: 1;
+    letter-spacing: -0.035em;
+    max-width: 14ch;
+    margin: 0 0 1.5rem;
+  }
+  .kicker { font-size: 1rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 1.25rem; opacity: 0.85; }
+  .lead { font-size: clamp(1.0625rem, 1.6vw, 1.3rem); max-width: 40rem; margin: 0; opacity: 0.9; }
+  .cta { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 2.5rem; }
+  .cta .btn { background: #fff; color: #0b0b10; }
+  .cta .btn-ghost { background: transparent; color: #fff; border-color: rgb(255 255 255 / 0.4); backdrop-filter: blur(6px); }
+
+  .scroll {
+    position: absolute;
+    left: 50%;
+    bottom: 1.5rem;
+    translate: -50% 0;
+    color: rgb(255 255 255 / 0.7);
+    animation: bob 2s ease-in-out infinite;
+  }
+  @keyframes bob { 50% { transform: translateY(6px); } }
+  @media (prefers-reduced-motion: reduce) { .scroll { animation: none; } }
+</style>

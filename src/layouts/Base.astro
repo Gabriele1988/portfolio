@@ -9,9 +9,11 @@ interface Props {
   title?: string;
   description?: string;
   image?: string;
+  /** Header trasparente sopra la hero (solo home). */
+  overlayHeader?: boolean;
 }
 
-const { title, description = sito.descrizione, image } = Astro.props;
+const { title, description = sito.descrizione, image, overlayHeader = false } = Astro.props;
 const fullTitle = title ? `${title} · ${sito.nome}` : `${sito.nome} · ${sito.ruolo}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = image ? new URL(image, Astro.site).href : undefined;
@@ -35,7 +37,7 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     {!NOINDEX && <link rel="sitemap" href="/sitemap-index.xml" />}
   </head>
   <body>
-    <Header />
+    <Header overlay={overlayHeader} />
     <main id="contenuto">
       <slot />
     </main>
