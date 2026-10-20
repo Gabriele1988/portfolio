@@ -6,12 +6,16 @@ const anno = new Date().getFullYear();
 <footer class="wrap">
   <p>
     © {anno} {sito.nome} · {sito.citta} · <a href={`mailto:${sito.email}`}>{sito.email}</a>
-    {sito.telefono && <> · <a href={`tel:${sito.telefono.replace(/\s/g, '')}`}>{sito.telefono}</a></>}
+    {sito.telefono && <>{' · '}<a href={`tel:${sito.telefono.replace(/\s/g, '')}`}>{sito.telefono}</a></>}
   </p>
   <p>
-    {sito.social.github && <a href={sito.social.github} rel="me">GitHub</a>}
-    {sito.social.linkedin && <> · <a href={sito.social.linkedin} rel="me">LinkedIn</a></>}
-    · <a href="/privacy/">Privacy</a>
+    {[
+      sito.social.github && { href: sito.social.github, label: 'GitHub', rel: 'me' },
+      sito.social.linkedin && { href: sito.social.linkedin, label: 'LinkedIn', rel: 'me' },
+      { href: '/privacy/', label: 'Privacy' },
+    ]
+      .filter(Boolean)
+      .map((l: any, i) => <>{i > 0 && ' · '}<a href={l.href} rel={l.rel}>{l.label}</a></>)}
   </p>
 </footer>
 
