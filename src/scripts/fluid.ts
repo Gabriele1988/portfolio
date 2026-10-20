@@ -1,27 +1,27 @@
 // Simulazione di fluido ("fumo") in WebGL, basata sul metodo Stable Fluids:
 // advezione, vorticità, divergenza, pressione (Jacobi) e sottrazione del gradiente.
-// Nessuna dipendenza esterna: il file pesa pochi kB e gira solo nella hero della home.
+// Parametri e comportamento ricalcano la demo "Smoke/Fluid Motion" di BlackStar1991
+// (https://www.cssscript.com/smoke-fluid-motion/, MIT), a sua volta derivata da
+// WebGL-Fluid-Simulation di Pavel Dobryakov (MIT).
 
 export interface FluidOptions {
   /** Elemento che riceve i movimenti del puntatore (di solito la sezione hero). */
   target: HTMLElement;
-  /** Gli elementi con questo attributo generano più fumo quando ci passi sopra. */
-  boostSelector?: string;
   background?: [number, number, number];
 }
 
+// Stessi valori della demo. Le dissipazioni sono moltiplicatori per frame:
+// più vicini a 1 = scia più lunga.
 const CONFIG = {
-  SIM_RESOLUTION: 128,
-  DYE_RESOLUTION: 1024,
-  DENSITY_DISSIPATION: 0.35, // più basso = scia più lunga
-  VELOCITY_DISSIPATION: 0.15,
-  PRESSURE: 0.8,
-  PRESSURE_ITERATIONS: 20,
-  CURL: 28,
-  SPLAT_RADIUS: 0.18,
-  DYE_INTENSITY: 0.05, // quantità di colore per movimento del mouse
-  SPLAT_FORCE: 6000,
-  AMBIENT_EVERY_MS: 2600,
+  TEXTURE_DOWNSAMPLE: 1,
+  DENSITY_DISSIPATION: 0.98,
+  VELOCITY_DISSIPATION: 0.99,
+  PRESSURE_DISSIPATION: 0.8,
+  PRESSURE_ITERATIONS: 25,
+  CURL: 35,
+  SPLAT_RADIUS: 0.002,
+  /** Ogni quanti movimenti del mouse cambia colore. */
+  COLOR_EVERY_MOVES: 25,
 };
 
 const baseVertex = `
@@ -58,7 +58,7 @@ const shaders = {
     uniform sampler2D uVelocity, uSource; uniform vec2 texelSize; uniform float dt, dissipation;
     void main () {
       vec2 coord = vUv - dt * texture2D(uVelocity, vUv).xy * texelSize;
-      gl_FragColor = texture2D(uSource, coord) / (1.0 + dissipation * dt);
+      gl_FragColor = dissipation * texture2D(uSource, coord);
     }`,
 
   divergence: `${head}
@@ -168,9 +168,7 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
   }
   const g = gl;
 
-  const isMobile = matchMedia('(pointer: coarse)').matches;
-  const dyeRes = isMobile ? 512 : CONFIG.DYE_RESOLUTION;
-  const background = opts.background ?? [0.043, 0.043, 0.063];
+  const background = opts.background ?? [0, 0, 0];
 
   function compile(type: number, source: string) {
     const s = g.createShader(type)!;
@@ -265,32 +263,25 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     };
   }
 
-  function resolution(res: number) {
-    let aspect = g.drawingBufferWidth / g.drawingBufferHeight;
-    if (aspect < 1) aspect = 1 / aspect;
-    const min = Math.round(res);
-    const max = Math.round(res * aspect);
-    return g.drawingBufferWidth > g.drawingBufferHeight ? { w: max, h: min } : { w: min, h: max };
-  }
-
   let dye: DoubleFBO, velocity: DoubleFBO, divergence: FBO, curl: FBO, pressure: DoubleFBO;
 
   function initFramebuffers() {
-    const sim = resolution(CONFIG.SIM_RESOLUTION);
-    const d = resolution(dyeRes);
-    dye = createDoubleFBO(d.w, d.h);
-    velocity = createDoubleFBO(sim.w, sim.h);
-    divergence = createFBO(sim.w, sim.h);
-    curl = createFBO(sim.w, sim.h);
-    pressure = createDoubleFBO(sim.w, sim.h);
+    const w = g.drawingBufferWidth >> CONFIG.TEXTURE_DOWNSAMPLE;
+    const h = g.drawingBufferHeight >> CONFIG.TEXTURE_DOWNSAMPLE;
+    dye = createDoubleFBO(w, h);
+    velocity = createDoubleFBO(w, h);
+    divergence = createFBO(w, h);
+    curl = createFBO(w, h);
+    pressure = createDoubleFBO(w, h);
     // Se il framebuffer half-float non è utilizzabile, rinunciamo all'effetto.
     return g.checkFramebufferStatus(g.FRAMEBUFFER) === g.FRAMEBUFFER_COMPLETE;
   }
 
+  // Come nella demo, la canvas ha la dimensione CSS (niente devicePixelRatio):
+  // il fumo è morbido comunque e si risparmia GPU.
   function resizeCanvas() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.floor(canvas.clientWidth * dpr);
-    const h = Math.floor(canvas.clientHeight * dpr);
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
     if (w && h && (canvas.width !== w || canvas.height !== h)) {
       canvas.width = w;
       canvas.height = h;
@@ -307,49 +298,24 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     return p.uniforms;
   }
 
-  function splat(x: number, y: number, dx: number, dy: number, color: [number, number, number], radiusScale = 1) {
-    const aspect = canvas.width / canvas.height;
-    let radius = (CONFIG.SPLAT_RADIUS * radiusScale) / 100;
-    if (aspect > 1) radius *= aspect;
-
+  function splat(x: number, y: number, dx: number, dy: number, color: number[]) {
     let u = use(progs.splat);
     g.uniform1i(u.uTarget, velocity.read.attach(0));
-    g.uniform1f(u.aspectRatio, aspect);
-    g.uniform2f(u.point, x, y);
-    g.uniform3f(u.color, dx, dy, 0);
-    g.uniform1f(u.radius, radius);
+    g.uniform1f(u.aspectRatio, canvas.width / canvas.height);
+    g.uniform2f(u.point, x / canvas.width, 1 - y / canvas.height);
+    g.uniform3f(u.color, dx, -dy, 1);
+    g.uniform1f(u.radius, CONFIG.SPLAT_RADIUS);
     blit(velocity.write);
     velocity.swap();
 
     u = use(progs.splat);
     g.uniform1i(u.uTarget, dye.read.attach(0));
-    g.uniform3f(u.color, ...color);
+    g.uniform3f(u.color, color[0] * 0.3, color[1] * 0.3, color[2] * 0.3);
     blit(dye.write);
     dye.swap();
   }
 
-  function randomColor(intensity = CONFIG.DYE_INTENSITY): [number, number, number] {
-    // Tonalità fredde e viola, in tema con il sito; ogni tanto un tocco caldo.
-    const h = Math.random() < 0.8 ? 0.55 + Math.random() * 0.3 : Math.random() * 0.1;
-    const i = Math.floor(h * 6);
-    const f = h * 6 - i;
-    const q = 1 - f;
-    const rgb = [
-      [1, f, 0], [q, 1, 0], [0, 1, f], [0, q, 1], [f, 0, 1], [1, 0, q],
-    ][i % 6] as [number, number, number];
-    return rgb.map((c) => c * intensity) as [number, number, number];
-  }
-
-  function randomSplat(strength = 1) {
-    splat(
-      Math.random(),
-      Math.random(),
-      (Math.random() - 0.5) * 1000 * strength,
-      (Math.random() - 0.5) * 1000 * strength,
-      randomColor(0.4 * strength),
-      1.4,
-    );
-  }
+  const randomColor = () => [Math.random() + 0.2, Math.random() + 0.2, Math.random() + 0.2];
 
   function step(dt: number) {
     g.disable(g.BLEND);
@@ -377,7 +343,7 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
 
     u = use(progs.clear);
     g.uniform1i(u.uTexture, pressure.read.attach(0));
-    g.uniform1f(u.value, CONFIG.PRESSURE);
+    g.uniform1f(u.value, CONFIG.PRESSURE_DISSIPATION);
     blit(pressure.write);
     pressure.swap();
 
@@ -421,48 +387,34 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     blit(null);
   }
 
-  // Puntatore: le coordinate sono relative alla sezione, così il fumo segue il mouse
-  // anche quando passa sopra il titolo e i pulsanti.
+  // Puntatore: come nella demo, il fumo segue il mouse senza bisogno di cliccare
+  // (spostamento in pixel × 10) e il colore cambia ogni 25 movimenti.
+  // Le coordinate sono relative alla canvas, quindi funziona anche sopra testo e pulsanti.
   let last: { x: number; y: number } | null = null;
   let color = randomColor();
-  let colorTimer = 0;
+  let moves = 0;
 
   function onMove(e: PointerEvent) {
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = 1 - (e.clientY - rect.top) / rect.height;
-    if (x < 0 || x > 1 || y < 0 || y > 1) {
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
       last = null;
       return;
     }
-    if (last) {
-      const aspect = rect.width / rect.height;
-      let dx = x - last.x;
-      let dy = y - last.y;
-      if (aspect < 1) dx *= aspect;
-      if (aspect > 1) dy /= aspect;
-      if (dx || dy) {
-        // Sopra il testo il fumo è più denso: è lì che si vede il testo cambiare colore.
-        const boost = opts.boostSelector && (e.target as Element)?.closest?.(opts.boostSelector) ? 1.5 : 1;
-        const c = color.map((v) => v * boost) as [number, number, number];
-        splat(x, y, dx * CONFIG.SPLAT_FORCE, dy * CONFIG.SPLAT_FORCE, c, boost > 1 ? 1.4 : 1);
-      }
+    if (++moves > CONFIG.COLOR_EVERY_MOVES) {
+      moves = 0;
+      color = randomColor();
     }
+    if (last) splat(x, y, (x - last.x) * 10, (y - last.y) * 10, color);
     last = { x, y };
   }
   function onLeave() {
     last = null;
   }
-  function onDown(e: PointerEvent) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = 1 - (e.clientY - rect.top) / rect.height;
-    splat(x, y, (Math.random() - 0.5) * 800, (Math.random() - 0.5) * 800, randomColor(0.8), 2);
-  }
 
   opts.target.addEventListener('pointermove', onMove, { passive: true });
   opts.target.addEventListener('pointerleave', onLeave);
-  opts.target.addEventListener('pointerdown', onDown, { passive: true });
 
   // Gira solo quando la hero è visibile e la scheda è attiva.
   let visible = true;
@@ -474,11 +426,8 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
   const onVisibility = () => document.visibilityState === 'visible' && schedule();
   document.addEventListener('visibilitychange', onVisibility);
 
-  for (let i = 0; i < 5; i++) randomSplat();
-
   let raf = 0;
   let lastTime = performance.now();
-  let ambient = 0;
   let stopped = false;
 
   function schedule() {
@@ -491,23 +440,10 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
   function frame(now: number) {
     raf = 0;
     if (stopped || !visible || document.visibilityState !== 'visible') return;
-    const dt = Math.min((now - lastTime) / 1000, 0.016666);
+    const dt = Math.min((now - lastTime) / 1000, 0.016);
     lastTime = now;
 
     if (resizeCanvas()) initFramebuffers();
-
-    colorTimer += dt;
-    if (colorTimer > 0.6) {
-      colorTimer = 0;
-      color = randomColor();
-    }
-    ambient += dt * 1000;
-    // Su touch non c'è hover: il fumo si muove da solo un po' più spesso.
-    if (ambient > CONFIG.AMBIENT_EVERY_MS * (isMobile ? 0.6 : 1)) {
-      ambient = 0;
-      randomSplat(isMobile ? 0.9 : 0.6);
-    }
-
     step(dt);
     render();
     raf = requestAnimationFrame(frame);
@@ -521,6 +457,5 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     document.removeEventListener('visibilitychange', onVisibility);
     opts.target.removeEventListener('pointermove', onMove);
     opts.target.removeEventListener('pointerleave', onLeave);
-    opts.target.removeEventListener('pointerdown', onDown);
   };
 }

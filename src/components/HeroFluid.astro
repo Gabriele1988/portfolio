@@ -5,9 +5,9 @@ import { sito } from '../site.config';
 <section class="hero" data-hero>
   <canvas class="fluid" aria-hidden="true"></canvas>
   <div class="wrap content">
-    <p class="kicker" data-fluid-boost>{sito.ruolo} · {sito.citta}</p>
-    <h1 data-fluid-boost>Siti veloci e applicazioni web su misura.</h1>
-    <p class="lead" data-fluid-boost>{sito.descrizione}</p>
+    <p class="kicker" data-blend>{sito.ruolo} · {sito.citta}</p>
+    <h1 data-blend>Siti veloci e applicazioni web su misura.</h1>
+    <p class="lead" data-blend>{sito.descrizione}</p>
     <p class="cta">
       <a class="btn" href="/contatti/">Richiedi un preventivo</a>
       <a class="btn btn-ghost" href="/progetti/">Guarda i progetti</a>
@@ -26,7 +26,7 @@ import { sito } from '../site.config';
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   if (!reduce) {
-    const stop = startFluid(canvas, { target: hero, boostSelector: '[data-fluid-boost]' });
+    const stop = startFluid(canvas, { target: hero });
     if (stop) hero.classList.add('is-live');
   }
 </script>
@@ -42,10 +42,7 @@ import { sito } from '../site.config';
     align-items: center;
     overflow: hidden;
     color: #fff;
-    background:
-      radial-gradient(60% 50% at 20% 30%, rgb(70 60 200 / 0.35), transparent 70%),
-      radial-gradient(50% 45% at 80% 70%, rgb(20 140 200 / 0.3), transparent 70%),
-      #0b0b10;
+    background: #000;
     touch-action: pan-y;
   }
   /* Niente z-index su canvas e contenuto: devono stare nello stesso contesto
@@ -59,6 +56,13 @@ import { sito } from '../site.config';
     transition: opacity 1.2s ease;
   }
   .hero.is-live .fluid { opacity: 1; }
+  /* Senza WebGL o con "riduci movimento": sfondo sfumato statico. */
+  .hero:not(.is-live) {
+    background:
+      radial-gradient(60% 50% at 20% 30%, rgb(70 60 200 / 0.35), transparent 70%),
+      radial-gradient(50% 45% at 80% 70%, rgb(20 140 200 / 0.3), transparent 70%),
+      #000;
+  }
 
   .content {
     position: relative;
@@ -67,7 +71,7 @@ import { sito } from '../site.config';
   }
   /* Testo bianco in "difference": dove passa il fumo il testo assume il colore opposto,
      come se testo e sfondo fossero un'unica superficie. */
-  [data-fluid-boost] {
+  [data-blend] {
     color: #fff;
     mix-blend-mode: difference;
   }
