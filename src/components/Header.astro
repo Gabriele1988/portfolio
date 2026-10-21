@@ -2,31 +2,178 @@
 import { sito } from '../site.config';
 
 const voci = [
+  { href: '/', label: 'Home' },
+  { href: '/#servizi', label: 'Servizi' },
   { href: '/progetti/', label: 'Progetti' },
   { href: '/contatti/', label: 'Contatti' },
 ];
 const { overlay = false } = Astro.props as { overlay?: boolean };
 const path = Astro.url.pathname;
+const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('#') && path.startsWith(href));
 ---
 
 <a class="visually-hidden" href="#contenuto">Vai al contenuto</a>
-<header class:list={["wrap", { overlay }]}>
+<header class:list={['wrap', { overlay }]} data-header>
   <a class="logo" href="/">{sito.nome}</a>
-  <nav aria-label="Principale">
-    {voci.map((v) => (
-      <a href={v.href} aria-current={path.startsWith(v.href) ? 'page' : undefined}>{v.label}</a>
+
+  <!-- Desktop -->
+  <nav class="desktop" aria-label="Principale">
+    {voci.slice(1).map((v) => (
+      <a href={v.href} aria-current={attiva(v.href) ? 'page' : undefined}>{v.label}</a>
     ))}
     <a class="btn" href="/contatti/">Richiedi un preventivo</a>
   </nav>
+
+  <!-- Mobile: icona che apre il menu a tutto schermo -->
+  <button class="toggle" type="button" aria-controls="menu-mobile" aria-expanded="false" aria-label="Apri il menu" data-toggle>
+    <span></span><span></span>
+  </button>
+  <div class="pannello" id="menu-mobile" data-menu hidden>
+    <nav aria-label="Menu mobile">
+      <ul>
+        {voci.map((v, i) => (
+          <li style={`--i: ${i}`}>
+            <a href={v.href} aria-current={attiva(v.href) ? 'page' : undefined}>
+              <span class="num">{String(i + 1).padStart(2, '0')}</span>
+              {v.label}
+            </a>
+          </li>
+        ))}
+        <li style={`--i: ${voci.length}`}>
+          <a class="btn" href="/contatti/">Richiedi un preventivo</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
 </header>
 
+<script>
+  const header = document.querySelector<HTMLElement>('[data-header]')!;
+  const toggle = header.querySelector<HTMLButtonElement>('[data-toggle]')!;
+  const menu = header.querySelector<HTMLElement>('[data-menu]')!;
+  let chiudiTimer = 0;
+
+  function apri() {
+    clearTimeout(chiudiTimer);
+    menu.hidden = false;
+    // Un frame dopo, così la transizione parte dallo stato iniziale.
+    requestAnimationFrame(() => requestAnimationFrame(() => header.classList.add('menu-aperto')));
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.setAttribute('aria-label', 'Chiudi il menu');
+    document.documentElement.style.overflow = 'hidden';
+  }
+
+  function chiudi() {
+    header.classList.remove('menu-aperto');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Apri il menu');
+    document.documentElement.style.overflow = '';
+    chiudiTimer = window.setTimeout(() => (menu.hidden = true), 400);
+  }
+
+  toggle.addEventListener('click', () => (header.classList.contains('menu-aperto') ? chiudi() : apri()));
+  menu.addEventListener('click', (e) => {
+    if ((e.target as Element).closest('a')) chiudi();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && header.classList.contains('menu-aperto')) {
+      chiudi();
+      toggle.focus();
+    }
+  });
+  // Se lo schermo si allarga fino alla versione desktop, il menu mobile si chiude.
+  matchMedia('(min-width: 48rem)').addEventListener('change', (m) => m.matches && chiudi());
+</script>
+
 <style>
-  header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.25rem; flex-wrap: wrap; }
-  .logo { font-weight: 700; color: var(--text); text-decoration: none; font-size: 1.125rem; }
-  nav { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
-  nav a:not(.btn) { color: var(--muted); text-decoration: none; }
-  nav a[aria-current='page'] { color: var(--text); font-weight: 600; }
-  @media (max-width: 40rem) { nav .btn { display: none; } }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.25rem; }
+  .logo { position: relative; z-index: 31; font-family: var(--font-display); font-weight: 700; color: var(--text); text-decoration: none; font-size: 1.25rem; }
+  .desktop { display: flex; align-items: center; gap: 1.5rem; }
+  .desktop a:not(.btn) { color: var(--muted); text-decoration: none; }
+  .desktop a:not(.btn):hover, .desktop a[aria-current='page'] { color: var(--text); }
   .overlay { position: absolute; inset: 0 0 auto; z-index: 10; }
-  .overlay .logo, .overlay nav a:not(.btn), .overlay nav a[aria-current='page'] { color: #fff; }
+  .overlay .logo, .overlay .desktop a:not(.btn) { color: #fff; }
+
+  /* Icona: due linee che diventano una X */
+  .toggle {
+    display: none;
+    position: relative;
+    z-index: 31;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgb(20 20 20 / 0.6);
+    backdrop-filter: blur(8px);
+    cursor: pointer;
+  }
+  .toggle span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1.1rem;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--text);
+    transition: transform 0.35s cubic-bezier(.7, 0, .3, 1), background-color 0.3s;
+  }
+  .toggle span:first-child { transform: translate(-50%, -4px); }
+  .toggle span:last-child { transform: translate(-50%, 3px); }
+  .menu-aperto .toggle span { background: var(--accent); }
+  .menu-aperto .toggle span:first-child { transform: translate(-50%, -1px) rotate(45deg); }
+  .menu-aperto .toggle span:last-child { transform: translate(-50%, -1px) rotate(-45deg); }
+
+  /* Pannello a tutto schermo */
+  .pannello {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    padding: 6rem var(--pad) 3rem;
+    background: rgb(10 10 10 / 0.97);
+    backdrop-filter: blur(12px);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  .pannello[hidden] { display: none; }
+  .menu-aperto .pannello { opacity: 1; }
+  .pannello ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; width: 100%; }
+
+  /* Le voci scendono dall'alto una dopo l'altra */
+  .pannello li {
+    opacity: 0;
+    transform: translateY(-1.75rem);
+    transition: opacity 0.45s ease, transform 0.55s cubic-bezier(.2, .8, .2, 1);
+    transition-delay: 0s;
+  }
+  .menu-aperto .pannello li {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(0.12s + var(--i) * 0.08s);
+  }
+  .pannello a:not(.btn) {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding-block: 0.6rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2rem, 9vw, 3rem);
+    line-height: 1.1;
+  }
+  .pannello a[aria-current='page'], .pannello a:not(.btn):active { color: var(--accent); }
+  .num { font-family: var(--mono); font-size: 0.875rem; font-weight: 400; color: var(--accent); }
+  .pannello .btn { margin-top: 1.5rem; }
+
+  @media (max-width: 47.99rem) {
+    .desktop { display: none; }
+    .toggle { display: block; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pannello, .pannello li, .toggle span { transition: none; }
+  }
 </style>
