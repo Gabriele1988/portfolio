@@ -14,7 +14,7 @@ import { sito } from '../site.config';
     </p>
   </div>
   <a class="scroll" href="#servizi" aria-label="Scorri ai servizi">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+    <span class="mouse" aria-hidden="true"><span class="rotella"></span></span>
   </a>
 </section>
 
@@ -90,11 +90,36 @@ import { sito } from '../site.config';
   .scroll {
     position: absolute;
     left: 50%;
-    bottom: 1.5rem;
     translate: -50% 0;
+    bottom: 2rem;
     color: rgb(255 255 255 / 0.7);
-    animation: bob 2s ease-in-out infinite;
+    transition: color 0.2s;
   }
-  @keyframes bob { 50% { transform: translateY(6px); } }
-  @media (prefers-reduced-motion: reduce) { .scroll { animation: none; } }
+  .scroll:hover { color: #fff; }
+  .mouse {
+    display: block;
+    width: 1.5rem;
+    height: 2.4rem;
+    border: 2px solid currentColor;
+    border-radius: 999px;
+    position: relative;
+  }
+  .rotella {
+    position: absolute;
+    left: 50%;
+    top: 0.45rem;
+    width: 3px;
+    height: 0.5rem;
+    margin-left: -1.5px;
+    border-radius: 3px;
+    background: currentColor;
+    animation: rotella 1.8s cubic-bezier(.6,0,.4,1) infinite;
+  }
+  @keyframes rotella {
+    0% { transform: translateY(0); opacity: 0; }
+    15% { opacity: 1; }
+    65% { transform: translateY(0.75rem); opacity: 0; }
+    100% { transform: translateY(0.75rem); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .rotella { animation: none; } }
 </style>
