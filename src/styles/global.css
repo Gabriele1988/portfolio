@@ -1,40 +1,35 @@
-/* Font di sistema: nessuna richiesta esterna (velocità e GDPR).
-   Per un font personalizzato, metti i file .woff2 in public/fonts e usa @font-face. */
+/* Font self-hosted (nessuna richiesta a servizi esterni: velocità e GDPR).
+   Titoli: Clash Display se i file sono in public/fonts/ (vedi Base.astro), altrimenti Space Grotesk. */
+
+/* Palette ripresa da andreavannetti.dev */
 :root {
-  --bg: #fbfaf8;
-  --surface: #ffffff;
-  --text: #1b1b1f;
-  --muted: #5d5d66;
-  --border: #e4e2dd;
-  --accent: #1f5eff;
-  --accent-text: #ffffff;
-  --radius: 14px;
+  --bg: rgb(10 10 10);
+  --surface: rgb(20 20 20);
+  --text: rgb(224 226 219);
+  --muted: rgb(138 140 135);
+  --border: rgb(30 30 30);
+  --accent: rgb(149 230 0);
+  --accent-soft: rgb(149 230 0 / 0.1);
+  --accent-text: rgb(10 10 10);
+  --radius: 16px;
   --max: 72rem;
-  --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  color-scheme: light dark;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #111114;
-    --surface: #1a1a1f;
-    --text: #ececf1;
-    --muted: #a3a3ad;
-    --border: #2b2b33;
-    --accent: #7aa2ff;
-    --accent-text: #0b0b0e;
-  }
+  --font: 'Space Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-display: 'Clash Display', 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --mono: 'Fira Code Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: dark;
 }
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
+  position: relative;
   background: var(--bg);
   color: var(--text);
   font: 1.0625rem/1.65 var(--font);
 }
 img { max-width: 100%; height: auto; display: block; }
 a { color: var(--accent); }
-h1, h2, h3 { line-height: 1.2; letter-spacing: -0.015em; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; letter-spacing: -0.02em; font-weight: 700; }
 h1 { font-size: clamp(2rem, 5vw, 3.25rem); margin: 0 0 1rem; }
 h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
 .wrap { max-width: var(--max); margin: 0 auto; padding: 0 1.25rem; }

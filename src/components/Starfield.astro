@@ -1,0 +1,47 @@
+---
+// Sfondo stellato in movimento lento, come su andreavannetti.dev: quattro livelli di "stelle"
+// disegnate con box-shadow su un elemento di 1px, che scivolano in diagonale.
+// Le posizioni sono generate nel browser, così l'HTML resta leggero.
+---
+
+<div class="starfield" aria-hidden="true">
+  <div class="layer slow" data-stars="1500" data-blur="0"></div>
+  <div class="layer medium" data-stars="600" data-blur="0.5"></div>
+  <div class="layer fast" data-stars="200" data-blur="0.5"></div>
+  <div class="layer glow" data-stars="60" data-blur="0.4" data-color="149, 230, 0" data-max="0.35"></div>
+</div>
+
+<script>
+  const AREA = 4000;
+  for (const el of document.querySelectorAll<HTMLElement>('.starfield .layer')) {
+    const n = Number(el.dataset.stars);
+    const blur = Number(el.dataset.blur);
+    const color = el.dataset.color ?? '224, 226, 219';
+    const max = Number(el.dataset.max ?? 0.8);
+    const shadows: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = (0.3 + Math.random() * (max - 0.3)).toFixed(2);
+      const x = Math.floor(Math.random() * AREA);
+      const y = Math.floor(Math.random() * AREA);
+      shadows.push(`rgba(${color}, ${a}) ${x}px ${y}px ${(Math.random() * blur).toFixed(1)}px`);
+    }
+    el.style.boxShadow = shadows.join(',');
+  }
+</script>
+
+<style>
+  .starfield { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .layer { position: absolute; top: 0; left: 0; width: 1px; height: 1px; border-radius: 50%; will-change: transform; }
+  .medium, .glow { width: 1.5px; height: 1.5px; }
+  .fast { width: 2px; height: 2px; }
+  .slow { animation: drift-slow 250s linear infinite; }
+  .medium { animation: drift-medium 180s linear infinite; }
+  .fast { animation: drift-fast 120s linear infinite; }
+  .glow { animation: drift-medium 150s linear infinite; }
+  @keyframes drift-slow { to { transform: translate(-2000px, -2000px); } }
+  @keyframes drift-medium { to { transform: translate(-2500px, -1500px); } }
+  @keyframes drift-fast { to { transform: translate(-1500px, -2500px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .layer { animation: none; }
+  }
+</style>

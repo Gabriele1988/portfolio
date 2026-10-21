@@ -1,9 +1,13 @@
 ---
+import { existsSync } from 'node:fs';
+import '@fontsource-variable/space-grotesk';
+import '@fontsource-variable/fira-code';
 import '../styles/global.css';
 import { NOINDEX } from 'astro:env/client';
 import { sito } from '../site.config';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import Starfield from '../components/Starfield.astro';
 
 interface Props {
   title?: string;
@@ -12,6 +16,12 @@ interface Props {
   /** Header trasparente sopra la hero (solo home). */
   overlayHeader?: boolean;
 }
+
+// Clash Display (Fontshare, gratuito) non è su npm: se i file sono in public/fonts/ li usiamo per i titoli.
+const clash = ['Semibold', 'Bold'].filter((w) => existsSync(`public/fonts/ClashDisplay-${w}.woff2`));
+const clashCss = clash
+  .map((w) => `@font-face{font-family:'Clash Display';src:url('/fonts/ClashDisplay-${w}.woff2') format('woff2');font-weight:${w === 'Bold' ? 700 : 600};font-display:swap}`)
+  .join('');
 
 const { title, description = sito.descrizione, image, overlayHeader = false } = Astro.props;
 const fullTitle = title ? `${title} · ${sito.nome}` : `${sito.nome} · ${sito.ruolo}`;
@@ -27,6 +37,7 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     {NOINDEX ? <meta name="robots" content="noindex, nofollow" /> : <link rel="canonical" href={canonical} />}
+    {clashCss && <style set:html={clashCss} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={fullTitle} />
@@ -37,6 +48,7 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     {!NOINDEX && <link rel="sitemap" href="/sitemap-index.xml" />}
   </head>
   <body>
+    <Starfield />
     <Header overlay={overlayHeader} />
     <main id="contenuto">
       <slot />

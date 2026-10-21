@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.2.0
+ * Version:     1.3.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -297,11 +297,10 @@ add_action( 'acf/init', function () {
 		'key'      => 'group_portfolio_home_servizi',
 		'title'    => 'Sezione Servizi',
 		'fields'   => array(
-			array( 'key' => 'field_ph_serv_etichetta', 'name' => 'servizi_etichetta', 'label' => 'Etichetta', 'type' => 'text', 'default_value' => '01. Servizi', 'wrapper' => array( 'width' => 33 ) ),
-			array( 'key' => 'field_ph_serv_titolo', 'name' => 'servizi_titolo', 'label' => 'Titolo', 'type' => 'text', 'default_value' => 'Cosa faccio', 'wrapper' => array( 'width' => 67 ) ),
+			array( 'key' => 'field_ph_serv_etichetta', 'name' => 'servizi_etichetta', 'label' => 'Etichetta', 'type' => 'text', 'default_value' => '', 'instructions' => 'Facoltativa, es. "01. Servizi".', 'wrapper' => array( 'width' => 25 ) ),
+			array( 'key' => 'field_ph_serv_titolo', 'name' => 'servizi_titolo', 'label' => 'Titolo', 'type' => 'text', 'default_value' => 'Servizi nel', 'wrapper' => array( 'width' => 40 ) ),
+			array( 'key' => 'field_ph_serv_titolo_evid', 'name' => 'servizi_titolo_evidenza', 'label' => 'Parte evidenziata del titolo', 'type' => 'text', 'default_value' => 'dettaglio', 'instructions' => 'Mostrata in verde dopo il titolo.', 'wrapper' => array( 'width' => 35 ) ),
 			array( 'key' => 'field_ph_serv_intro', 'name' => 'servizi_intro', 'label' => 'Introduzione', 'type' => 'textarea', 'rows' => 2 ),
-			array( 'key' => 'field_ph_serv_link_testo', 'name' => 'servizi_link_testo', 'label' => 'Testo del link', 'type' => 'text', 'default_value' => 'Tutti i servizi', 'wrapper' => array( 'width' => 33 ) ),
-			array( 'key' => 'field_ph_serv_link_url', 'name' => 'servizi_link_url', 'label' => 'URL del link', 'type' => 'text', 'instructions' => 'Percorso sul sito, es. /servizi/ oppure /contatti/', 'wrapper' => array( 'width' => 67 ) ),
 			array(
 				'key'          => 'field_ph_servizi',
 				'name'         => 'servizi',
@@ -311,13 +310,37 @@ add_action( 'acf/init', function () {
 				'button_label' => 'Aggiungi servizio',
 				'collapsed'    => 'field_ph_servizio_titolo',
 				'sub_fields'   => array(
-					array( 'key' => 'field_ph_servizio_titolo', 'name' => 'titolo', 'label' => 'Titolo', 'type' => 'text', 'required' => 1 ),
+					array(
+						'key'     => 'field_ph_servizio_icona',
+						'name'    => 'icona',
+						'label'   => 'Icona',
+						'type'    => 'select',
+						'choices' => array(
+							'globe'      => 'Globo (siti web)',
+							'layout'     => 'Layout (WordPress, template)',
+							'cart'       => 'Carrello (e-commerce)',
+							'palette'    => 'Tavolozza (design)',
+							'chart'      => 'Grafico (consulenza, analytics)',
+							'code'       => 'Codice',
+							'search'     => 'Lente (SEO)',
+							'server'     => 'Server (backend, hosting)',
+							'smartphone' => 'Smartphone (app)',
+							'zap'        => 'Fulmine (performance)',
+							'rocket'     => 'Razzo (lancio, startup)',
+							'wrench'     => 'Chiave inglese (manutenzione)',
+							'layers'     => 'Livelli (architettura)',
+						),
+						'default_value' => 'globe',
+						'wrapper'       => array( 'width' => 25 ),
+					),
+					array( 'key' => 'field_ph_servizio_titolo', 'name' => 'titolo', 'label' => 'Titolo', 'type' => 'text', 'required' => 1, 'wrapper' => array( 'width' => 35 ) ),
+					array( 'key' => 'field_ph_servizio_sottotitolo', 'name' => 'sottotitolo', 'label' => 'Sottotitolo', 'type' => 'text', 'instructions' => 'Riga breve in verde, es. "Siti veloci, moderni e su misura".', 'wrapper' => array( 'width' => 40 ) ),
 					array( 'key' => 'field_ph_servizio_descrizione', 'name' => 'descrizione', 'label' => 'Descrizione', 'type' => 'textarea', 'rows' => 3 ),
-					array( 'key' => 'field_ph_servizio_voci', 'name' => 'voci', 'label' => 'Voci / tecnologie', 'type' => 'textarea', 'rows' => 3, 'instructions' => 'Facoltativo: una per riga (es. React, Next.js, WordPress).' ),
+					array( 'key' => 'field_ph_servizio_include', 'name' => 'include', 'label' => 'Cosa include', 'type' => 'textarea', 'rows' => 5, 'instructions' => 'Una voce per riga.' ),
 					array(
 						'key'        => 'field_ph_servizio_link',
 						'name'       => 'link',
-						'label'      => 'Link',
+						'label'      => 'Link (facoltativo)',
 						'type'       => 'group',
 						'layout'     => 'row',
 						'sub_fields' => array(
@@ -337,6 +360,9 @@ function portfolio_home_data() {
 		$v = function_exists( 'get_field' ) ? get_field( $name, 'option' ) : get_option( 'options_' . $name );
 		return ( null === $v || false === $v || '' === $v ) ? $default : $v;
 	};
+	$righe   = function ( $v ) {
+		return array_values( array_filter( array_map( 'trim', preg_split( '/\r?\n/', (string) $v ) ) ) );
+	};
 	$servizi = array();
 	foreach ( (array) $opt( 'servizi', array() ) as $row ) {
 		if ( empty( $row['titolo'] ) ) {
@@ -344,9 +370,11 @@ function portfolio_home_data() {
 		}
 		$link      = isset( $row['link'] ) && is_array( $row['link'] ) ? $row['link'] : array();
 		$servizi[] = array(
+			'icona'       => ! empty( $row['icona'] ) ? (string) $row['icona'] : 'globe',
 			'titolo'      => (string) $row['titolo'],
+			'sottotitolo' => isset( $row['sottotitolo'] ) ? (string) $row['sottotitolo'] : '',
 			'descrizione' => isset( $row['descrizione'] ) ? (string) $row['descrizione'] : '',
-			'voci'        => array_values( array_filter( array_map( 'trim', preg_split( '/\r?\n/', isset( $row['voci'] ) ? (string) $row['voci'] : '' ) ) ) ),
+			'include'     => $righe( isset( $row['include'] ) ? $row['include'] : '' ),
 			'link'        => array(
 				'testo' => ! empty( $link['testo'] ) ? (string) $link['testo'] : 'Scopri di più',
 				'url'   => ! empty( $link['url'] ) ? (string) $link['url'] : '',
@@ -355,14 +383,11 @@ function portfolio_home_data() {
 	}
 	return array(
 		'servizi' => array(
-			'etichetta' => (string) $opt( 'servizi_etichetta', '01. Servizi' ),
-			'titolo'    => (string) $opt( 'servizi_titolo', 'Cosa faccio' ),
-			'intro'     => (string) $opt( 'servizi_intro', '' ),
-			'link'      => array(
-				'testo' => (string) $opt( 'servizi_link_testo', 'Tutti i servizi' ),
-				'url'   => (string) $opt( 'servizi_link_url', '' ),
-			),
-			'elenco'    => $servizi,
+			'etichetta'       => (string) $opt( 'servizi_etichetta', '' ),
+			'titolo'          => (string) $opt( 'servizi_titolo', 'Servizi nel' ),
+			'titoloEvidenza'  => (string) $opt( 'servizi_titolo_evidenza', 'dettaglio' ),
+			'intro'           => (string) $opt( 'servizi_intro', '' ),
+			'elenco'          => $servizi,
 		),
 	);
 }

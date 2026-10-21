@@ -1,84 +1,199 @@
 ---
 import type { Home } from '../lib/wp';
+import { icone } from '../lib/icone';
 
 interface Props {
   servizi: Home['servizi'];
 }
 const { servizi: s } = Astro.props;
+const totale = String(s.elenco.length).padStart(2, '0');
 const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
-<section class="servizi wrap section" id="servizi" aria-labelledby="servizi-titolo">
-  <header class="testa">
-    <div>
-      <p class="etichetta">{s.etichetta} <span aria-hidden="true">/&gt;</span></p>
-      <h2 id="servizi-titolo">{s.titolo}</h2>
+<!--
+  Su desktop la sezione resta ferma mentre scorri la pagina e le card avanzano in orizzontale.
+  Su schermi piccoli, o con "riduci movimento", diventa un carosello con scorrimento a dito.
+-->
+<section class="servizi" id="servizi" aria-labelledby="servizi-titolo" data-servizi>
+  <div class="pin">
+    <header class="wrap testa">
+      {s.etichetta && <p class="etichetta">{s.etichetta} <span aria-hidden="true">/&gt;</span></p>}
+      <h2 id="servizi-titolo">
+        {s.titolo} {s.titoloEvidenza && <span class="evidenza">{s.titoloEvidenza}</span>}
+      </h2>
       {s.intro && <p class="intro">{s.intro}</p>}
-    </div>
-    {s.link.url && (
-      <a class="tutti" href={s.link.url}>
-        {s.link.testo} <span aria-hidden="true">→</span>
-      </a>
-    )}
-  </header>
+    </header>
 
-  <ol class="elenco">
-    {s.elenco.map((v, i) => (
-      <li class="voce">
-        <span class="num" aria-hidden="true">{pad(i + 1)}</span>
-        <div class="corpo">
-          <h3>{v.titolo}</h3>
-          {v.descrizione && <p>{v.descrizione}</p>}
-          {v.voci.length > 0 && (
-            <ul class="tags">
-              {v.voci.map((t) => <li>{t}</li>)}
-            </ul>
-          )}
-        </div>
-        {v.link.url && (
-          <a class="scopri" href={v.link.url}>
-            {v.link.testo} <span aria-hidden="true">↗</span>
-          </a>
-        )}
-      </li>
-    ))}
-  </ol>
+    <div class="viewport" data-viewport>
+      <ol class="track" data-track>
+        {s.elenco.map((v, i) => (
+          <li class="card">
+            <div class="top">
+              <span class="icona" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={icone[v.icona] ?? icone.globe} />
+              </span>
+              <span class="contatore">{pad(i + 1)} / {totale}</span>
+            </div>
+            <h3>{v.titolo}</h3>
+            {v.sottotitolo && <p class="sottotitolo">{v.sottotitolo}</p>}
+            {v.descrizione && <p class="descrizione">{v.descrizione}</p>}
+            {v.include.length > 0 && (
+              <div class="include">
+                <p class="include-titolo">Cosa include</p>
+                <ul>
+                  {v.include.map((t) => <li>{t}</li>)}
+                </ul>
+              </div>
+            )}
+            {v.link.url && (
+              <a class="scopri" href={v.link.url}>
+                {v.link.testo} <span aria-hidden="true">→</span>
+              </a>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+
+    <div class="wrap barra-wrap">
+      <div class="barra" aria-hidden="true"><span data-thumb></span></div>
+    </div>
+  </div>
 </section>
 
+<script>
+  const section = document.querySelector<HTMLElement>('[data-servizi]')!;
+  const viewport = section.querySelector<HTMLElement>('[data-viewport]')!;
+  const track = section.querySelector<HTMLElement>('[data-track]')!;
+  const thumb = section.querySelector<HTMLElement>('[data-thumb]')!;
+
+  const desktop = matchMedia('(min-width: 64rem) and (min-height: 40rem) and (prefers-reduced-motion: no-preference)');
+  // Pixel di scroll verticale per ogni pixel di spostamento orizzontale (come il sito di riferimento).
+  const SCROLL_RATIO = 1.8;
+  let shift = 0;
+  let ticking = false;
+
+  function setThumb(progress: number) {
+    thumb.style.transform = `scaleX(${progress})`;
+  }
+
+  function measure() {
+    if (desktop.matches) {
+      section.classList.add('is-pinned');
+      track.style.transform = '';
+      const offset = track.getBoundingClientRect().left - viewport.getBoundingClientRect().left;
+      shift = Math.max(0, offset + track.scrollWidth - viewport.clientWidth);
+      // Altezza = schermo + distanza orizzontale da percorrere.
+      section.style.height = `${window.innerHeight + shift * SCROLL_RATIO}px`;
+    } else {
+      section.classList.remove('is-pinned');
+      section.style.height = '';
+      track.style.transform = '';
+    }
+    update();
+  }
+
+  function update() {
+    ticking = false;
+    if (section.classList.contains('is-pinned')) {
+      const top = section.getBoundingClientRect().top;
+      const p = shift ? Math.min(1, Math.max(0, -top / (shift * SCROLL_RATIO))) : 0;
+      track.style.transform = `translate3d(${-p * shift}px, 0, 0)`;
+      setThumb(p);
+    } else {
+      const max = viewport.scrollWidth - viewport.clientWidth;
+      setThumb(max ? viewport.scrollLeft / max : 0);
+    }
+  }
+  const onScroll = () => {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+  };
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  viewport.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', measure);
+  desktop.addEventListener('change', measure);
+  document.fonts?.ready.then(measure);
+  measure();
+</script>
+
 <style>
-  .testa { display: flex; justify-content: space-between; align-items: end; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2.5rem; }
-  .etichetta { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.875rem; color: var(--accent); margin: 0 0 0.75rem; }
-  h2 { font-size: clamp(2.25rem, 5vw, 3.75rem); letter-spacing: -0.03em; margin: 0; }
-  .intro { color: var(--muted); max-width: 40rem; margin: 1rem 0 0; }
-  .tutti { color: var(--text); text-decoration: none; font-weight: 600; border-bottom: 1px solid currentColor; padding-bottom: 2px; }
-  .tutti:hover { color: var(--accent); }
+  /* Misure, colori e tipografia ripresi da andreavannetti.dev/servizi */
+  .servizi { position: relative; padding-block: 6rem 4rem; }
+  .servizi.is-pinned { padding-block: 0; }
+  .is-pinned .pin {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
-  .elenco { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
-  .voce {
-    position: relative;
-    display: grid;
-    grid-template-columns: 4rem 1fr auto;
+  .pin > .wrap { width: 100%; }
+  .testa { flex-shrink: 0; text-align: center; padding-top: 2.5rem; padding-bottom: 1rem; }
+  .etichetta { font-family: var(--mono); font-size: 0.875rem; color: var(--accent); margin: 0 0 0.75rem; }
+  h2 { font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.05; letter-spacing: -0.02em; margin: 0; }
+  .evidenza { color: var(--accent); }
+  .intro { color: var(--muted); max-width: 40rem; margin: 1rem auto 0; }
+
+  .viewport {
+    --pad: 1.5rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding: 2rem var(--pad);
+    scroll-padding-inline: var(--pad);
+  }
+  .viewport::-webkit-scrollbar { display: none; }
+  @media (min-width: 48rem) { .viewport { --pad: 3rem; } }
+  @media (min-width: 64rem) { .viewport { --pad: 5rem; } }
+  @media (min-width: 80rem) { .viewport { --pad: 7rem; } }
+  .is-pinned .viewport { flex: 1; display: flex; align-items: center; overflow: hidden; padding-block: 0; }
+
+  .track { display: flex; gap: 2.5rem; list-style: none; margin: 0; padding: 0; width: max-content; will-change: transform; backface-visibility: hidden; }
+  .is-pinned .track { padding-right: 20vw; }
+  .card {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+    width: 85vw;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
     gap: 1.5rem;
-    align-items: start;
-    padding: 2rem 0.5rem;
-    border-bottom: 1px solid var(--border);
-    transition: background-color 0.3s ease, padding 0.3s ease;
+    transition: border-color 0.5s ease;
   }
-  .voce:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); padding-inline: 1.25rem; }
-  .num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); padding-top: 0.4rem; }
-  h3 { font-size: clamp(1.5rem, 3vw, 2.25rem); letter-spacing: -0.02em; margin: 0 0 0.5rem; transition: color 0.3s ease; }
-  .voce:hover h3 { color: var(--accent); }
-  .corpo p { color: var(--muted); margin: 0 0 1rem; max-width: 44rem; }
-  .scopri { white-space: nowrap; color: var(--text); text-decoration: none; font-weight: 600; padding-top: 0.6rem; }
-  .scopri::after { content: ''; position: absolute; inset: 0; } /* tutta la riga è cliccabile */
-  .scopri span { display: inline-block; transition: transform 0.3s ease; }
-  .voce:hover .scopri span { transform: translate(3px, -3px); }
+  .card:hover { border-color: rgb(149 230 0 / 0.3); }
+  @media (min-width: 48rem) { .card { width: 60vw; padding: 2.5rem; } }
+  @media (min-width: 64rem) { .card { width: 42vw; } }
 
-  @media (max-width: 40rem) {
-    .voce { grid-template-columns: 1fr; gap: 0.5rem; }
-    .scopri { padding-top: 0; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .voce, h3, .scopri span { transition: none; }
-  }
+  .top { display: flex; align-items: center; gap: 1rem; }
+  .icona { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 0.75rem; background: var(--accent-soft); color: var(--accent); }
+  .icona svg { width: 28px; height: 28px; }
+  .contatore { font-family: var(--mono); font-size: 0.875rem; color: var(--accent); }
+
+  h3 { font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.1; letter-spacing: -0.01em; margin: 0; }
+  .sottotitolo { color: var(--accent); text-transform: uppercase; font-weight: 600; font-size: 0.875rem; letter-spacing: 0.1em; margin: 0; }
+  .descrizione { color: rgb(224 226 219 / 0.8); line-height: 1.625; margin: 0; }
+
+  .include { padding-top: 1rem; border-top: 1px solid var(--border); }
+  .include-titolo { font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 1rem; }
+  .include ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+  .include li { display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.875rem; line-height: 1.625; }
+  .include li::before { content: ''; flex-shrink: 0; margin-top: 0.375rem; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--accent); }
+
+  .scopri { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .scopri span { display: inline-block; transition: transform 0.3s ease; }
+  .scopri:hover span { transform: translateX(4px); }
+
+  .barra-wrap { flex-shrink: 0; padding-block: 1.5rem; }
+  .barra { max-width: 72rem; margin: 0 auto; height: 2px; background: var(--border); border-radius: 999px; overflow: hidden; }
+  .barra span { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }
 </style>

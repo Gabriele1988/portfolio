@@ -143,9 +143,11 @@ export async function getProgettiInEvidenza(max = 3): Promise<Progetto[]> {
 // Contenuti della Home (pagina "Home" nel CMS, endpoint portfolio/v1/home)
 
 export interface ServizioHome {
+  icona: string;
   titolo: string;
+  sottotitolo: string;
   descrizione: string;
-  voci: string[];
+  include: string[];
   link: { testo: string; url: string };
 }
 
@@ -153,43 +155,71 @@ export interface Home {
   servizi: {
     etichetta: string;
     titolo: string;
+    titoloEvidenza: string;
     intro: string;
-    link: { testo: string; url: string };
     elenco: ServizioHome[];
   };
 }
 
 // Usati finché nel CMS la pagina "Home" è vuota o il mu-plugin non è aggiornato.
+const nessunLink = { testo: '', url: '' };
 const HOME_DEFAULT: Home = {
   servizi: {
-    etichetta: '01. Servizi',
-    titolo: 'Cosa faccio',
+    etichetta: '',
+    titolo: 'Servizi nel',
+    titoloEvidenza: 'dettaglio',
     intro: '',
-    link: { testo: 'Contattami', url: '/contatti/' },
     elenco: [
       {
+        icona: 'globe',
         titolo: 'Sviluppo Web',
-        descrizione: 'Siti veloci e su misura, ottimizzati per ogni dispositivo e pensati per portare contatti.',
-        voci: ['Astro', 'WordPress', 'Performance'],
-        link: { testo: 'Scopri di più', url: '/contatti/' },
+        sottotitolo: 'Siti veloci, moderni e su misura',
+        descrizione:
+          'Siti custom costruiti per caricare in un attimo e convertire. Niente page builder pesanti: codice pulito, accessibile e facile da mantenere.',
+        include: ['Siti vetrina e istituzionali', 'Landing page ad alta conversione', 'Performance ottimizzate (Core Web Vitals)', 'Design responsive su ogni dispositivo'],
+        link: nessunLink,
       },
       {
+        icona: 'server',
         titolo: 'Applicazioni web',
-        descrizione: 'Gestionali e piattaforme su misura, dal database all’interfaccia.',
-        voci: ['Java', 'Spring Boot', 'Angular', 'PostgreSQL'],
-        link: { testo: 'Scopri di più', url: '/contatti/' },
+        sottotitolo: 'Gestionali e piattaforme su misura',
+        descrizione:
+          'Dal database all’interfaccia: applicazioni con Java, Spring Boot, Angular e PostgreSQL, pensate per crescere insieme al tuo lavoro.',
+        include: ['Analisi dei processi', 'API REST con Spring Boot', 'Interfacce in Angular', 'Database PostgreSQL', 'Rilascio e manutenzione'],
+        link: nessunLink,
       },
       {
+        icona: 'layout',
         titolo: 'WordPress',
-        descrizione: 'Temi custom e WordPress headless: la comodità del CMS con la velocità di un frontend moderno.',
-        voci: ['Temi custom', 'Headless', 'Manutenzione'],
-        link: { testo: 'Scopri di più', url: '/contatti/' },
+        sottotitolo: 'Flessibilità e autonomia nella gestione',
+        descrizione:
+          'Oltre dieci anni di WordPress: temi custom, siti classici o headless collegati a frontend moderni, per unire facilità di gestione e prestazioni.',
+        include: ['Temi custom da zero', 'WordPress headless', 'ACF e custom post type', 'Migrazione da altri CMS', 'Formazione per la gestione autonoma'],
+        link: nessunLink,
       },
       {
+        icona: 'cart',
+        titolo: 'E-Commerce',
+        sottotitolo: 'Vendi online senza complicazioni',
+        descrizione: 'Negozi online pensati per vendere davvero, con pagamenti sicuri e una gestione dei prodotti semplice.',
+        include: ['WooCommerce personalizzato', 'Pagamenti e spedizioni', 'Catalogo prodotti ottimizzato', 'Integrazione con gestionali'],
+        link: nessunLink,
+      },
+      {
+        icona: 'zap',
         titolo: 'SEO & Performance',
-        descrizione: 'Ottimizzazione tecnica per farti trovare su Google e caricare in un attimo.',
-        voci: ['Core Web Vitals', 'SEO tecnica', 'Analytics'],
-        link: { testo: 'Scopri di più', url: '/contatti/' },
+        sottotitolo: 'Farsi trovare e caricare in un attimo',
+        descrizione: 'Ottimizzazione tecnica per posizionarti su Google e offrire un sito rapido anche su hosting condiviso.',
+        include: ['Audit tecnico', 'Core Web Vitals', 'Ottimizzazione immagini', 'SEO on-page e locale'],
+        link: nessunLink,
+      },
+      {
+        icona: 'chart',
+        titolo: 'Consulenza Digitale',
+        sottotitolo: 'Strategia prima della tecnologia',
+        descrizione: 'Non sempre serve un sito nuovo: ti aiuto a capire cosa non funziona e dove conviene investire.',
+        include: ['Audit del sito esistente', 'Scelta degli strumenti giusti', 'Pianificazione budget e priorità'],
+        link: nessunLink,
       },
     ],
   },
