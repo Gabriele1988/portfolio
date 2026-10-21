@@ -142,17 +142,14 @@ const pad = (n: number) => String(n).padStart(2, '0');
   .intro { color: var(--muted); max-width: 40rem; margin: 1rem auto 0; }
 
   .viewport {
-    --pad: 1.5rem;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
-    padding: 2rem var(--pad);
-    scroll-padding-inline: var(--pad);
+    padding-block: 2rem;
   }
   .viewport::-webkit-scrollbar { display: none; }
-  @media (min-width: 48rem) { .viewport { --pad: 3rem; } }
-  @media (min-width: 64rem) { .viewport { --pad: 5rem; } }
-  @media (min-width: 80rem) { .viewport { --pad: 7rem; } }
+  /* Oltre i 1900px il contenuto resta centrato: le card partono allineate al titolo. */
+  .viewport { --pad-x: max(var(--pad), calc((100vw - var(--max)) / 2 + var(--pad))); padding-inline: var(--pad-x); scroll-padding-inline: var(--pad-x); }
   .is-pinned .viewport { flex: 1; display: flex; align-items: center; overflow: hidden; padding-block: 0; }
 
   .track { display: flex; gap: 2.5rem; list-style: none; margin: 0; padding: 0; width: max-content; will-change: transform; backface-visibility: hidden; }
@@ -160,7 +157,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
   .card {
     scroll-snap-align: start;
     flex-shrink: 0;
-    width: 85vw;
+    /* Su mobile resta sempre visibile una porzione della card successiva. */
+    width: calc(100vw - 2 * var(--pad) - 2.5rem);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 1rem;
@@ -171,6 +169,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     transition: border-color 0.5s ease;
   }
   .card:hover { border-color: rgb(149 230 0 / 0.3); }
+  @media (max-width: 47.99rem) { .card { padding: 1.5rem; } .track { gap: 0.75rem; } }
   @media (min-width: 48rem) { .card { width: 60vw; padding: 2.5rem; } }
   @media (min-width: 64rem) { .card { width: 42vw; } }
 

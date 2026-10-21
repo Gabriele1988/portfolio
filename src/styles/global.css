@@ -12,12 +12,17 @@
   --accent-soft: rgb(149 230 0 / 0.1);
   --accent-text: rgb(10 10 10);
   --radius: 16px;
-  --max: 72rem;
+  --max: 1900px;
+  /* Margine laterale del contenuto (come .section-padding del sito di riferimento) */
+  --pad: 10px;
   --font: 'Space Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   --font-display: 'Clash Display', 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
   --mono: 'Fira Code Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: dark;
 }
+@media (min-width: 48rem) { :root { --pad: 3rem; } }
+@media (min-width: 64rem) { :root { --pad: 5rem; } }
+@media (min-width: 80rem) { :root { --pad: 7rem; } }
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -32,7 +37,7 @@ a { color: var(--accent); }
 h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; letter-spacing: -0.02em; font-weight: 700; }
 h1 { font-size: clamp(2rem, 5vw, 3.25rem); margin: 0 0 1rem; }
 h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
-.wrap { max-width: var(--max); margin: 0 auto; padding: 0 1.25rem; }
+.wrap { max-width: var(--max); margin: 0 auto; padding-inline: var(--pad); }
 .muted { color: var(--muted); }
 .btn {
   display: inline-block;
