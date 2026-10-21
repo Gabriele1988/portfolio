@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Portfolio Core
- * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.1.0
+ * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
+ * Version:     1.2.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -274,6 +274,113 @@ add_action( 'admin_notices', function () {
 		$ok ? 'Ripubblicazione avviata: il sito sarà aggiornato tra un paio di minuti.' : 'Ripubblicazione non riuscita: controlla le costanti PORTFOLIO_GITHUB_* in wp-config.php.'
 	);
 } );
+
+/* -------------------------------------------------------------------------
+ * Contenuti della Home (richiede Secure Custom Fields o ACF PRO per il repeater)
+ * GET /wp-json/portfolio/v1/home
+ * ---------------------------------------------------------------------- */
+add_action( 'acf/init', function () {
+	if ( ! function_exists( 'acf_add_options_page' ) || ! function_exists( 'acf_add_local_field_group' ) ) {
+		return;
+	}
+	acf_add_options_page( array(
+		'page_title' => 'Contenuti della Home',
+		'menu_title' => 'Home',
+		'menu_slug'  => 'portfolio-home',
+		'capability' => 'edit_posts',
+		'icon_url'   => 'dashicons-admin-home',
+		'position'   => 4,
+		'redirect'   => false,
+	) );
+
+	acf_add_local_field_group( array(
+		'key'      => 'group_portfolio_home_servizi',
+		'title'    => 'Sezione Servizi',
+		'fields'   => array(
+			array( 'key' => 'field_ph_serv_etichetta', 'name' => 'servizi_etichetta', 'label' => 'Etichetta', 'type' => 'text', 'default_value' => '01. Servizi', 'wrapper' => array( 'width' => 33 ) ),
+			array( 'key' => 'field_ph_serv_titolo', 'name' => 'servizi_titolo', 'label' => 'Titolo', 'type' => 'text', 'default_value' => 'Cosa faccio', 'wrapper' => array( 'width' => 67 ) ),
+			array( 'key' => 'field_ph_serv_intro', 'name' => 'servizi_intro', 'label' => 'Introduzione', 'type' => 'textarea', 'rows' => 2 ),
+			array( 'key' => 'field_ph_serv_link_testo', 'name' => 'servizi_link_testo', 'label' => 'Testo del link', 'type' => 'text', 'default_value' => 'Tutti i servizi', 'wrapper' => array( 'width' => 33 ) ),
+			array( 'key' => 'field_ph_serv_link_url', 'name' => 'servizi_link_url', 'label' => 'URL del link', 'type' => 'text', 'instructions' => 'Percorso sul sito, es. /servizi/ oppure /contatti/', 'wrapper' => array( 'width' => 67 ) ),
+			array(
+				'key'          => 'field_ph_servizi',
+				'name'         => 'servizi',
+				'label'        => 'Servizi',
+				'type'         => 'repeater',
+				'layout'       => 'block',
+				'button_label' => 'Aggiungi servizio',
+				'collapsed'    => 'field_ph_servizio_titolo',
+				'sub_fields'   => array(
+					array( 'key' => 'field_ph_servizio_titolo', 'name' => 'titolo', 'label' => 'Titolo', 'type' => 'text', 'required' => 1 ),
+					array( 'key' => 'field_ph_servizio_descrizione', 'name' => 'descrizione', 'label' => 'Descrizione', 'type' => 'textarea', 'rows' => 3 ),
+					array( 'key' => 'field_ph_servizio_voci', 'name' => 'voci', 'label' => 'Voci / tecnologie', 'type' => 'textarea', 'rows' => 3, 'instructions' => 'Facoltativo: una per riga (es. React, Next.js, WordPress).' ),
+					array(
+						'key'        => 'field_ph_servizio_link',
+						'name'       => 'link',
+						'label'      => 'Link',
+						'type'       => 'group',
+						'layout'     => 'row',
+						'sub_fields' => array(
+							array( 'key' => 'field_ph_servizio_link_testo', 'name' => 'testo', 'label' => 'Testo', 'type' => 'text', 'default_value' => 'Scopri di più' ),
+							array( 'key' => 'field_ph_servizio_link_url', 'name' => 'url', 'label' => 'URL', 'type' => 'text' ),
+						),
+					),
+				),
+			),
+		),
+		'location' => array( array( array( 'param' => 'options_page', 'operator' => '==', 'value' => 'portfolio-home' ) ) ),
+	) );
+} );
+
+function portfolio_home_data() {
+	$opt = function ( $name, $default = '' ) {
+		$v = function_exists( 'get_field' ) ? get_field( $name, 'option' ) : get_option( 'options_' . $name );
+		return ( null === $v || false === $v || '' === $v ) ? $default : $v;
+	};
+	$servizi = array();
+	foreach ( (array) $opt( 'servizi', array() ) as $row ) {
+		if ( empty( $row['titolo'] ) ) {
+			continue;
+		}
+		$link      = isset( $row['link'] ) && is_array( $row['link'] ) ? $row['link'] : array();
+		$servizi[] = array(
+			'titolo'      => (string) $row['titolo'],
+			'descrizione' => isset( $row['descrizione'] ) ? (string) $row['descrizione'] : '',
+			'voci'        => array_values( array_filter( array_map( 'trim', preg_split( '/\r?\n/', isset( $row['voci'] ) ? (string) $row['voci'] : '' ) ) ) ),
+			'link'        => array(
+				'testo' => ! empty( $link['testo'] ) ? (string) $link['testo'] : 'Scopri di più',
+				'url'   => ! empty( $link['url'] ) ? (string) $link['url'] : '',
+			),
+		);
+	}
+	return array(
+		'servizi' => array(
+			'etichetta' => (string) $opt( 'servizi_etichetta', '01. Servizi' ),
+			'titolo'    => (string) $opt( 'servizi_titolo', 'Cosa faccio' ),
+			'intro'     => (string) $opt( 'servizi_intro', '' ),
+			'link'      => array(
+				'testo' => (string) $opt( 'servizi_link_testo', 'Tutti i servizi' ),
+				'url'   => (string) $opt( 'servizi_link_url', '' ),
+			),
+			'elenco'    => $servizi,
+		),
+	);
+}
+
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'portfolio/v1', '/home', array(
+		'methods'             => 'GET',
+		'callback'            => 'portfolio_home_data',
+		'permission_callback' => '__return_true',
+	) );
+} );
+
+// Salvando la pagina "Home" parte il rebuild del sito.
+add_action( 'acf/save_post', function ( $post_id ) {
+	if ( 'options' === $post_id ) {
+		portfolio_rebuild_later();
+	}
+}, 20 );
 
 /* -------------------------------------------------------------------------
  * Form contatti: POST /wp-json/portfolio/v1/contatto

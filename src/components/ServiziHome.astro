@@ -1,0 +1,84 @@
+---
+import type { Home } from '../lib/wp';
+
+interface Props {
+  servizi: Home['servizi'];
+}
+const { servizi: s } = Astro.props;
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+
+<section class="servizi wrap section" id="servizi" aria-labelledby="servizi-titolo">
+  <header class="testa">
+    <div>
+      <p class="etichetta">{s.etichetta} <span aria-hidden="true">/&gt;</span></p>
+      <h2 id="servizi-titolo">{s.titolo}</h2>
+      {s.intro && <p class="intro">{s.intro}</p>}
+    </div>
+    {s.link.url && (
+      <a class="tutti" href={s.link.url}>
+        {s.link.testo} <span aria-hidden="true">→</span>
+      </a>
+    )}
+  </header>
+
+  <ol class="elenco">
+    {s.elenco.map((v, i) => (
+      <li class="voce">
+        <span class="num" aria-hidden="true">{pad(i + 1)}</span>
+        <div class="corpo">
+          <h3>{v.titolo}</h3>
+          {v.descrizione && <p>{v.descrizione}</p>}
+          {v.voci.length > 0 && (
+            <ul class="tags">
+              {v.voci.map((t) => <li>{t}</li>)}
+            </ul>
+          )}
+        </div>
+        {v.link.url && (
+          <a class="scopri" href={v.link.url}>
+            {v.link.testo} <span aria-hidden="true">↗</span>
+          </a>
+        )}
+      </li>
+    ))}
+  </ol>
+</section>
+
+<style>
+  .testa { display: flex; justify-content: space-between; align-items: end; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2.5rem; }
+  .etichetta { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.875rem; color: var(--accent); margin: 0 0 0.75rem; }
+  h2 { font-size: clamp(2.25rem, 5vw, 3.75rem); letter-spacing: -0.03em; margin: 0; }
+  .intro { color: var(--muted); max-width: 40rem; margin: 1rem 0 0; }
+  .tutti { color: var(--text); text-decoration: none; font-weight: 600; border-bottom: 1px solid currentColor; padding-bottom: 2px; }
+  .tutti:hover { color: var(--accent); }
+
+  .elenco { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+  .voce {
+    position: relative;
+    display: grid;
+    grid-template-columns: 4rem 1fr auto;
+    gap: 1.5rem;
+    align-items: start;
+    padding: 2rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.3s ease, padding 0.3s ease;
+  }
+  .voce:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); padding-inline: 1.25rem; }
+  .num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); padding-top: 0.4rem; }
+  h3 { font-size: clamp(1.5rem, 3vw, 2.25rem); letter-spacing: -0.02em; margin: 0 0 0.5rem; transition: color 0.3s ease; }
+  .voce:hover h3 { color: var(--accent); }
+  .corpo p { color: var(--muted); margin: 0 0 1rem; max-width: 44rem; }
+  .scopri { white-space: nowrap; color: var(--text); text-decoration: none; font-weight: 600; padding-top: 0.6rem; }
+  .scopri::after { content: ''; position: absolute; inset: 0; } /* tutta la riga è cliccabile */
+  .scopri span { display: inline-block; transition: transform 0.3s ease; }
+  .voce:hover .scopri span { transform: translate(3px, -3px); }
+
+  @media (max-width: 40rem) {
+    .voce { grid-template-columns: 1fr; gap: 0.5rem; }
+    .scopri { padding-top: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .voce, h3, .scopri span { transition: none; }
+  }
+</style>

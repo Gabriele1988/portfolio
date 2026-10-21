@@ -138,3 +138,78 @@ export async function getProgettiInEvidenza(max = 3): Promise<Progetto[]> {
   const evidenza = tutti.filter((p) => p.inEvidenza);
   return (evidenza.length ? evidenza : tutti).slice(0, max);
 }
+
+// ---------------------------------------------------------------------------
+// Contenuti della Home (pagina "Home" nel CMS, endpoint portfolio/v1/home)
+
+export interface ServizioHome {
+  titolo: string;
+  descrizione: string;
+  voci: string[];
+  link: { testo: string; url: string };
+}
+
+export interface Home {
+  servizi: {
+    etichetta: string;
+    titolo: string;
+    intro: string;
+    link: { testo: string; url: string };
+    elenco: ServizioHome[];
+  };
+}
+
+// Usati finché nel CMS la pagina "Home" è vuota o il mu-plugin non è aggiornato.
+const HOME_DEFAULT: Home = {
+  servizi: {
+    etichetta: '01. Servizi',
+    titolo: 'Cosa faccio',
+    intro: '',
+    link: { testo: 'Contattami', url: '/contatti/' },
+    elenco: [
+      {
+        titolo: 'Sviluppo Web',
+        descrizione: 'Siti veloci e su misura, ottimizzati per ogni dispositivo e pensati per portare contatti.',
+        voci: ['Astro', 'WordPress', 'Performance'],
+        link: { testo: 'Scopri di più', url: '/contatti/' },
+      },
+      {
+        titolo: 'Applicazioni web',
+        descrizione: 'Gestionali e piattaforme su misura, dal database all’interfaccia.',
+        voci: ['Java', 'Spring Boot', 'Angular', 'PostgreSQL'],
+        link: { testo: 'Scopri di più', url: '/contatti/' },
+      },
+      {
+        titolo: 'WordPress',
+        descrizione: 'Temi custom e WordPress headless: la comodità del CMS con la velocità di un frontend moderno.',
+        voci: ['Temi custom', 'Headless', 'Manutenzione'],
+        link: { testo: 'Scopri di più', url: '/contatti/' },
+      },
+      {
+        titolo: 'SEO & Performance',
+        descrizione: 'Ottimizzazione tecnica per farti trovare su Google e caricare in un attimo.',
+        voci: ['Core Web Vitals', 'SEO tecnica', 'Analytics'],
+        link: { testo: 'Scopri di più', url: '/contatti/' },
+      },
+    ],
+  },
+};
+
+export async function getHome(): Promise<Home> {
+  if (!API) return HOME_DEFAULT;
+  const res = await fetch(`${CMS_URL}/wp-json/portfolio/v1/home`, { headers: { Accept: 'application/json' } });
+  if (res.status === 404) {
+    console.warn('[wp] portfolio/v1/home non trovato: aggiorna portfolio-core.php. Uso i testi predefiniti.');
+    return HOME_DEFAULT;
+  }
+  if (!res.ok) throw new Error(`CMS: ${res.status} ${res.statusText} su /portfolio/v1/home`);
+  const data = (await res.json()) as Home;
+  const s = data.servizi;
+  return {
+    servizi: {
+      ...HOME_DEFAULT.servizi,
+      ...s,
+      elenco: s?.elenco?.length ? s.elenco : HOME_DEFAULT.servizi.elenco,
+    },
+  };
+}

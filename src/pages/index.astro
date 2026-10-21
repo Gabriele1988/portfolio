@@ -2,13 +2,16 @@
 import Base from '../layouts/Base.astro';
 import HeroFluid from '../components/HeroFluid.astro';
 import ProgettoCard from '../components/ProgettoCard.astro';
-import { getProgettiInEvidenza } from '../lib/wp';
+import ServiziHome from '../components/ServiziHome.astro';
+import { getHome, getProgettiInEvidenza } from '../lib/wp';
 
-const progetti = await getProgettiInEvidenza(3);
+const [home, progetti] = await Promise.all([getHome(), getProgettiInEvidenza(3)]);
 ---
 
 <Base overlayHeader>
   <HeroFluid />
+
+  <ServiziHome servizi={home.servizi} />
 
   <section id="lavori" class="wrap section">
     <h2>Progetti in evidenza</h2>
