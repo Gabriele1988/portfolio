@@ -25,14 +25,12 @@ import { sito } from '../site.config';
   const canvas = hero.querySelector<HTMLCanvasElement>('canvas')!;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  if (!reduce) {
-    const stop = startFluid(canvas, { target: hero });
-    if (stop) hero.classList.add('is-live');
-  }
+  const stop = reduce ? null : startFluid(canvas, { target: hero });
+  hero.classList.add(stop ? 'is-live' : 'is-static');
 </script>
 
 <style>
-  /* La hero è sempre scura: il fumo rende meglio e il testo "in negativo" funziona solo su fondo scuro. */
+  /* La hero è scura come tutto il sito: il fumo rende meglio e il testo "in negativo" funziona su fondo scuro. */
   .hero {
     position: relative;
     isolation: isolate;
@@ -42,7 +40,8 @@ import { sito } from '../site.config';
     align-items: center;
     overflow: hidden;
     color: #fff;
-    background: #000;
+    /* Stesso nero del resto della pagina (niente stacco), ma senza stelle e comete. */
+    background: var(--bg);
     touch-action: pan-y;
   }
   /* Niente z-index su canvas e contenuto: devono stare nello stesso contesto
@@ -57,11 +56,11 @@ import { sito } from '../site.config';
   }
   .hero.is-live .fluid { opacity: 1; }
   /* Senza WebGL o con "riduci movimento": sfondo sfumato statico. */
-  .hero:not(.is-live) {
+  .hero.is-static {
     background:
       radial-gradient(60% 50% at 20% 30%, rgb(70 60 200 / 0.35), transparent 70%),
       radial-gradient(50% 45% at 80% 70%, rgb(20 140 200 / 0.3), transparent 70%),
-      #000;
+      var(--bg);
   }
 
   .content {

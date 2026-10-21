@@ -4,6 +4,7 @@
 // - la canvas e l'elemento che ascolta il mouse vengono passati dalla hero;
 // - mouse e touch passano da Pointer Events, senza bloccare lo scorrimento su mobile;
 // - l'animazione si ferma quando la hero non è visibile o la scheda è nascosta;
+// - la canvas è trasparente, così il fumo poggia sul colore di sfondo del sito;
 // - se WebGL non è disponibile restituisce null (la hero mostra uno sfondo statico).
 
 export interface FluidOptions {
@@ -25,8 +26,10 @@ const baseVertexSrc =
   "precision highp float; precision mediump sampler2D; attribute vec2 aPosition; varying vec2 vUv; varying vec2 vL; varying vec2 vR; varying vec2 vT; varying vec2 vB; uniform vec2 texelSize; void main () {     vUv = aPosition * 0.5 + 0.5;     vL = vUv - vec2(texelSize.x, 0.0);     vR = vUv + vec2(texelSize.x, 0.0);     vT = vUv + vec2(0.0, texelSize.y);     vB = vUv - vec2(0.0, texelSize.y);     gl_Position = vec4(aPosition, 0.0, 1.0); }";
 const clearSrc =
   "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; uniform float value; void main () {     gl_FragColor = value * texture2D(uTexture, vUv); }";
+// Unica modifica agli shader originali: la canvas è trasparente (alpha premoltiplicato),
+// così dietro il fumo c'è esattamente il colore di sfondo del sito, senza stacchi.
 const displaySrc =
-  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; void main () {     gl_FragColor = texture2D(uTexture, vUv); }";
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; void main () {     vec3 c = min(texture2D(uTexture, vUv).rgb, 1.0);     gl_FragColor = vec4(c, max(c.r, max(c.g, c.b))); }";
 const splatSrc =
   "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTarget; uniform float aspectRatio; uniform vec3 color; uniform vec2 point; uniform float radius; void main () {     vec2 p = vUv - point.xy;     p.x *= aspectRatio;     vec3 splat = exp(-dot(p, p) / radius) * color;     vec3 base = texture2D(uTarget, vUv).xyz;     gl_FragColor = vec4(base + splat, 1.0); }";
 const advectionManualFilteringSrc =
@@ -51,7 +54,7 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
   canvas.width = canvas.clientWidth;
   canvas.height = canvas.clientHeight;
 
-  const params = { alpha: false, depth: false, stencil: false, antialias: false };
+  const params = { alpha: true, premultipliedAlpha: true, depth: false, stencil: false, antialias: false };
   let gl = canvas.getContext('webgl2', params) as WebGL2RenderingContext | WebGLRenderingContext | null;
   const isWebGL2 = !!gl;
   if (!isWebGL2) gl = canvas.getContext('webgl', params) as WebGLRenderingContext | null;
