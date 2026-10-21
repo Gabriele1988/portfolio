@@ -39,7 +39,7 @@ import { sito } from '../site.config';
     display: flex;
     align-items: center;
     overflow: hidden;
-    color: #fff;
+    color: var(--white);
     /* Stesso nero del resto della pagina (niente stacco), ma senza stelle e comete. */
     background: var(--bg);
     touch-action: pan-y;
@@ -71,31 +71,31 @@ import { sito } from '../site.config';
   /* Testo bianco in "difference": dove passa il fumo il testo assume il colore opposto,
      come se testo e sfondo fossero un'unica superficie. */
   [data-blend] {
-    color: #fff;
+    color: var(--white);
     mix-blend-mode: difference;
   }
   h1 {
-    font-size: clamp(2.75rem, 8vw, 6.5rem);
+    font-size: var(--fs-hero);
     line-height: 1;
     letter-spacing: -0.035em;
     max-width: 14ch;
     margin: 0 0 1.5rem;
   }
-  .kicker { font-size: 1rem; letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 1.25rem; opacity: 0.85; }
-  .lead { font-size: clamp(1.0625rem, 1.6vw, 1.3rem); max-width: 40rem; margin: 0; opacity: 0.9; }
+  .kicker { font-size: var(--fs-ui); letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 1.25rem; opacity: 0.85; }
+  .lead { font-size: var(--fs-lead); max-width: 40rem; margin: 0; opacity: 0.9; }
   .cta { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 2.5rem; }
-  .cta .btn { background: #fff; color: #0b0b10; }
-  .cta .btn-ghost { background: transparent; color: #fff; border-color: rgb(255 255 255 / 0.4); backdrop-filter: blur(6px); }
+  .cta .btn { background: var(--white); color: var(--bg); }
+  .cta .btn-ghost { background: transparent; color: var(--white); border-color: color-mix(in srgb, var(--white) 40%, transparent); backdrop-filter: blur(6px); }
 
   .scroll {
     position: absolute;
     left: 50%;
     translate: -50% 0;
     bottom: 2rem;
-    color: rgb(255 255 255 / 0.7);
+    color: color-mix(in srgb, var(--white) 70%, transparent);
     transition: color 0.2s;
   }
-  .scroll:hover { color: #fff; }
+  .scroll:hover { color: var(--white); }
   .mouse {
     display: block;
     width: 1.5rem;

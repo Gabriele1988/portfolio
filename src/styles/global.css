@@ -1,17 +1,41 @@
 /* Font self-hosted (nessuna richiesta a servizi esterni: velocità e GDPR).
    Titoli: Clash Display se i file sono in public/fonts/ (vedi Base.astro), altrimenti Space Grotesk. */
 
-/* Palette ripresa da andreavannetti.dev */
+/* Variabili del sito: per cambiare colori, testi o spaziature si modifica solo qui. */
 :root {
+  /* Colori */
   --bg: rgb(10 10 10);
   --surface: rgb(20 20 20);
   --text: rgb(224 226 219);
   --muted: rgb(138 140 135);
   --border: rgb(30 30 30);
+  --white: rgb(255 255 255);
   --accent: rgb(11 135 147); /* ottanio #0b8793 */
-  --accent-soft: rgb(11 135 147 / 0.14);
-  --accent-btn: rgb(0 115 126); /* ottanio più scuro per i pulsanti, contrasto con testo bianco */
-  --accent-text: rgb(255 255 255);
+  --accent-light: rgb(26 163 174); /* hover, stelle luminose */
+  --accent-glow: rgb(110 215 222); /* punta delle comete */
+  --accent-btn: rgb(0 115 126); /* pulsanti, contrasto AA con testo bianco */
+  --accent-text: var(--white);
+  /* Varianti trasparenti, ricavate dai colori sopra */
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent) 40%, transparent);
+  --text-soft: color-mix(in srgb, var(--text) 80%, transparent);
+
+  /* Dimensioni dei testi */
+  --fs-2xs: 0.75rem;
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 0.9375rem;
+  --fs-ui: 1rem;
+  --fs-base: 1.0625rem;
+  --fs-lg: 1.25rem;
+  --fs-lead: clamp(1.0625rem, 1.6vw, 1.3rem);
+  --fs-h3: clamp(1.5rem, 3vw, 2.25rem);
+  --fs-h2: clamp(1.5rem, 3vw, 2rem);
+  --fs-h1: clamp(2rem, 5vw, 3.25rem);
+  --fs-section: clamp(2rem, 4vw, 3.5rem); /* titoli di sezione della home */
+  --fs-menu: clamp(2rem, 9vw, 3rem); /* voci del menu mobile */
+  --fs-hero: clamp(2.75rem, 8vw, 6.5rem);
+
   --radius: 16px;
   --max: 1900px;
   /* Margine laterale del contenuto (come .section-padding del sito di riferimento) */
@@ -32,20 +56,20 @@ html { scrollbar-color: var(--accent) var(--bg); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--accent); border: 2px solid var(--bg); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: rgb(26 163 174); }
-::selection { background: var(--accent); color: #fff; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-light); }
+::selection { background: var(--accent); color: var(--white); }
 body {
   margin: 0;
   position: relative;
   background: var(--bg);
   color: var(--text);
-  font: 1.0625rem/1.65 var(--font);
+  font: var(--fs-base)/1.65 var(--font);
 }
 img { max-width: 100%; height: auto; display: block; }
 a { color: var(--accent); }
 h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; letter-spacing: -0.02em; font-weight: 700; }
-h1 { font-size: clamp(2rem, 5vw, 3.25rem); margin: 0 0 1rem; }
-h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
+h1 { font-size: var(--fs-h1); margin: 0 0 1rem; }
+h2 { font-size: var(--fs-h2); }
 .wrap { max-width: var(--max); margin: 0 auto; padding-inline: var(--pad); }
 .muted { color: var(--muted); }
 .btn {
@@ -64,7 +88,7 @@ h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
 .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
 .grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); }
 .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0; list-style: none; }
-.tags li { font-size: 0.8125rem; padding: 0.15rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
+.tags li { font-size: var(--fs-xs); padding: 0.15rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
 .section { padding-block: 4rem; }
 .prose { max-width: 44rem; }
 .prose img { border-radius: var(--radius); }

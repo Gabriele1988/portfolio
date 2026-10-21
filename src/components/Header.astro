@@ -87,12 +87,12 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
 
 <style>
   header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.25rem; }
-  .logo { position: relative; z-index: 31; font-family: var(--font-display); font-weight: 700; color: var(--text); text-decoration: none; font-size: 1.25rem; }
+  .logo { position: relative; z-index: 31; font-family: var(--font-display); font-weight: 700; color: var(--text); text-decoration: none; font-size: var(--fs-lg); }
   .desktop { display: flex; align-items: center; gap: 1.5rem; }
   .desktop a:not(.btn) { color: var(--muted); text-decoration: none; }
   .desktop a:not(.btn):hover, .desktop a[aria-current='page'] { color: var(--text); }
   .overlay { position: absolute; inset: 0 0 auto; z-index: 10; }
-  .overlay .logo, .overlay .desktop a:not(.btn) { color: #fff; }
+  .overlay .logo, .overlay .desktop a:not(.btn) { color: var(--white); }
 
   /* Icona: due linee che diventano una X */
   .toggle {
@@ -103,7 +103,7 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
     height: 2.75rem;
     border: 1px solid var(--border);
     border-radius: 999px;
-    background: rgb(20 20 20 / 0.6);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
     backdrop-filter: blur(8px);
     cursor: pointer;
   }
@@ -131,7 +131,7 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
     display: flex;
     align-items: center;
     padding: 6rem var(--pad) 3rem;
-    background: rgb(10 10 10 / 0.97);
+    background: color-mix(in srgb, var(--bg) 97%, transparent);
     backdrop-filter: blur(12px);
     opacity: 0;
     transition: opacity 0.35s ease;
@@ -162,11 +162,11 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
     text-decoration: none;
     font-family: var(--font-display);
     font-weight: 600;
-    font-size: clamp(2rem, 9vw, 3rem);
+    font-size: var(--fs-menu);
     line-height: 1.1;
   }
   .pannello a[aria-current='page'], .pannello a:not(.btn):active { color: var(--accent); }
-  .num { font-family: var(--mono); font-size: 0.875rem; font-weight: 400; color: var(--accent); }
+  .num { font-family: var(--mono); font-size: var(--fs-sm); font-weight: 400; color: var(--accent); }
   .pannello .btn { margin-top: 1.5rem; }
 
   @media (max-width: 47.99rem) {
