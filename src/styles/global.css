@@ -8,9 +8,10 @@
   --text: rgb(224 226 219);
   --muted: rgb(138 140 135);
   --border: rgb(30 30 30);
-  --accent: rgb(149 230 0);
-  --accent-soft: rgb(149 230 0 / 0.1);
-  --accent-text: rgb(10 10 10);
+  --accent: rgb(11 135 147); /* ottanio #0b8793 */
+  --accent-soft: rgb(11 135 147 / 0.14);
+  --accent-btn: rgb(0 115 126); /* ottanio più scuro per i pulsanti, contrasto con testo bianco */
+  --accent-text: rgb(255 255 255);
   --radius: 16px;
   --max: 1900px;
   /* Margine laterale del contenuto (come .section-padding del sito di riferimento) */
@@ -31,8 +32,8 @@ html { scrollbar-color: var(--accent) var(--bg); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--accent); border: 2px solid var(--bg); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: rgb(180 255 60); }
-::selection { background: var(--accent); color: var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: rgb(26 163 174); }
+::selection { background: var(--accent); color: #fff; }
 body {
   margin: 0;
   position: relative;
@@ -51,7 +52,7 @@ h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
   display: inline-block;
   padding: 0.75rem 1.25rem;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-btn);
   color: var(--accent-text);
   font-weight: 600;
   text-decoration: none;
@@ -59,7 +60,7 @@ h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
   cursor: pointer;
   font: inherit;
 }
-.btn:hover { filter: brightness(1.08); }
+.btn:hover { background: var(--accent); }
 .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
 .grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); }
 .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0; list-style: none; }
