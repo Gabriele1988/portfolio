@@ -1,0 +1,102 @@
+---
+// Pagina Progetti (usata da /progetti/ e /progetti/pagina/N/): intestazione, progetto in evidenza
+// (solo nella prima pagina), griglia di card quadrate su due colonne e paginazione.
+import Base from '../layouts/Base.astro';
+import ProgettoCard from './ProgettoCard.astro';
+import ProgettoEvidenza from './ProgettoEvidenza.astro';
+import Icona from './Icona.astro';
+import type { Progetto } from '../lib/wp';
+import { getTesti } from '../lib/testi';
+
+interface Props {
+  evidenza?: Progetto;
+  progetti: Progetto[];
+  pagina: number;
+  totalePagine: number;
+}
+const { evidenza, progetti, pagina, totalePagine } = Astro.props;
+const t = (await getTesti()).progetti;
+const href = (n: number) => (n === 1 ? '/progetti/' : `/progetti/pagina/${n}/`);
+const titoloPagina = pagina > 1 ? `${t.meta_titolo} · ${pagina}` : t.meta_titolo;
+---
+
+<Base title={titoloPagina} description={t.meta_descrizione}>
+  <section class="wrap section">
+    <header class="testa">
+      <h1>{t.titolo} <span class="evidenza">{t.titolo_evidenza}</span></h1>
+      {t.intro && <p class="intro">{t.intro}</p>}
+    </header>
+
+    {evidenza && pagina === 1 && <ProgettoEvidenza progetto={evidenza} testi={t} />}
+  </section>
+
+  <section class="wrap section altri" id="altri">
+    {(evidenza || progetti.length > 0) && <hr class="sep" />}
+    {progetti.length > 0 && (
+      <h2 class="titolo-altri">{t.altri_titolo} <span class="evidenza">{t.altri_titolo_evidenza}</span></h2>
+    )}
+    {progetti.length > 0 ? (
+      <div class="griglia">
+        {progetti.map((p, i) => <ProgettoCard progetto={p} testi={t} eager={!evidenza && i < 2} />)}
+      </div>
+    ) : (
+      !evidenza && <p class="muted vuoto">{t.vuoto}</p>
+    )}
+
+    {totalePagine > 1 && (
+      <nav class="paginazione" aria-label="Pagine dei progetti">
+        {pagina > 1 ? (
+          <a class="freccia" href={href(pagina - 1)} rel="prev"><Icona nome="arrowLeft" />{t.precedente}</a>
+        ) : <span class="freccia" aria-hidden="true" />}
+        <ol>
+          {Array.from({ length: totalePagine }, (_, i) => i + 1).map((n) => (
+            <li>
+              <a href={href(n)} aria-current={n === pagina ? 'page' : undefined}>{n}</a>
+            </li>
+          ))}
+        </ol>
+        {pagina < totalePagine ? (
+          <a class="freccia" href={href(pagina + 1)} rel="next">{t.successiva}<Icona nome="arrowRight" /></a>
+        ) : <span class="freccia" aria-hidden="true" />}
+      </nav>
+    )}
+  </section>
+</Base>
+
+<style>
+  .testa { text-align: center; max-width: 52rem; margin: 2rem auto 4rem; }
+  h1 { font-size: var(--fs-page); margin: 0 0 1.25rem; }
+  .intro { color: var(--muted); font-size: var(--fs-lead); margin: 0 auto; max-width: 36rem; }
+
+  .altri { padding-top: 0; }
+  .sep { border: 0; height: 1px; margin: 0 0 4rem; background: linear-gradient(90deg, transparent, var(--accent-border), transparent); }
+  .titolo-altri { font-size: var(--fs-section); text-align: center; margin: 0 0 3rem; }
+
+  /* Due colonne: le card sono quadrate (vedi ProgettoCard) */
+  .griglia { display: grid; gap: 1.5rem; }
+  @media (min-width: 48rem) { .griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 80rem) { .griglia { gap: 2rem; } }
+
+  .paginazione { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 3.5rem; }
+  .paginazione ol { display: flex; gap: 0.5rem; list-style: none; padding: 0; margin: 0; }
+  .paginazione ol a {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--muted);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: var(--fs-sm);
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .paginazione ol a:hover { border-color: var(--accent-border); color: var(--text); }
+  .paginazione ol a[aria-current='page'] { background: var(--accent-btn); border-color: var(--accent-btn); color: var(--accent-text); }
+  .freccia { flex: 1; display: inline-flex; align-items: center; gap: 0.5rem; color: var(--muted); text-decoration: none; font-size: var(--fs-sm); }
+  .freccia:last-child { justify-content: flex-end; }
+  a.freccia:hover { color: var(--accent-light); }
+  @media (max-width: 30rem) { .freccia { font-size: 0; gap: 0; } }
+  .vuoto { text-align: center; }
+</style>

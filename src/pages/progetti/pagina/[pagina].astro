@@ -1,0 +1,20 @@
+---
+// Pagine 2, 3, … della lista progetti (la prima è /progetti/).
+import type { GetStaticPaths } from 'astro';
+import PaginaProgetti from '../../../components/PaginaProgetti.astro';
+import { getProgettiPerPagina, PER_PAGINA } from '../../../lib/wp';
+
+export const getStaticPaths = (async () => {
+  const { evidenza, altri } = await getProgettiPerPagina();
+  const totalePagine = Math.ceil(altri.length / PER_PAGINA);
+  return Array.from({ length: Math.max(0, totalePagine - 1) }, (_, i) => {
+    const pagina = i + 2;
+    return {
+      params: { pagina: String(pagina) },
+      props: { evidenza, progetti: altri.slice((pagina - 1) * PER_PAGINA, pagina * PER_PAGINA), pagina, totalePagine },
+    };
+  });
+}) satisfies GetStaticPaths;
+---
+
+<PaginaProgetti {...Astro.props} />

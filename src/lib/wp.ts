@@ -23,6 +23,12 @@ export interface Progetto {
   contenuto: string;
   data: string;
   cliente: string;
+  /** Riga colorata sotto il titolo nelle card. */
+  sottotitolo: string;
+  stato: 'online' | 'in_sviluppo';
+  /** Elenco mostrato quando il progetto è quello in evidenza. */
+  funzionalita: string[];
+  repository: string;
   anno: string;
   url: string;
   ruolo: string;
@@ -103,6 +109,10 @@ function toProgetto(p: any): Progetto {
     contenuto: p.content?.rendered ?? '',
     data: p.date,
     cliente: f.cliente ?? '',
+    sottotitolo: f.sottotitolo ?? '',
+    stato: f.stato === 'in_sviluppo' ? 'in_sviluppo' : 'online',
+    funzionalita: Array.isArray(f.funzionalita) ? f.funzionalita.map(String).filter(Boolean) : String(f.funzionalita ?? '').split('\n').map((s) => s.trim()).filter(Boolean),
+    repository: f.repository ?? '',
     anno: String(f.anno ?? ''),
     url: f.url ?? f.url_progetto ?? '',
     ruolo: f.ruolo ?? '',
@@ -131,6 +141,16 @@ export function getProgetti(): Promise<Progetto[]> {
     items.map(toProgetto),
   );
   return cache;
+}
+
+/** Card per pagina nella pagina Progetti. */
+export const PER_PAGINA = 6;
+
+/** Pagina Progetti: il più recente "in evidenza" (o il più recente in assoluto) e tutti gli altri. */
+export async function getProgettiPerPagina(): Promise<{ evidenza?: Progetto; altri: Progetto[] }> {
+  const tutti = await getProgetti();
+  const evidenza = tutti.find((p) => p.inEvidenza) ?? tutti[0];
+  return { evidenza, altri: tutti.filter((p) => p !== evidenza) };
 }
 
 export async function getProgettiInEvidenza(max = 3): Promise<Progetto[]> {

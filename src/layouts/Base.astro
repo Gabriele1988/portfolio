@@ -5,6 +5,7 @@ import '@fontsource-variable/fira-code';
 import '../styles/global.css';
 import { NOINDEX } from 'astro:env/client';
 import { sito } from '../site.config';
+import { getTesti } from '../lib/testi';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import Starfield from '../components/Starfield.astro';
@@ -23,8 +24,10 @@ const clashCss = clash
   .map((w) => `@font-face{font-family:'Clash Display';src:url('/fonts/ClashDisplay-${w}.woff2') format('woff2');font-weight:${w === 'Bold' ? 700 : 600};font-display:swap}`)
   .join('');
 
-const { title, description = sito.descrizione, image, overlayHeader = false } = Astro.props;
-const fullTitle = title ? `${title} · ${sito.nome}` : `${sito.nome} · ${sito.ruolo}`;
+const g = (await getTesti()).generale;
+const { title, description: desc, image, overlayHeader = false } = Astro.props;
+const description = desc || g.descrizione;
+const fullTitle = title ? `${title} · ${g.nome}` : `${g.nome} · ${g.ruolo}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = image ? new URL(image, Astro.site).href : undefined;
 ---

@@ -1,21 +1,13 @@
 ---
-import Base from '../../layouts/Base.astro';
-import ProgettoCard from '../../components/ProgettoCard.astro';
-import { getProgetti } from '../../lib/wp';
+import PaginaProgetti from '../../components/PaginaProgetti.astro';
+import { getProgettiPerPagina, PER_PAGINA } from '../../lib/wp';
 
-const progetti = await getProgetti();
+const { evidenza, altri } = await getProgettiPerPagina();
 ---
 
-<Base title="Progetti" description="Una selezione di lavori: il problema, la soluzione e il risultato.">
-  <section class="wrap section">
-    <h1>Progetti</h1>
-    <p class="muted">Per ogni lavoro racconto il problema, la soluzione e il risultato.</p>
-    {progetti.length ? (
-      <div class="grid">
-        {progetti.map((p, i) => <ProgettoCard progetto={p} eager={i === 0} />)}
-      </div>
-    ) : (
-      <p>I progetti arriveranno presto.</p>
-    )}
-  </section>
-</Base>
+<PaginaProgetti
+  evidenza={evidenza}
+  progetti={altri.slice(0, PER_PAGINA)}
+  pagina={1}
+  totalePagine={Math.max(1, Math.ceil(altri.length / PER_PAGINA))}
+/>

@@ -1,15 +1,17 @@
 ---
 import Base from '../layouts/Base.astro';
 import ContattoForm from '../components/ContattoForm.astro';
-import { sito } from '../site.config';
+import { getTesti } from '../lib/testi';
+
+const { generale: g, contatti: t } = await getTesti();
 ---
 
-<Base title="Contatti" description="Raccontami il tuo progetto: rispondo entro un giorno lavorativo.">
+<Base title={t.meta_titolo} description={t.meta_descrizione}>
   <section class="wrap section">
-    <h1>Richiedi un preventivo</h1>
+    <h1>{t.titolo}</h1>
     <p class="muted">
-      Raccontami il tuo progetto, rispondo entro un giorno lavorativo. Oppure scrivi a
-      <a href={`mailto:${sito.email}`}>{sito.email}</a>.
+      {t.intro}
+      {g.email && <> <a href={`mailto:${g.email}`}>{g.email}</a>.</>}
     </p>
     <ContattoForm />
   </section>

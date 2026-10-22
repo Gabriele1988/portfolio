@@ -1,11 +1,12 @@
 ---
-import { sito } from '../site.config';
+import { getTesti } from '../lib/testi';
 
+const g = (await getTesti()).generale;
 const voci = [
-  { href: '/', label: 'Home' },
-  { href: '/#servizi', label: 'Servizi' },
-  { href: '/progetti/', label: 'Progetti' },
-  { href: '/contatti/', label: 'Contatti' },
+  { href: '/', label: g.menu_home },
+  { href: '/#servizi', label: g.menu_servizi },
+  { href: '/progetti/', label: g.menu_progetti },
+  { href: '/contatti/', label: g.menu_contatti },
 ];
 const { overlay = false } = Astro.props as { overlay?: boolean };
 const path = Astro.url.pathname;
@@ -14,14 +15,14 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
 
 <a class="visually-hidden" href="#contenuto">Vai al contenuto</a>
 <header class:list={['wrap', { overlay }]} data-header>
-  <a class="logo" href="/">{sito.nome}</a>
+  <a class="logo" href="/">{g.nome}</a>
 
   <!-- Desktop -->
   <nav class="desktop" aria-label="Principale">
     {voci.slice(1).map((v) => (
       <a href={v.href} aria-current={attiva(v.href) ? 'page' : undefined}>{v.label}</a>
     ))}
-    <a class="btn" href="/contatti/">Richiedi un preventivo</a>
+    <a class="btn" href="/contatti/">{g.menu_cta}</a>
   </nav>
 
   <!-- Mobile: icona che apre il menu a tutto schermo -->
@@ -40,7 +41,7 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
           </li>
         ))}
         <li style={`--i: ${voci.length}`}>
-          <a class="btn" href="/contatti/">Richiedi un preventivo</a>
+          <a class="btn" href="/contatti/">{g.menu_cta}</a>
         </li>
       </ul>
     </nav>

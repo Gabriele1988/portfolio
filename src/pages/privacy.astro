@@ -1,16 +1,24 @@
 ---
 import Base from '../layouts/Base.astro';
-import { sito } from '../site.config';
+import { getTesti } from '../lib/testi';
+
+const { generale: g, privacy: t } = await getTesti();
 ---
 
-<Base title="Privacy e cookie" description="Informativa sul trattamento dei dati personali.">
+<Base title={t.meta_titolo} description={t.meta_descrizione}>
   <section class="wrap section prose">
-    <h1>Privacy e cookie</h1>
-    <p><strong>Bozza da completare</strong> (ad esempio con Complianz o iubenda) prima della pubblicazione sul dominio definitivo.</p>
-    <p>Titolare del trattamento: {sito.nome}, {sito.citta}. Contatto: <a href={`mailto:${sito.email}`}>{sito.email}</a>.</p>
-    <p>
-      Questo sito non usa cookie di profilazione né font o servizi esterni di tracciamento. I dati inviati con il modulo
-      contatti servono solo a rispondere alla richiesta.
-    </p>
+    <h1>{t.titolo}</h1>
+    {t.contenuto ? (
+      <Fragment set:html={t.contenuto} />
+    ) : (
+      <>
+        <p><strong>Bozza da completare</strong> (ad esempio con Complianz o iubenda) prima della pubblicazione sul dominio definitivo.</p>
+        <p>Titolare del trattamento: {g.nome}, {g.citta}.{g.email && <> Contatto: <a href={`mailto:${g.email}`}>{g.email}</a>.</>}</p>
+        <p>
+          Questo sito non usa cookie di profilazione né font o servizi esterni di tracciamento. I dati inviati con il modulo
+          contatti servono solo a rispondere alla richiesta.
+        </p>
+      </>
+    )}
   </section>
 </Base>

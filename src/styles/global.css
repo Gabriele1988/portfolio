@@ -34,6 +34,7 @@
   --fs-h1: clamp(2rem, 5vw, 3.25rem);
   --fs-section: clamp(2rem, 4vw, 3.5rem); /* titoli di sezione della home */
   --fs-menu: clamp(2rem, 9vw, 3rem); /* voci del menu mobile */
+  --fs-page: clamp(2.75rem, 7vw, 5.5rem); /* titolo delle pagine interne */
   --fs-hero: clamp(2.75rem, 8vw, 6.5rem);
 
   --radius: 16px;
@@ -72,6 +73,7 @@ h1 { font-size: var(--fs-h1); margin: 0 0 1rem; }
 h2 { font-size: var(--fs-h2); }
 .wrap { max-width: var(--max); margin: 0 auto; padding-inline: var(--pad); }
 .muted { color: var(--muted); }
+.evidenza { color: var(--accent); }
 .btn {
   display: inline-block;
   padding: 0.75rem 1.25rem;

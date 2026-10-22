@@ -1,16 +1,18 @@
 ---
-import { sito } from '../site.config';
+import { getTesti } from '../lib/testi';
+
+const { generale: g, home: h } = await getTesti();
 ---
 
 <section class="hero" data-hero>
   <canvas class="fluid" aria-hidden="true"></canvas>
   <div class="wrap content">
-    <p class="kicker" data-blend>{sito.ruolo} · {sito.citta}</p>
-    <h1 data-blend>Siti veloci e applicazioni web su misura.</h1>
-    <p class="lead" data-blend>{sito.descrizione}</p>
+    <p class="kicker" data-blend>{h.hero_occhiello || `${g.ruolo} · ${g.citta}`}</p>
+    <h1 data-blend>{h.hero_titolo}</h1>
+    <p class="lead" data-blend>{h.hero_testo || g.descrizione}</p>
     <p class="cta">
-      <a class="btn" href="/contatti/">Richiedi un preventivo</a>
-      <a class="btn btn-ghost" href="/progetti/">Guarda i progetti</a>
+      <a class="btn" href="/contatti/">{h.hero_cta}</a>
+      <a class="btn btn-ghost" href="/progetti/">{h.hero_cta2}</a>
     </p>
   </div>
   <a class="scroll" href="#servizi" aria-label="Scorri ai servizi">

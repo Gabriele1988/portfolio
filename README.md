@@ -70,6 +70,10 @@ il sito pubblicato non carica nulla da `cms.`.
 Il form contatti invia `POST {CMS_URL}/wp-json/portfolio/v1/contatto` con
 `{ nome, email, messaggio, privacy, sito_web, turnstile, tempo }`.
 
+Tutti i testi delle pagine (home, progetti, contatti, privacy, 404, menu e dati generali) si modificano in WordPress
+dal menu **Testi del sito** e arrivano da `GET {CMS_URL}/wp-json/portfolio/v1/testi`. Un campo lasciato vuoto usa il testo
+predefinito di `src/lib/testi.ts`. Salvando una di queste pagine parte il rebuild.
+
 `cms/portfolio-core.php` implementa tutto questo. Se usi già una tua versione del mu-plugin,
 confrontala con questa: la parte nuova è l'endpoint `portfolio/v1/contatto` e l'evento `cms-update` per il rebuild.
 

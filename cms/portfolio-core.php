@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.3.0
+ * Version:     1.4.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -63,12 +63,21 @@ add_action( 'init', function () {
 function portfolio_campi() {
 	return array(
 		'cliente'     => array( 'label' => 'Cliente', 'type' => 'text' ),
+		'sottotitolo' => array( 'label' => 'Sottotitolo', 'type' => 'text', 'instructions' => 'Riga in evidenza sotto il titolo, es. Azienda agricola — Gaiole in Chianti' ),
+		'stato'       => array(
+			'label'         => 'Stato',
+			'type'          => 'select',
+			'choices'       => array( 'online' => 'Online', 'in_sviluppo' => 'In sviluppo' ),
+			'default_value' => 'online',
+		),
 		'anno'        => array( 'label' => 'Anno', 'type' => 'number' ),
 		'url'         => array( 'label' => 'URL del progetto', 'type' => 'url' ),
 		'ruolo'       => array( 'label' => 'Ruolo', 'type' => 'text' ),
 		'tecnologie'  => array( 'label' => 'Tecnologie', 'type' => 'text', 'instructions' => 'Separate da virgola, es. Angular, Spring Boot, PostgreSQL' ),
+		'funzionalita' => array( 'label' => 'Funzionalità chiave', 'type' => 'textarea', 'instructions' => 'Una per riga. Si vedono quando il progetto è quello in evidenza nella pagina Progetti.' ),
+		'repository'  => array( 'label' => 'Repository GitHub', 'type' => 'url', 'instructions' => 'Facoltativo, se il codice è pubblico.' ),
 		'risultato'   => array( 'label' => 'Risultato', 'type' => 'textarea', 'instructions' => 'Il risultato ottenuto, in una o due frasi (meglio se con numeri).' ),
-		'in_evidenza' => array( 'label' => 'In evidenza', 'type' => 'true_false', 'instructions' => 'Mostra in home page.' ),
+		'in_evidenza' => array( 'label' => 'In evidenza', 'type' => 'true_false', 'instructions' => 'Mostra in home page. Il più recente in evidenza apre anche la pagina Progetti.' ),
 	);
 }
 
@@ -80,12 +89,14 @@ add_action( 'acf/init', function () {
 	$fields = array();
 	foreach ( portfolio_campi() as $name => $c ) {
 		$fields[] = array(
-			'key'          => 'field_portfolio_' . $name,
-			'name'         => $name,
-			'label'        => $c['label'],
-			'type'         => $c['type'],
-			'instructions' => isset( $c['instructions'] ) ? $c['instructions'] : '',
-			'ui'           => 'true_false' === $c['type'] ? 1 : 0,
+			'key'           => 'field_portfolio_' . $name,
+			'name'          => $name,
+			'label'         => $c['label'],
+			'type'          => $c['type'],
+			'instructions'  => isset( $c['instructions'] ) ? $c['instructions'] : '',
+			'ui'            => 'true_false' === $c['type'] ? 1 : 0,
+			'choices'       => isset( $c['choices'] ) ? $c['choices'] : array(),
+			'default_value' => isset( $c['default_value'] ) ? $c['default_value'] : '',
 		);
 	}
 	acf_add_local_field_group( array(
@@ -112,6 +123,10 @@ add_action( 'rest_api_init', function () {
 					$v = '' === $v ? null : (int) $v;
 				} elseif ( 'tecnologie' === $name ) {
 					$v = array_values( array_filter( array_map( 'trim', explode( ',', (string) $v ) ) ) );
+				} elseif ( 'funzionalita' === $name ) {
+					$v = array_values( array_filter( array_map( 'trim', preg_split( '/\r?\n/', (string) $v ) ) ) );
+				} elseif ( 'stato' === $name && '' === $v ) {
+					$v = 'online';
 				}
 				$out[ $name ] = $v;
 			}
@@ -283,15 +298,48 @@ add_action( 'acf/init', function () {
 	if ( ! function_exists( 'acf_add_options_page' ) || ! function_exists( 'acf_add_local_field_group' ) ) {
 		return;
 	}
+	// Menu "Testi del sito": una pagina per ogni pagina del sito (vedi portfolio_testi_schema()).
 	acf_add_options_page( array(
-		'page_title' => 'Contenuti della Home',
-		'menu_title' => 'Home',
-		'menu_slug'  => 'portfolio-home',
+		'page_title' => 'Testi del sito',
+		'menu_title' => 'Testi del sito',
+		'menu_slug'  => 'portfolio-testi',
 		'capability' => 'edit_posts',
-		'icon_url'   => 'dashicons-admin-home',
+		'icon_url'   => 'dashicons-edit-page',
 		'position'   => 4,
-		'redirect'   => false,
+		'redirect'   => true,
 	) );
+	foreach ( portfolio_testi_schema() as $pagina => $def ) {
+		acf_add_options_sub_page( array(
+			'page_title'  => 'Testi: ' . $def['menu'],
+			'menu_title'  => $def['menu'],
+			'menu_slug'   => 'portfolio-' . $pagina,
+			'parent_slug' => 'portfolio-testi',
+			'capability'  => 'edit_posts',
+		) );
+		$fields = array();
+		foreach ( $def['gruppi'] as $gruppo => $campi ) {
+			$fields[] = array( 'key' => "field_pt_{$pagina}_tab_" . sanitize_key( $gruppo ), 'label' => $gruppo, 'type' => 'tab' );
+			foreach ( $campi as $nome => $c ) {
+				$fields[] = array(
+					'key'           => "field_pt_{$pagina}_{$nome}",
+					'name'          => "{$pagina}_{$nome}",
+					'label'         => $c[0],
+					'type'          => $c[1],
+					'default_value' => isset( $c[2] ) ? $c[2] : '',
+					'instructions'  => isset( $c[3] ) ? $c[3] : '',
+					'rows'          => 'textarea' === $c[1] ? 3 : '',
+					'media_upload'  => 0,
+				);
+			}
+		}
+		acf_add_local_field_group( array(
+			'key'        => "group_portfolio_testi_{$pagina}",
+			'title'      => 'Testi',
+			'fields'     => $fields,
+			'menu_order' => -1,
+			'location'   => array( array( array( 'param' => 'options_page', 'operator' => '==', 'value' => 'portfolio-' . $pagina ) ) ),
+		) );
+	}
 
 	acf_add_local_field_group( array(
 		'key'      => 'group_portfolio_home_servizi',
@@ -392,7 +440,173 @@ function portfolio_home_data() {
 	);
 }
 
+/**
+ * Testi modificabili di ogni pagina: pagina => menu, gruppi (schede) => campo => [etichetta, tipo, predefinito, istruzioni].
+ * I predefiniti sono gli stessi di src/lib/testi.ts: un campo lasciato vuoto usa quello.
+ * Nel database ogni campo è un'opzione "{pagina}_{campo}".
+ */
+function portfolio_testi_schema() {
+	$vuoto_auto = 'Lasciando vuoto si usa il testo predefinito del sito.';
+	return array(
+		'generale' => array(
+			'menu'   => 'Generale',
+			'gruppi' => array(
+				'Identità' => array(
+					'nome'        => array( 'Nome (logo)', 'text', 'Gabriele' ),
+					'ruolo'       => array( 'Ruolo', 'text', 'Sviluppatore web full-stack' ),
+					'citta'       => array( 'Città', 'text', 'Palermo' ),
+					'descrizione' => array( 'Descrizione del sito', 'textarea', 'Siti WordPress veloci e applicazioni web con Java, Spring Boot, Angular e PostgreSQL. Lavoro da Palermo, con clienti in tutta Italia.', 'Usata nei motori di ricerca e sotto il titolo della home.' ),
+				),
+				'Contatti' => array(
+					'email'    => array( 'Email', 'email', '' ),
+					'telefono' => array( 'Telefono', 'text', '' ),
+					'github'   => array( 'Profilo GitHub', 'url', 'https://github.com/Gabriele1988' ),
+					'linkedin' => array( 'Profilo LinkedIn', 'url', '' ),
+				),
+				'Menu' => array(
+					'menu_home'     => array( 'Voce Home', 'text', 'Home' ),
+					'menu_servizi'  => array( 'Voce Servizi', 'text', 'Servizi' ),
+					'menu_progetti' => array( 'Voce Progetti', 'text', 'Progetti' ),
+					'menu_contatti' => array( 'Voce Contatti', 'text', 'Contatti' ),
+					'menu_cta'      => array( 'Pulsante', 'text', 'Richiedi un preventivo' ),
+				),
+				'Footer' => array(
+					'footer_privacy' => array( 'Link privacy', 'text', 'Privacy' ),
+				),
+			),
+		),
+		'home' => array(
+			'menu'   => 'Home',
+			'gruppi' => array(
+				'Hero' => array(
+					'hero_occhiello' => array( 'Testo sopra il titolo', 'text', '', 'Lasciando vuoto: ruolo · città.' ),
+					'hero_titolo'    => array( 'Titolo', 'text', 'Siti veloci e applicazioni web su misura.' ),
+					'hero_testo'     => array( 'Testo', 'textarea', '', 'Lasciando vuoto si usa la descrizione del sito (Generale).' ),
+					'hero_cta'       => array( 'Pulsante principale', 'text', 'Richiedi un preventivo' ),
+					'hero_cta2'      => array( 'Pulsante secondario', 'text', 'Guarda i progetti' ),
+				),
+				'Progetti in evidenza' => array(
+					'progetti_titolo' => array( 'Titolo', 'text', 'Progetti in evidenza' ),
+					'progetti_vuoto'  => array( 'Testo se non ci sono progetti', 'text', 'I progetti arriveranno presto.' ),
+				),
+				'SEO' => array(
+					'meta_titolo'      => array( 'Titolo della pagina', 'text', '', 'Lasciando vuoto: nome · ruolo.' ),
+					'meta_descrizione' => array( 'Descrizione', 'textarea', '', 'Lasciando vuoto si usa la descrizione del sito.' ),
+				),
+			),
+		),
+		'progetti' => array(
+			'menu'   => 'Progetti',
+			'gruppi' => array(
+				'Intestazione' => array(
+					'titolo'          => array( 'Titolo', 'text', 'Lavori' ),
+					'titolo_evidenza' => array( 'Parte colorata del titolo', 'text', 'recenti' ),
+					'intro'           => array( 'Introduzione', 'textarea', 'Ogni progetto è una storia diversa. Ecco quelli già online e quelli a cui sto lavorando.' ),
+				),
+				'Progetto in evidenza' => array(
+					'etichetta_evidenza'  => array( 'Etichetta', 'text', 'Progetto in evidenza' ),
+					'funzionalita_titolo' => array( 'Titolo elenco funzionalità', 'text', 'Funzionalità chiave' ),
+				),
+				'Altri progetti' => array(
+					'altri_titolo'          => array( 'Titolo', 'text', 'Altri' ),
+					'altri_titolo_evidenza' => array( 'Parte colorata del titolo', 'text', 'progetti' ),
+					'vuoto'                 => array( 'Testo se non ci sono progetti', 'text', 'I progetti arriveranno presto.' ),
+					'precedente'            => array( 'Paginazione: precedente', 'text', 'Precedente' ),
+					'successiva'            => array( 'Paginazione: successiva', 'text', 'Successiva' ),
+				),
+				'Card' => array(
+					'stato_online'   => array( 'Stato online', 'text', 'Online' ),
+					'stato_sviluppo' => array( 'Stato in sviluppo', 'text', 'In sviluppo' ),
+					'presto'         => array( 'Testo senza immagine', 'text', 'Presto online' ),
+					'visita'         => array( 'Link al sito', 'text', 'Visita il sito' ),
+					'dettagli'       => array( 'Link al progetto', 'text', 'Scopri il progetto' ),
+				),
+				'Singolo progetto' => array(
+					'torna'            => array( 'Link di ritorno', 'text', '← Tutti i progetti' ),
+					'label_cliente'    => array( 'Etichetta Cliente', 'text', 'Cliente' ),
+					'label_anno'       => array( 'Etichetta Anno', 'text', 'Anno' ),
+					'label_ruolo'      => array( 'Etichetta Ruolo', 'text', 'Ruolo' ),
+					'label_servizi'    => array( 'Etichetta Servizi', 'text', 'Servizi' ),
+					'label_online'     => array( 'Etichetta Online', 'text', 'Online' ),
+					'label_risultato'  => array( 'Titolo Risultato', 'text', 'Risultato' ),
+					'cta_progetto'     => array( 'Pulsante finale', 'text', 'Hai un progetto simile? Richiedi un preventivo' ),
+				),
+				'SEO' => array(
+					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Progetti' ),
+					'meta_descrizione' => array( 'Descrizione', 'textarea', 'Una selezione di lavori: il problema, la soluzione e il risultato.' ),
+				),
+			),
+		),
+		'contatti' => array(
+			'menu'   => 'Contatti',
+			'gruppi' => array(
+				'Intestazione' => array(
+					'titolo' => array( 'Titolo', 'text', 'Richiedi un preventivo' ),
+					'intro'  => array( 'Introduzione', 'textarea', 'Raccontami il tuo progetto, rispondo entro un giorno lavorativo. Oppure scrivi a', 'L\'indirizzo email (Generale) viene aggiunto alla fine.' ),
+				),
+				'Modulo' => array(
+					'campo_nome'      => array( 'Campo nome', 'text', 'Nome' ),
+					'campo_email'     => array( 'Campo email', 'text', 'Email' ),
+					'campo_messaggio' => array( 'Campo messaggio', 'text', 'Messaggio' ),
+					'privacy'         => array( 'Consenso privacy', 'textarea', 'Ho letto l\'[informativa privacy] e acconsento al trattamento dei dati per ricevere una risposta.', 'Il testo tra parentesi quadre diventa il link alla pagina Privacy.' ),
+					'invia'           => array( 'Pulsante', 'text', 'Invia richiesta' ),
+					'invio'           => array( 'Messaggio durante l\'invio', 'text', 'Invio in corso…' ),
+					'grazie'          => array( 'Messaggio inviato', 'text', 'Grazie! Ho ricevuto il tuo messaggio e ti risponderò a breve.' ),
+					'errore'          => array( 'Aggiunta in caso di errore', 'text', 'Riprova oppure scrivimi via email.' ),
+				),
+				'SEO' => array(
+					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Contatti' ),
+					'meta_descrizione' => array( 'Descrizione', 'textarea', 'Raccontami il tuo progetto: rispondo entro un giorno lavorativo.' ),
+				),
+			),
+		),
+		'privacy' => array(
+			'menu'   => 'Privacy',
+			'gruppi' => array(
+				'Contenuto' => array(
+					'titolo'    => array( 'Titolo', 'text', 'Privacy e cookie' ),
+					'contenuto' => array( 'Testo', 'wysiwyg', '', 'Lasciando vuoto si vede la bozza provvisoria.' ),
+				),
+				'SEO' => array(
+					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Privacy e cookie' ),
+					'meta_descrizione' => array( 'Descrizione', 'textarea', 'Informativa sul trattamento dei dati personali.' ),
+				),
+			),
+		),
+		'notfound' => array(
+			'menu'   => 'Pagina non trovata',
+			'gruppi' => array(
+				'Contenuto' => array(
+					'titolo'   => array( 'Titolo', 'text', 'Pagina non trovata' ),
+					'testo'    => array( 'Testo', 'textarea', 'La pagina che cerchi non esiste o è stata spostata.' ),
+					'pulsante' => array( 'Pulsante', 'text', 'Torna alla home' ),
+				),
+			),
+		),
+	);
+}
+
+/** GET /wp-json/portfolio/v1/testi: { pagina: { campo: valore } }. I campi mai salvati arrivano vuoti. */
+function portfolio_testi_data() {
+	$out = array();
+	foreach ( portfolio_testi_schema() as $pagina => $def ) {
+		$out[ $pagina ] = array();
+		foreach ( $def['gruppi'] as $campi ) {
+			foreach ( $campi as $nome => $c ) {
+				$v = get_option( "options_{$pagina}_{$nome}", '' );
+				$out[ $pagina ][ $nome ] = is_string( $v ) ? trim( $v ) : '';
+			}
+		}
+	}
+	return $out;
+}
+
 add_action( 'rest_api_init', function () {
+	register_rest_route( 'portfolio/v1', '/testi', array(
+		'methods'             => 'GET',
+		'callback'            => 'portfolio_testi_data',
+		'permission_callback' => '__return_true',
+	) );
 	register_rest_route( 'portfolio/v1', '/home', array(
 		'methods'             => 'GET',
 		'callback'            => 'portfolio_home_data',
@@ -400,7 +614,7 @@ add_action( 'rest_api_init', function () {
 	) );
 } );
 
-// Salvando la pagina "Home" parte il rebuild del sito.
+// Salvando una pagina di "Testi del sito" parte il rebuild del sito.
 add_action( 'acf/save_post', function ( $post_id ) {
 	if ( 'options' === $post_id ) {
 		portfolio_rebuild_later();

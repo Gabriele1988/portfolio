@@ -1,18 +1,21 @@
 ---
-import { sito } from '../site.config';
+import { getTesti } from '../lib/testi';
+
+const g = (await getTesti()).generale;
 const anno = new Date().getFullYear();
 ---
 
 <footer class="wrap">
   <p>
-    © {anno} {sito.nome} · {sito.citta} · <a href={`mailto:${sito.email}`}>{sito.email}</a>
-    {sito.telefono && <>{' · '}<a href={`tel:${sito.telefono.replace(/\s/g, '')}`}>{sito.telefono}</a></>}
+    © {anno} {g.nome} · {g.citta}
+    {g.email && <>{' · '}<a href={`mailto:${g.email}`}>{g.email}</a></>}
+    {g.telefono && <>{' · '}<a href={`tel:${g.telefono.replace(/\s/g, '')}`}>{g.telefono}</a></>}
   </p>
   <p>
     {[
-      sito.social.github && { href: sito.social.github, label: 'GitHub', rel: 'me' },
-      sito.social.linkedin && { href: sito.social.linkedin, label: 'LinkedIn', rel: 'me' },
-      { href: '/privacy/', label: 'Privacy' },
+      g.github && { href: g.github, label: 'GitHub', rel: 'me' },
+      g.linkedin && { href: g.linkedin, label: 'LinkedIn', rel: 'me' },
+      { href: '/privacy/', label: g.footer_privacy },
     ]
       .filter(Boolean)
       .map((l: any, i) => <>{i > 0 && ' · '}<a href={l.href} rel={l.rel}>{l.label}</a></>)}

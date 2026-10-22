@@ -1,47 +1,116 @@
 ---
+// Card quadrata di un progetto: stato, immagine, titolo, sottotitolo, descrizione, tecnologie e link.
+// Tutta la card porta al dettaglio; "Visita il sito" e GitHub restano link separati.
 import { Image } from 'astro:assets';
+import Icona from './Icona.astro';
 import type { Progetto } from '../lib/wp';
+import type { Testi } from '../lib/testi';
 
 interface Props {
   progetto: Progetto;
+  testi: Testi['progetti'];
   eager?: boolean;
 }
-const { progetto: p, eager = false } = Astro.props;
+const { progetto: p, testi: t, eager = false } = Astro.props;
+const online = p.stato === 'online';
+const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
 ---
 
-<article>
-  <a href={`/progetti/${p.slug}/`}>
+<article class="card">
+  <p class:list={['stato', { online }]}>
+    {online ? <span class="punto" /> : <Icona nome="clock" size={12} />}
+    {online ? t.stato_online : t.stato_sviluppo}
+  </p>
+
+  <div class="media">
     {p.copertina ? (
       <Image
         src={p.copertina.src}
         alt={p.copertina.alt || p.titolo}
         width={p.copertina.width ?? 1200}
         height={p.copertina.height ?? 750}
-        widths={[400, 800, 1200]}
-        sizes="(min-width: 72rem) 22rem, (min-width: 42rem) 45vw, 100vw"
+        widths={[480, 800, 1200]}
+        sizes="(min-width: 48rem) 45vw, 100vw"
         loading={eager ? 'eager' : 'lazy'}
         fetchpriority={eager ? 'high' : undefined}
       />
     ) : (
-      <div class="placeholder" aria-hidden="true" />
+      <div class="vuoto"><Icona nome="clock" size={22} /><span>{t.presto}</span></div>
     )}
-    <h3>{p.titolo}</h3>
-  </a>
-  {(p.cliente || p.anno) && <p class="muted">{[p.cliente, p.anno].filter(Boolean).join(' · ')}</p>}
-  {p.estratto && <p>{p.estratto}</p>}
-  {p.servizi.length > 0 && (
+  </div>
+
+  <h3><a class="copri" href={`/progetti/${p.slug}/`}>{p.titolo}</a></h3>
+  {p.sottotitolo && <p class="sottotitolo">{p.sottotitolo}</p>}
+  {p.estratto && <p class="estratto">{p.estratto}</p>}
+  {tag.length > 0 && (
     <ul class="tags">
-      {p.servizi.map((s) => <li>{s.nome}</li>)}
+      {tag.map((s) => <li>{s}</li>)}
     </ul>
+  )}
+
+  {(p.url || p.repository) && (
+    <p class="piede">
+      {p.url && online && (
+        <a href={p.url} target="_blank" rel="noopener"><Icona nome="external" size={14} />{t.visita}</a>
+      )}
+      {p.repository && (
+        <a class="gh" href={p.repository} target="_blank" rel="noopener" aria-label={`GitHub: ${p.titolo}`}><Icona nome="github" size={18} /></a>
+      )}
+    </p>
   )}
 </article>
 
 <style>
-  article { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; padding-bottom: 1.25rem; }
-  article > *:not(a) { margin-inline: 1.25rem; }
-  a { color: inherit; text-decoration: none; }
-  a:hover h3 { color: var(--accent); }
-  img, .placeholder { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--border); }
-  h3 { margin: 1rem 1.25rem 0.25rem; }
-  p { margin-block: 0.25rem 0.75rem; }
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+    aspect-ratio: 1;
+    padding: clamp(1.25rem, 2.5vw, 2rem);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.3s;
+  }
+  .card:hover { border-color: var(--accent-border); }
+  .card > * { margin: 0; }
+
+  .stato {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: var(--fs-2xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .stato.online { color: var(--accent-light); background: var(--accent-soft); border-color: var(--accent-border); }
+  .punto { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: currentColor; }
+
+  /* L'immagine prende lo spazio che resta: così la card resta quadrata. */
+  .media { position: relative; flex: 1 1 0; min-height: 9rem; border-radius: calc(var(--radius) * 0.6); overflow: hidden; background: var(--bg); border: 1px solid var(--border); }
+  .media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 0.6s ease; }
+  .card:hover .media img { transform: scale(1.03); }
+  .vuoto { height: 100%; display: grid; place-content: center; justify-items: center; gap: 0.5rem; color: var(--muted); font-size: var(--fs-sm); }
+
+  h3 { font-size: var(--fs-lg); margin-top: 0.25rem; }
+  h3 a { color: var(--text); text-decoration: none; }
+  .card:hover h3 a { color: var(--accent-light); }
+  /* Rende cliccabile tutta la card */
+  .copri::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+
+  .sottotitolo { color: var(--accent-light); font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .estratto { color: var(--text-soft); font-size: var(--fs-sm); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .piede { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: var(--fs-sm); }
+  .piede a { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); text-decoration: none; }
+  .piede a:hover { color: var(--accent-light); }
+  .gh { margin-left: auto; }
 </style>

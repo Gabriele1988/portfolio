@@ -4,23 +4,25 @@ import HeroFluid from '../components/HeroFluid.astro';
 import ProgettoCard from '../components/ProgettoCard.astro';
 import ServiziHome from '../components/ServiziHome.astro';
 import { getHome, getProgettiInEvidenza } from '../lib/wp';
+import { getTesti } from '../lib/testi';
 
-const [home, progetti] = await Promise.all([getHome(), getProgettiInEvidenza(3)]);
+const [home, progetti, testi] = await Promise.all([getHome(), getProgettiInEvidenza(3), getTesti()]);
+const h = testi.home;
 ---
 
-<Base overlayHeader>
+<Base overlayHeader title={h.meta_titolo || undefined} description={h.meta_descrizione || undefined}>
   <HeroFluid />
 
   <ServiziHome servizi={home.servizi} />
 
   <section id="lavori" class="wrap section">
-    <h2>Progetti in evidenza</h2>
+    <h2>{h.progetti_titolo}</h2>
     {progetti.length > 0 ? (
       <div class="grid">
-        {progetti.map((p) => <ProgettoCard progetto={p} />)}
+        {progetti.map((p) => <ProgettoCard progetto={p} testi={testi.progetti} />)}
       </div>
     ) : (
-      <p class="muted">I progetti arriveranno presto.</p>
+      <p class="muted">{h.progetti_vuoto}</p>
     )}
   </section>
 </Base>

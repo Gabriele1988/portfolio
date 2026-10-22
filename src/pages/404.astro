@@ -1,11 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
+import { getTesti } from '../lib/testi';
+
+const t = (await getTesti()).notfound;
 ---
 
-<Base title="Pagina non trovata">
+<Base title={t.titolo}>
   <section class="wrap section">
-    <h1>Pagina non trovata</h1>
-    <p>La pagina che cerchi non esiste o è stata spostata.</p>
-    <p><a class="btn" href="/">Torna alla home</a></p>
+    <h1>{t.titolo}</h1>
+    <p>{t.testo}</p>
+    <p><a class="btn" href="/">{t.pulsante}</a></p>
   </section>
 </Base>

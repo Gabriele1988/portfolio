@@ -3,6 +3,7 @@ import type { GetStaticPaths } from 'astro';
 import { Image, getImage } from 'astro:assets';
 import Base from '../../layouts/Base.astro';
 import { getProgetti, type Progetto } from '../../lib/wp';
+import { getTesti } from '../../lib/testi';
 
 export const getStaticPaths = (async () => {
   const progetti = await getProgetti();
@@ -11,6 +12,7 @@ export const getStaticPaths = (async () => {
 
 const { progetto: p } = Astro.props as { progetto: Progetto };
 
+const t = (await getTesti()).progetti;
 const og = p.copertina
   ? await getImage({ src: p.copertina.src, width: 1200, height: 630, fit: 'cover', format: 'jpg' })
   : undefined;
@@ -18,16 +20,16 @@ const og = p.copertina
 
 <Base title={p.titolo} description={p.estratto} image={og?.src}>
   <article class="wrap section">
-    <p><a href="/progetti/">← Tutti i progetti</a></p>
+    <p><a href="/progetti/">{t.torna}</a></p>
     <h1>{p.titolo}</h1>
     {p.estratto && <p class="lead muted">{p.estratto}</p>}
 
     <dl class="scheda">
-      {p.cliente && <div><dt>Cliente</dt><dd>{p.cliente}</dd></div>}
-      {p.anno && <div><dt>Anno</dt><dd>{p.anno}</dd></div>}
-      {p.ruolo && <div><dt>Ruolo</dt><dd>{p.ruolo}</dd></div>}
-      {p.servizi.length > 0 && <div><dt>Servizi</dt><dd>{p.servizi.map((s) => s.nome).join(', ')}</dd></div>}
-      {p.url && <div><dt>Online</dt><dd><a href={p.url} rel="noopener" target="_blank">Visita il sito</a></dd></div>}
+      {p.cliente && <div><dt>{t.label_cliente}</dt><dd>{p.cliente}</dd></div>}
+      {p.anno && <div><dt>{t.label_anno}</dt><dd>{p.anno}</dd></div>}
+      {p.ruolo && <div><dt>{t.label_ruolo}</dt><dd>{p.ruolo}</dd></div>}
+      {p.servizi.length > 0 && <div><dt>{t.label_servizi}</dt><dd>{p.servizi.map((s) => s.nome).join(', ')}</dd></div>}
+      {p.url && <div><dt>{t.label_online}</dt><dd><a href={p.url} rel="noopener" target="_blank">{t.visita}</a></dd></div>}
     </dl>
 
     {p.copertina && (
@@ -54,13 +56,13 @@ const og = p.copertina
 
     {p.risultato && (
       <aside class="risultato">
-        <h2>Risultato</h2>
+        <h2>{t.label_risultato}</h2>
         <p>{p.risultato}</p>
       </aside>
     )}
 
     <p class="cta">
-      <a class="btn" href="/contatti/">Hai un progetto simile? Richiedi un preventivo</a>
+      <a class="btn" href="/contatti/">{t.cta_progetto}</a>
     </p>
   </article>
 </Base>

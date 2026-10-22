@@ -1,0 +1,122 @@
+---
+// Progetto in evidenza in cima alla pagina Progetti: testo a sinistra, funzionalità e immagine a destra.
+import { Image } from 'astro:assets';
+import Icona from './Icona.astro';
+import type { Progetto } from '../lib/wp';
+import type { Testi } from '../lib/testi';
+
+interface Props {
+  progetto: Progetto;
+  testi: Testi['progetti'];
+}
+const { progetto: p, testi: t } = Astro.props;
+const online = p.stato === 'online';
+const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
+---
+
+<article class="evidenza-box">
+  <div class="testo">
+    <p class="badge">
+      <span class:list={['stato', { online }]}>
+        {online ? <span class="punto" /> : <Icona nome="clock" size={12} />}
+        {online ? t.stato_online : t.stato_sviluppo}
+      </span>
+      <span class="etichetta">{t.etichetta_evidenza}</span>
+    </p>
+    <h2><a href={`/progetti/${p.slug}/`}>{p.titolo}</a></h2>
+    {p.sottotitolo && <p class="sottotitolo">{p.sottotitolo}</p>}
+    {p.estratto && <p class="estratto">{p.estratto}</p>}
+    {tag.length > 0 && (
+      <ul class="tags">
+        {tag.map((s) => <li>{s}</li>)}
+      </ul>
+    )}
+    <p class="piede">
+      <a href={`/progetti/${p.slug}/`}>{t.dettagli}<Icona nome="arrowRight" size={14} /></a>
+      {p.url && online && (
+        <a href={p.url} target="_blank" rel="noopener"><Icona nome="external" size={14} />{t.visita}</a>
+      )}
+      {p.repository && (
+        <a href={p.repository} target="_blank" rel="noopener" aria-label={`GitHub: ${p.titolo}`}><Icona nome="github" size={18} /></a>
+      )}
+    </p>
+  </div>
+
+  <div class="lato">
+    {p.funzionalita.length > 0 && (
+      <div>
+        <p class="titoletto">{t.funzionalita_titolo}</p>
+        <ul class="funzioni">
+          {p.funzionalita.map((f) => <li>{f}</li>)}
+        </ul>
+      </div>
+    )}
+    <a class="media" href={`/progetti/${p.slug}/`} tabindex="-1" aria-hidden="true">
+      {p.copertina ? (
+        <Image
+          src={p.copertina.src}
+          alt=""
+          width={p.copertina.width ?? 1200}
+          height={p.copertina.height ?? 750}
+          widths={[640, 960, 1400]}
+          sizes="(min-width: 64rem) 45vw, 100vw"
+          loading="eager"
+          fetchpriority="high"
+        />
+      ) : (
+        <span class="vuoto"><Icona nome="clock" size={22} />{t.presto}</span>
+      )}
+    </a>
+  </div>
+</article>
+
+<style>
+  .evidenza-box {
+    display: grid;
+    gap: 2.5rem;
+    padding: clamp(1.5rem, 3.5vw, 3rem);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  @media (min-width: 64rem) { .evidenza-box { grid-template-columns: 1fr 1fr; gap: 4rem; } }
+  .evidenza-box p { margin: 0; }
+  .testo, .lato { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .badge { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+  .stato {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: var(--fs-2xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .stato.online { color: var(--accent-light); background: var(--accent-soft); border-color: var(--accent-border); }
+  .punto { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: currentColor; }
+  .etichetta, .titoletto { font-size: var(--fs-2xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+  h2 { font-size: var(--fs-h3); margin: 0; }
+  h2 a { color: var(--text); text-decoration: none; }
+  h2 a:hover { color: var(--accent-light); }
+  .sottotitolo { color: var(--accent-light); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .estratto { color: var(--text-soft); line-height: 1.7; }
+
+  .piede { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); margin-top: auto !important; font-size: var(--fs-sm); }
+  .piede a { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); text-decoration: none; }
+  .piede a:first-child { color: var(--accent-light); font-weight: 600; }
+  .piede a:hover { color: var(--text); }
+
+  .funzioni { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.75rem; font-size: var(--fs-sm); }
+  .funzioni li { display: flex; gap: 0.75rem; align-items: flex-start; }
+  .funzioni li::before { content: ''; flex-shrink: 0; margin-top: 0.45rem; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--accent); }
+
+  .media { display: block; aspect-ratio: 16 / 10; border-radius: calc(var(--radius) * 0.6); overflow: hidden; background: var(--bg); border: 1px solid var(--border); }
+  .media img { width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 0.6s ease; }
+  .media:hover img { transform: scale(1.03); }
+  .vuoto { height: 100%; display: grid; place-content: center; justify-items: center; gap: 0.5rem; color: var(--muted); font-size: var(--fs-sm); }
+</style>
