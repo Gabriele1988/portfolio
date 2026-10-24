@@ -172,7 +172,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
     let W = 0, H = 0, dpr = 1, R = 160, L = 2000, passo = 30, ld = 0, lx = 0, ly = 0;
     // Punti del percorso, dal più recente al più vecchio (la testa si aggiunge a parte).
     const percorso: { x: number; y: number; t: number }[] = [];
-    const VITA = 5000; // ms prima che un punto della scia sparisca
+    const VITA = 3500; // ms prima che un punto della scia sparisca
     const datiPunti = new Float32Array(64 * 3);
     let scie: { t: WebGLTexture; fb: WebGLFramebuffer }[] = [];
     let sw = 0, sh = 0;
@@ -197,7 +197,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       ly = largo ? H * 0.58 : H * 0.4;
       // Raggio della goccia sul cursore e lunghezza massima della scia.
       R = largo ? Math.min(220, Math.max(120, W * 0.115)) : W * 0.17;
-      L = Math.max(W, H) * 2.2;
+      L = Math.max(W, H) * 1.1;
       passo = L / 60;
       sw = Math.max(2, Math.round(W / 2));
       sh = Math.max(2, Math.round(H / 2));
@@ -239,7 +239,8 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       }
       while (percorso.length > 62 || (percorso.length && ora - percorso[percorso.length - 1].t > VITA)) percorso.pop();
 
-      // Raggio: pieno sulla testa, cala in modo lineare con la distanza; gli ultimi istanti di vita lo chiudono.
+      // Raggio: pieno sulla testa, poi cala con la distanza in modo morbido ma deciso (curva al quadrato),
+      // così la scia resta sottile per gran parte della lunghezza; gli ultimi istanti di vita la chiudono.
       let n = 0, s = 0, px = testa.x, py = testa.y;
       datiPunti.set([testa.x, H - testa.y, R], 0);
       n = 1;
@@ -248,7 +249,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
         px = p.x;
         py = p.y;
         const vita = Math.min(1, (VITA - (ora - p.t)) / 1200);
-        const r = R * Math.max(0, 1 - s / L) * Math.max(0, vita);
+        const r = R * Math.pow(Math.max(0, 1 - s / L), 2) * Math.max(0, vita);
         datiPunti.set([p.x, H - p.y, r], n * 3);
         n++;
         if (r <= 0.5) break;
@@ -262,7 +263,8 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       gl!.uniform3fv(pScia.u['punti[0]'], datiPunti);
       gl!.uniform1i(pScia.u.n, n);
       gl!.uniform2f(pScia.u.dim, W, H);
-      gl!.uniform1f(pScia.u.morbido, R * 0.35);
+      // Unione morbida ma piccola: con valori alti i segmenti sovrapposti gonfiano la scia.
+      gl!.uniform1f(pScia.u.morbido, 6);
       gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
 
       // 2. disegna la luna attraverso la scia
