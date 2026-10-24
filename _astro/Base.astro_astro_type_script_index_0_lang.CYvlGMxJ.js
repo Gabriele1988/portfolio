@@ -1,0 +1,1 @@
+import{t as e}from"./client.0JyGCLpV.js";if(!/^(localhost|127\.)/.test(location.hostname)&&navigator.doNotTrack!==`1`){let t=JSON.stringify({p:location.pathname,r:document.referrer,u:new URLSearchParams(location.search).get(`utm_source`)??``,w:innerWidth});navigator.sendBeacon?.(`${e}/wp-json/portfolio/v1/visita`,new Blob([t],{type:`text/plain`}))}
