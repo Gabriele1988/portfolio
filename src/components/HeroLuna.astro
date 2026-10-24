@@ -1,7 +1,6 @@
 ---
 // Hero della pagina Chi sono: una foto vera della luna (mosaico NASA LRO, public/img/luna.webp) resta al buio
-// e appare dentro una scia liquida in WebGL che segue il mouse (o il dito): grande vicino al cursore,
-// sempre più sottile man mano che sbiadisce. Quando nessuno la muove, la scia gira da sola.
+// e appare dentro il fumo che segue il mouse, lo stesso effetto della hero della home.
 // Titolo e testi usano mix-blend-mode: difference, quindi cambiano colore sopra la parte illuminata.
 import { Image } from 'astro:assets';
 
@@ -57,270 +56,30 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
 </section>
 
 <script>
-  // Scia liquida in WebGL. Il percorso del cursore è una fila di punti (al massimo 64): la testa è grande
-  // e il raggio cala in modo lineare con la distanza percorsa, quindi la scia si stringe in modo uniforme
-  // fino alla punta, a qualunque velocità si muova il mouse. Due passaggi per fotogramma:
-  // 1. "scia": a metà risoluzione si calcola la distanza da questa forma (segmenti uniti in modo morbido).
-  // 2. "luna": la foto si vede dentro la forma, con il bordo che ondeggia come un liquido.
+  // Stesso fumo della home (src/scripts/fluid.ts), ma qui fa da finestra sulla luna.
+  import { startFluid } from '../scripts/fluid';
+
   const sez = document.querySelector<HTMLElement>('[data-luna]');
   const canvas = sez?.querySelector<HTMLCanvasElement>('[data-gl]');
-  const gl = canvas?.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
-  if (sez && canvas && !gl) sez.classList.add('senza-gl');
-
-  if (sez && canvas && gl) {
+  if (sez && canvas) {
     const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const vert = `attribute vec2 p; varying vec2 uv; void main(){ uv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }`;
-    const rumore = `
-      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-      float noise(vec2 p){
-        vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-        return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
-      }`;
-    const fragScia = `precision highp float; varying vec2 uv;
-      uniform vec3 punti[64]; uniform int n; uniform vec2 dim; uniform float morbido;
-      float smin(float a, float b, float k){ float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) - k * h * (1.0 - h); }
-      void main(){
-        vec2 px = uv * dim;
-        float d = length(px - punti[0].xy) - punti[0].z;
-        for (int i = 0; i < 63; i++) {
-          if (i >= n - 1) break;
-          vec3 A = punti[i], B = punti[i + 1];
-          vec2 pa = px - A.xy, ba = B.xy - A.xy;
-          float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-4), 0.0, 1.0);
-          d = smin(d, length(pa - ba * h) - mix(A.z, B.z, h), morbido);
-        }
-        // 0.42 = bordo della forma (la soglia del passaggio "luna"); dentro sale, fuori scende.
-        gl_FragColor = vec4(vec3(clamp(0.42 - d / 60.0, 0.0, 1.0)), 1.0);
-      }`;
-    const fragLuna = `precision highp float; varying vec2 uv;
-      uniform sampler2D scia, luna; uniform vec2 dim, centro; uniform float diametro, tempo, buio;
-      ${rumore}
-      void main(){
-        vec2 px = uv * dim;
-        vec2 e = 1.5 / dim;
-        float m = texture2D(scia, uv).r;
-        // Bordo liquido: la soglia oscilla col rumore.
-        float s = 0.42 + (noise(px * 0.012 + tempo * 0.5) - 0.5) * 0.12;
-        float dentro = smoothstep(s - 0.02, s + 0.02, m);
-        // Rifrazione: vicino al bordo la luna si deforma seguendo la pendenza della scia.
-        vec2 g = vec2(texture2D(scia, uv + vec2(e.x, 0.0)).r - texture2D(scia, uv - vec2(e.x, 0.0)).r,
-                      texture2D(scia, uv + vec2(0.0, e.y)).r - texture2D(scia, uv - vec2(0.0, e.y)).r);
-        vec2 lp = (px - centro) / diametro + 0.5 - g * 0.06 * dentro;
-        lp.y = 1.0 - lp.y;
-        // Fuori dall'immagine niente: con CLAMP_TO_EDGE il bordo si allungherebbe in strisce.
-        vec4 c = texture2D(luna, lp) * step(0.0, lp.x) * step(lp.x, 1.0) * step(0.0, lp.y) * step(lp.y, 1.0);
-        float bordo = (smoothstep(s - 0.02, s + 0.02, m) - smoothstep(s + 0.02, s + 0.12, m));
-        // Dentro la scia la luna è più chiara: il testo in "difference" diventa scuro e ben leggibile.
-        vec3 chiara = c.a - (c.a - c.rgb) * 0.4;
-        vec3 col = mix(c.rgb, chiara, dentro) + bordo * 0.18 * c.a;
-        gl_FragColor = vec4(col, c.a) * mix(buio, 1.0, dentro);
-      }`;
-
-    function programma(f: string) {
-      const p = gl!.createProgram()!;
-      for (const [tipo, src] of [[gl!.VERTEX_SHADER, vert], [gl!.FRAGMENT_SHADER, f]] as const) {
-        const s = gl!.createShader(tipo)!;
-        gl!.shaderSource(s, src);
-        gl!.compileShader(s);
-        if (!gl!.getShaderParameter(s, gl!.COMPILE_STATUS)) console.error(gl!.getShaderInfoLog(s));
-        gl!.attachShader(p, s);
-      }
-      gl!.bindAttribLocation(p, 0, 'p');
-      gl!.linkProgram(p);
-      const u: Record<string, WebGLUniformLocation | null> = {};
-      const n = gl!.getProgramParameter(p, gl!.ACTIVE_UNIFORMS);
-      for (let i = 0; i < n; i++) {
-        const nome = gl!.getActiveUniform(p, i)!.name;
-        u[nome] = gl!.getUniformLocation(p, nome);
-      }
-      return { p, u };
-    }
-    const pScia = programma(fragScia);
-    const pLuna = programma(fragLuna);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-    function texture(w: number, h: number) {
-      const t = gl!.createTexture()!;
-      gl!.bindTexture(gl!.TEXTURE_2D, t);
-      gl!.texImage2D(gl!.TEXTURE_2D, 0, gl!.RGBA, w, h, 0, gl!.RGBA, gl!.UNSIGNED_BYTE, null);
-      for (const [k, v] of [[gl!.TEXTURE_MIN_FILTER, gl!.LINEAR], [gl!.TEXTURE_MAG_FILTER, gl!.LINEAR], [gl!.TEXTURE_WRAP_S, gl!.CLAMP_TO_EDGE], [gl!.TEXTURE_WRAP_T, gl!.CLAMP_TO_EDGE]]) gl!.texParameteri(gl!.TEXTURE_2D, k, v);
-      const fb = gl!.createFramebuffer()!;
-      gl!.bindFramebuffer(gl!.FRAMEBUFFER, fb);
-      gl!.framebufferTexture2D(gl!.FRAMEBUFFER, gl!.COLOR_ATTACHMENT0, gl!.TEXTURE_2D, t, 0);
-      gl!.clearColor(0, 0, 0, 1);
-      gl!.clear(gl!.COLOR_BUFFER_BIT);
-      return { t, fb };
-    }
-
-    const lunaTex = gl.createTexture();
-    let lunaPronta = false;
-    const img = new Image();
-    img.onload = () => {
-      gl.bindTexture(gl.TEXTURE_2D, lunaTex);
-      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-      for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
-      lunaPronta = true;
-      if (calmo) for (let i = 0; i < 40; i++) disegna(performance.now());
-    };
-    img.src = canvas.dataset.src!;
-
-    let W = 0, H = 0, dpr = 1, R = 160, L = 2000, passo = 30, ld = 0, lx = 0, ly = 0;
-    // Punti del percorso, dal più recente al più vecchio (la testa si aggiunge a parte).
-    const percorso: { x: number; y: number; t: number }[] = [];
-    const VITA = 3500; // ms prima che un punto della scia sparisca
-    const datiPunti = new Float32Array(64 * 3);
-    let scie: { t: WebGLTexture; fb: WebGLFramebuffer }[] = [];
-    let sw = 0, sh = 0;
-    const meta = { x: 0, y: 0 };
-    const testa = { x: 0, y: 0 };
-    let ultimoInput = -1e9;
-    let visibile = true;
-    let raf = 0;
-    let avviata = false;
-    let ultimo = 0;
-
-    function misura() {
-      const r = sez!.getBoundingClientRect();
-      W = r.width;
-      H = r.height;
-      dpr = Math.min(devicePixelRatio || 1, 1.5);
-      canvas!.width = Math.round(W * dpr);
-      canvas!.height = Math.round(H * dpr);
+    // Luna enorme: su desktop arriva sotto il titolo, così il fumo lo fa cambiare colore.
+    const rect = () => {
+      const W = sez.clientWidth, H = sez.clientHeight;
       const largo = W >= 768;
-      ld = largo ? Math.max(H * 1.5, W * 0.95) : Math.max(W * 1.5, H * 0.7);
-      lx = largo ? W * 0.64 : W * 0.6;
-      ly = largo ? H * 0.58 : H * 0.4;
-      // Raggio della goccia sul cursore e lunghezza massima della scia.
-      R = largo ? Math.min(220, Math.max(120, W * 0.115)) : W * 0.17;
-      L = Math.max(W, H) * 1.1;
-      passo = L / 60;
-      sw = Math.max(2, Math.round(W / 2));
-      sh = Math.max(2, Math.round(H / 2));
-      scie = [texture(sw, sh)];
-      if (!avviata) {
-        avviata = true;
-        meta.x = testa.x = W * 0.62;
-        meta.y = testa.y = H * 0.5;
-      }
-    }
-
-    function disegna(ora: number) {
-      raf = 0;
-      if (!lunaPronta) {
-        if (visibile && !calmo) raf = requestAnimationFrame(disegna);
-        return;
-      }
-      const t = ora / 1000;
-      // Tutto è tarato su 60 fotogrammi al secondo: con schermi più lenti o più veloci la scia dura uguale.
-      const passi = ultimo ? Math.min(4, (ora - ultimo) / 16.67) : 1;
-      ultimo = ora;
-      if (!calmo && ora - ultimoInput > 2500) {
-        meta.x = W * 0.5 + Math.cos(t * 0.35) * W * 0.3;
-        meta.y = H * 0.5 + Math.sin(t * 0.55) * H * 0.26;
-      }
-      const k = 1 - Math.pow(1 - 0.16, passi);
-      testa.x += (meta.x - testa.x) * k;
-      testa.y += (meta.y - testa.y) * k;
-
-      // Nuovi punti a distanza fissa lungo il percorso; i più vecchi spariscono.
-      let ultimoPunto = percorso[0] ?? { x: testa.x, y: testa.y, t: ora };
-      if (!percorso.length) percorso.push(ultimoPunto);
-      let dist = Math.hypot(testa.x - ultimoPunto.x, testa.y - ultimoPunto.y);
-      while (dist >= passo) {
-        const f = passo / dist;
-        ultimoPunto = { x: ultimoPunto.x + (testa.x - ultimoPunto.x) * f, y: ultimoPunto.y + (testa.y - ultimoPunto.y) * f, t: ora };
-        percorso.unshift(ultimoPunto);
-        dist -= passo;
-      }
-      while (percorso.length > 62 || (percorso.length && ora - percorso[percorso.length - 1].t > VITA)) percorso.pop();
-
-      // Raggio: pieno sulla testa, poi cala con la distanza in modo morbido ma deciso (curva al quadrato),
-      // così la scia resta sottile per gran parte della lunghezza; gli ultimi istanti di vita la chiudono.
-      let n = 0, s = 0, px = testa.x, py = testa.y;
-      datiPunti.set([testa.x, H - testa.y, R], 0);
-      n = 1;
-      for (const p of percorso) {
-        s += Math.hypot(p.x - px, p.y - py);
-        px = p.x;
-        py = p.y;
-        const vita = Math.min(1, (VITA - (ora - p.t)) / 1200);
-        const r = R * Math.pow(Math.max(0, 1 - s / L), 2) * Math.max(0, vita);
-        datiPunti.set([p.x, H - p.y, r], n * 3);
-        n++;
-        if (r <= 0.5) break;
-      }
-
-      // 1. forma della scia (coordinate in pixel CSS, y dal basso)
-      const scrivi = scie[0];
-      gl!.bindFramebuffer(gl!.FRAMEBUFFER, scrivi.fb);
-      gl!.viewport(0, 0, sw, sh);
-      gl!.useProgram(pScia.p);
-      gl!.uniform3fv(pScia.u['punti[0]'], datiPunti);
-      gl!.uniform1i(pScia.u.n, n);
-      gl!.uniform2f(pScia.u.dim, W, H);
-      // Unione morbida ma piccola: con valori alti i segmenti sovrapposti gonfiano la scia.
-      gl!.uniform1f(pScia.u.morbido, 6);
-      gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
-
-      // 2. disegna la luna attraverso la scia
-      gl!.bindFramebuffer(gl!.FRAMEBUFFER, null);
-      gl!.viewport(0, 0, canvas!.width, canvas!.height);
-      gl!.clearColor(0, 0, 0, 0);
-      gl!.clear(gl!.COLOR_BUFFER_BIT);
-      gl!.useProgram(pLuna.p);
-      gl!.activeTexture(gl!.TEXTURE0);
-      gl!.bindTexture(gl!.TEXTURE_2D, scrivi.t);
-      gl!.uniform1i(pLuna.u.scia, 0);
-      gl!.activeTexture(gl!.TEXTURE1);
-      gl!.bindTexture(gl!.TEXTURE_2D, lunaTex);
-      gl!.uniform1i(pLuna.u.luna, 1);
-      gl!.uniform2f(pLuna.u.dim, W, H);
-      gl!.uniform2f(pLuna.u.centro, lx, H - ly);
-      gl!.uniform1f(pLuna.u.diametro, ld);
-      gl!.uniform1f(pLuna.u.tempo, t);
-      gl!.uniform1f(pLuna.u.buio, 0.1);
-      gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
-
-      if (visibile && !calmo) raf = requestAnimationFrame(disegna);
-    }
-
-    function muovi(cx: number, cy: number) {
-      const r = sez!.getBoundingClientRect();
-      ultimoInput = performance.now();
-      meta.x = cx - r.left;
-      meta.y = cy - r.top;
-    }
-
-    misura();
-    let attesa = 0;
-    addEventListener('resize', () => {
-      clearTimeout(attesa);
-      attesa = window.setTimeout(() => {
-        misura();
-        if (calmo) for (let i = 0; i < 40; i++) disegna(performance.now());
-      }, 150);
-    });
-
-    if (!calmo) {
-      sez.addEventListener('pointermove', (e) => muovi(e.clientX, e.clientY));
-      sez.addEventListener('pointerdown', (e) => muovi(e.clientX, e.clientY));
-      // Su telefono il dito che scorre la pagina interrompe i pointer event: si ascolta anche il touch.
-      sez.addEventListener('touchmove', (e) => muovi(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
-      new IntersectionObserver(([v]) => {
-        visibile = v.isIntersecting;
-        if (visibile && !raf) raf = requestAnimationFrame(disegna);
-      }).observe(sez);
-    }
+      const lato = largo ? Math.max(H * 1.5, W * 0.95) : Math.max(W * 1.5, H * 0.7);
+      const cx = largo ? W * 0.64 : W * 0.6;
+      const cy = largo ? H * 0.58 : H * 0.4;
+      return { x: cx - lato / 2, y: cy - lato / 2, lato };
+    };
+    const stop = calmo ? null : startFluid(canvas, { target: sez, immagine: { src: canvas.dataset.src!, rect, buio: 0.1 } });
+    if (!stop) sez.classList.add('senza-gl');
   }
 </script>
 
 <style>
   .hero-luna {
+    touch-action: pan-y;
     position: relative;
     min-height: 100vh;
     min-height: 100svh;

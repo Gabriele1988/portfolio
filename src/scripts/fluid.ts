@@ -5,11 +5,19 @@
 // - mouse e touch passano da Pointer Events, senza bloccare lo scorrimento su mobile;
 // - l'animazione si ferma quando la hero non è visibile o la scheda è nascosta;
 // - la canvas è trasparente, così il fumo poggia sul colore di sfondo del sito;
-// - se WebGL non è disponibile restituisce null (la hero mostra uno sfondo statico).
+// - se WebGL non è disponibile restituisce null (la hero mostra uno sfondo statico);
+// - con l'opzione "immagine" il fumo non si vede colorato ma fa da finestra su una foto (pagina Chi sono).
 
 export interface FluidOptions {
   /** Elemento che riceve i movimenti del puntatore (di solito la sezione hero). */
   target: HTMLElement;
+  /** Foto che appare dove passa il fumo; rect() dà posizione e lato del quadrato in pixel CSS. */
+  immagine?: {
+    src: string;
+    rect: () => { x: number; y: number; lato: number };
+    /** Quanto si intravede la foto dove non c'è fumo (0–1). */
+    buio?: number;
+  };
 }
 
 const config = {
@@ -30,6 +38,10 @@ const clearSrc =
 // così dietro il fumo c'è esattamente il colore di sfondo del sito, senza stacchi.
 const displaySrc =
   "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; void main () {     vec3 c = min(texture2D(uTexture, vUv).rgb, 1.0);     gl_FragColor = vec4(c, max(c.r, max(c.g, c.b))); }";
+// Variante per "immagine": la densità del fumo decide dove si vede la foto. Dentro il fumo la foto è
+// schiarita, così il testo in mix-blend-mode: difference sopra diventa scuro e leggibile.
+const displayImmagineSrc =
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; uniform sampler2D uImmagine; uniform vec2 dim; uniform vec3 rect; uniform float buio; void main () {     vec3 d = texture2D(uTexture, vUv).rgb;     float m = smoothstep(0.02, 0.45, max(d.r, max(d.g, d.b)));     vec2 p = (vUv * dim - rect.xy) / rect.z;     vec4 c = texture2D(uImmagine, vec2(p.x, 1.0 - p.y)) * step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0);     vec3 chiara = c.a - (c.a - c.rgb) * 0.4;     gl_FragColor = vec4(mix(c.rgb, chiara, m), c.a) * mix(buio, 1.0, m); }";
 const splatSrc =
   "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTarget; uniform float aspectRatio; uniform vec3 color; uniform vec2 point; uniform float radius; void main () {     vec2 p = vUv - point.xy;     p.x *= aspectRatio;     vec3 splat = exp(-dot(p, p) / radius) * color;     vec3 base = texture2D(uTarget, vUv).xyz;     gl_FragColor = vec4(base + splat, 1.0); }";
 const advectionManualFilteringSrc =
@@ -114,7 +126,7 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     const baseVertexShader = compileShader(g.VERTEX_SHADER, baseVertexSrc);
     const frag = (s: string) => compileShader(g.FRAGMENT_SHADER, s);
     clearProgram = new GLProgram(baseVertexShader, frag(clearSrc));
-    displayProgram = new GLProgram(baseVertexShader, frag(displaySrc));
+    displayProgram = new GLProgram(baseVertexShader, frag(opts.immagine ? displayImmagineSrc : displaySrc));
     splatProgram = new GLProgram(baseVertexShader, frag(splatSrc));
     advectionProgram = new GLProgram(
       baseVertexShader,
@@ -173,6 +185,27 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     return g.checkFramebufferStatus(g.FRAMEBUFFER) === g.FRAMEBUFFER_COMPLETE;
   }
   if (!initFramebuffers()) return null;
+
+  // Foto per l'opzione "immagine": caricata in una texture a parte.
+  let immagineTex: WebGLTexture | null = null;
+  if (opts.immagine) {
+    const img = new Image();
+    img.onload = () => {
+      immagineTex = g.createTexture();
+      g.activeTexture(g.TEXTURE0 + 4);
+      g.bindTexture(g.TEXTURE_2D, immagineTex);
+      g.pixelStorei(g.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, img);
+      g.pixelStorei(g.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR);
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR);
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE);
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
+      // L'unità 4 appartiene a "divergence": la si rimette a posto subito.
+      g.bindTexture(g.TEXTURE_2D, divergence[0]);
+    };
+    img.src = opts.immagine.src;
+  }
 
   g.bindBuffer(g.ARRAY_BUFFER, g.createBuffer());
   g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), g.STATIC_DRAW);
@@ -288,6 +321,27 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     g.viewport(0, 0, g.drawingBufferWidth, g.drawingBufferHeight);
     displayProgram.bind();
     g.uniform1i(displayProgram.uniforms.uTexture, density.first[2]);
+    if (opts.immagine) {
+      if (!immagineTex) {
+        g.bindFramebuffer(g.FRAMEBUFFER, null);
+        g.clearColor(0, 0, 0, 0);
+        g.clear(g.COLOR_BUFFER_BIT);
+        g.clearColor(0, 0, 0, 1);
+        return;
+      }
+      // Coordinate in pixel della canvas, con y dal basso come in WebGL.
+      const sx = canvas.width / canvas.clientWidth;
+      const r = opts.immagine.rect();
+      g.activeTexture(g.TEXTURE0 + 4);
+      g.bindTexture(g.TEXTURE_2D, immagineTex);
+      g.uniform1i(displayProgram.uniforms.uImmagine, 4);
+      g.uniform2f(displayProgram.uniforms.dim, canvas.width, canvas.height);
+      g.uniform3f(displayProgram.uniforms.rect, r.x * sx, canvas.height - (r.y + r.lato) * sx, r.lato * sx);
+      g.uniform1f(displayProgram.uniforms.buio, opts.immagine.buio ?? 0.1);
+      blit(null);
+      g.bindTexture(g.TEXTURE_2D, divergence[0]);
+      return;
+    }
     blit(null);
   }
 
