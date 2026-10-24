@@ -729,6 +729,18 @@ function portfolio_testi_schema() {
 	);
 }
 
+/** Icone a contorno del sito (src/lib/icone.ts), da scegliere nei campi "Icona". */
+function portfolio_icone() {
+	return array(
+		'message' => 'Fumetto', 'search' => 'Lente', 'palette' => 'Tavolozza', 'layout' => 'Layout',
+		'code' => 'Codice', 'rocket' => 'Razzo', 'wrench' => 'Chiave inglese', 'server' => 'Server',
+		'chart' => 'Grafico', 'zap' => 'Fulmine', 'globe' => 'Globo', 'smartphone' => 'Smartphone',
+		'snail' => 'Lumaca (lentezza)', 'compass' => 'Bussola', 'lock' => 'Lucchetto', 'settings' => 'Ingranaggio',
+		'moto' => 'Moto', 'fish' => 'Pesce', 'chefHat' => 'Cappello da chef', 'torii' => 'Portale giapponese',
+		'ball' => 'Pallone', 'book' => 'Libro', 'camera' => 'Macchina fotografica', 'music' => 'Musica', 'heart' => 'Cuore',
+	);
+}
+
 /* Elenchi della pagina Servizi (repeater): problemi, fasi del processo, domande frequenti. */
 add_action( 'acf/init', function () {
 	if ( ! function_exists( 'acf_add_local_field_group' ) ) {
@@ -758,18 +770,14 @@ add_action( 'acf/init', function () {
 			'sub_fields'   => $fields,
 		);
 	};
-	$icone = array(
-		'message' => 'Fumetto (contatto)', 'search' => 'Lente (analisi)', 'palette' => 'Tavolozza (design)', 'layout' => 'Layout (prototipi)',
-		'code' => 'Codice (sviluppo)', 'rocket' => 'Razzo (lancio)', 'wrench' => 'Chiave inglese (supporto)', 'server' => 'Server',
-		'chart' => 'Grafico', 'zap' => 'Fulmine', 'globe' => 'Globo', 'smartphone' => 'Smartphone',
-	);
+	$icone = portfolio_icone();
 	acf_add_local_field_group( array(
 		'key'        => 'group_portfolio_servizi_elenchi',
 		'title'      => 'Elenchi della pagina',
 		'menu_order' => 10,
 		'fields'     => array(
 			$rep( 'problemi', 'Problemi che risolvo', 'Aggiungi problema', array(
-				'emoji'  => array( 'Emoji', 'text', 15 ),
+				'icona'  => array( 'Icona', 'select', 30, $icone ),
 				'titolo' => array( 'Titolo', 'text', 85 ),
 				'testo'  => array( 'Testo', 'textarea', 100 ),
 			) ),
@@ -856,7 +864,10 @@ add_action( 'acf/init', function () {
 				$etichetta( 'personale' ),
 				$f( 'personale', 'titolo', 'Titolo', 'text', array( 'wrapper' => array( 'width' => 60 ) ) ),
 				$f( 'personale', 'testo', 'Testo', 'textarea', array( 'rows' => 5, 'instructions' => 'Una riga vuota separa i paragrafi.' ) ),
-				$f( 'personale', 'passioni', 'Passioni', 'textarea', array( 'rows' => 4, 'instructions' => 'Una per riga, anche con emoji, es. 🏍️ Moto.' ) ),
+				$rep( 'personale', 'passioni', 'Passioni', 'Aggiungi passione', array(
+					'icona' => array( 'Icona', 'select', 40, array( 'choices' => portfolio_icone() ) ),
+					'testo' => array( 'Testo', 'text', 60 ),
+				) ),
 			),
 		),
 		'contatti'    => array(
@@ -992,7 +1003,7 @@ function portfolio_chisono_sezioni() {
 			}
 		} elseif ( 'personale' === $tipo ) {
 			$s['testo']    = $str( $row, 'testo' );
-			$s['passioni'] = $righe( $str( $row, 'passioni' ) );
+			$s['passioni'] = $sub( 'passioni', array( 'icona', 'testo' ) );
 		} elseif ( 'contatti' === $tipo ) {
 			foreach ( array( 'testo', 'pulsante', 'url' ) as $k ) {
 				$s[ $k ] = $str( $row, $k );
@@ -1041,7 +1052,7 @@ function portfolio_servizi_elenchi() {
 		return $out;
 	};
 	return array(
-		'problemi' => $righe( 'problemi', array( 'emoji', 'titolo', 'testo' ) ),
+		'problemi' => $righe( 'problemi', array( 'icona', 'titolo', 'testo' ) ),
 		'processo' => $righe( 'processo', array( 'icona', 'titolo', 'testo' ) ),
 		'faq'      => $righe( 'faq', array( 'domanda', 'risposta' ) ),
 	);

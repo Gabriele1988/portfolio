@@ -183,7 +183,7 @@ const jsonLd = {
           <div class="intro" data-appari>{testa}</div>
           <div class="corpo" data-appari>
             {paragrafi(s.testo).map((p) => <p>{p}</p>)}
-            {s.passioni.length > 0 && <ul class="passioni">{s.passioni.map((x) => <li>{x}</li>)}</ul>}
+            {s.passioni.length > 0 && <ul class="passioni">{s.passioni.map((x) => <li>{x.icona && <Icona nome={x.icona} size={18} />}{x.testo}</li>)}</ul>}
           </div>
         </div>
       </section>
@@ -403,7 +403,8 @@ const jsonLd = {
   .contrasto .corpo p { font-size: var(--fs-lg); line-height: 1.7; color: var(--text); }
   .contrasto .corpo p + p { margin-top: 1.25rem; }
   .passioni { list-style: none; margin: 2rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.6rem; }
-  .passioni li { padding: 0.55rem 1rem; border-radius: 999px; background: rgb(255 255 255 / 0.06); border: 1px solid rgb(255 255 255 / 0.1); font-size: var(--fs-sm); }
+  .passioni li { display: inline-flex; align-items: center; gap: 0.55rem; padding: 0.55rem 1.1rem; border-radius: 999px; background: rgb(255 255 255 / 0.04); border: 1px solid rgb(255 255 255 / 0.12); font-size: var(--fs-sm); }
+  .passioni :global(svg) { color: var(--accent-light); flex: none; }
 
   /* S6: chiusura con contatti */
   .chiusura { padding: clamp(2rem, 5vw, 4.5rem); border: 1px solid var(--accent-border); border-radius: calc(var(--radius) * 1.5); background: radial-gradient(90% 120% at 100% 0%, var(--accent-soft), transparent 65%), var(--surface); align-items: center; }

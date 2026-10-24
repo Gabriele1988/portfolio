@@ -2,19 +2,19 @@
 // Un elenco vuoto nel CMS, o il CMS non configurato, usa quelli qui sotto.
 import { CMS_URL } from 'astro:env/client';
 
-export interface Problema { emoji: string; titolo: string; testo: string }
+export interface Problema { icona: string; titolo: string; testo: string }
 export interface Fase { icona: string; titolo: string; testo: string }
 export interface Domanda { domanda: string; risposta: string }
 export interface ElenchiServizi { problemi: Problema[]; processo: Fase[]; faq: Domanda[] }
 
 export const ELENCHI_DEFAULT: ElenchiServizi = {
   problemi: [
-    { emoji: '🔍', titolo: 'Nessuno ti trova su Google', testo: 'Costruisco siti ottimizzati SEO dalla base: struttura semantica, velocità e contenuti pensati per posizionarti.' },
-    { emoji: '📱', titolo: 'Il tuo sito non funziona da mobile', testo: 'Progetto mobile-first: ogni elemento è pensato per funzionare perfettamente su qualsiasi schermo.' },
-    { emoji: '🐌', titolo: 'Il sito è lento e i clienti se ne vanno', testo: 'Tecnologie moderne e ottimizzazione delle performance per caricamenti sotto i 2 secondi.' },
-    { emoji: '🧭', titolo: 'Non sai da dove iniziare', testo: 'Ti guido passo dopo passo, dalla strategia al lancio. Non devi sapere nulla di tecnico, ci penso io.' },
-    { emoji: '🔒', titolo: 'Hai un sito vecchio e non sicuro', testo: 'Porto il tuo sito su tecnologie aggiornate, con HTTPS, backup e manutenzione continua.' },
-    { emoji: '⚙️', titolo: 'Gestisci tutto a mano', testo: 'Applicazioni web su misura con Java, Spring Boot e Angular che automatizzano ordini, clienti e magazzino.' },
+    { icona: 'search', titolo: 'Nessuno ti trova su Google', testo: 'Costruisco siti ottimizzati SEO dalla base: struttura semantica, velocità e contenuti pensati per posizionarti.' },
+    { icona: 'smartphone', titolo: 'Il tuo sito non funziona da mobile', testo: 'Progetto mobile-first: ogni elemento è pensato per funzionare perfettamente su qualsiasi schermo.' },
+    { icona: 'snail', titolo: 'Il sito è lento e i clienti se ne vanno', testo: 'Tecnologie moderne e ottimizzazione delle performance per caricamenti sotto i 2 secondi.' },
+    { icona: 'compass', titolo: 'Non sai da dove iniziare', testo: 'Ti guido passo dopo passo, dalla strategia al lancio. Non devi sapere nulla di tecnico, ci penso io.' },
+    { icona: 'lock', titolo: 'Hai un sito vecchio e non sicuro', testo: 'Porto il tuo sito su tecnologie aggiornate, con HTTPS, backup e manutenzione continua.' },
+    { icona: 'settings', titolo: 'Gestisci tutto a mano', testo: 'Applicazioni web su misura con Java, Spring Boot e Angular che automatizzano ordini, clienti e magazzino.' },
   ],
   processo: [
     { icona: 'message', titolo: 'Primo contatto', testo: 'Ci conosciamo con una call o un caffè. Mi racconti la tua attività, gli obiettivi e le esigenze. Io ascolto e prendo appunti.' },

@@ -1,7 +1,7 @@
 ---
 // Hero della pagina Chi sono: una foto vera della luna (mosaico NASA LRO, public/img/luna.webp) resta al buio
-// e appare dentro una macchia d'inchiostro che segue il mouse (o il dito): una goccia grande con una
-// piccola scia di gocce dietro. Quando nessuno la muove, la macchia gira da sola.
+// e appare dentro una scia liquida in WebGL che segue il mouse (o il dito): grande vicino al cursore,
+// sempre più sottile man mano che sbiadisce. Quando nessuno la muove, la scia gira da sola.
 // Titolo e testi usano mix-blend-mode: difference, quindi cambiano colore sopra la parte illuminata.
 import { Image } from 'astro:assets';
 
@@ -18,21 +18,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
 ---
 
 <section class="hero-luna" data-luna>
-  <svg class="luna" aria-hidden="true" data-svg>
-    <defs>
-      <filter id="goo-luna" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="18" data-sfoca />
-        <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -10" />
-      </filter>
-      <mask id="maschera-luna" maskUnits="userSpaceOnUse" x="0" y="0" width="10000" height="10000">
-        <g filter="url(#goo-luna)" fill="#fff">
-          {Array.from({ length: 9 }, () => <circle cx="-999" cy="-999" r="0" data-goccia />)}
-        </g>
-      </mask>
-    </defs>
-    <image href="/img/luna.webp" class="buio" data-luna-img />
-    <image href="/img/luna.webp" mask="url(#maschera-luna)" data-luna-img />
-  </svg>
+  <canvas class="luna" aria-hidden="true" data-gl data-src="/img/luna.webp"></canvas>
 
   <div class="wrap griglia">
     <div class="testo">
@@ -71,96 +57,204 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
 </section>
 
 <script>
+  // Scia liquida in WebGL. Due passaggi per fotogramma:
+  // 1. "scia": una texture a metà risoluzione che ricorda dove è passato il cursore. Ogni fotogramma
+  //    sbiadisce un po' e ondeggia con del rumore; sul cursore si aggiunge una macchia piena.
+  // 2. "luna": la foto si vede dove la scia supera una soglia. La testa, rinnovata ogni fotogramma,
+  //    resta grande; la coda sbiadisce e quindi si assottiglia fino a sparire.
   const sez = document.querySelector<HTMLElement>('[data-luna]');
-  const svg = sez?.querySelector<SVGSVGElement>('[data-svg]');
-  if (sez && svg) {
+  const canvas = sez?.querySelector<HTMLCanvasElement>('[data-gl]');
+  const gl = canvas?.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
+  if (sez && canvas && !gl) sez.classList.add('senza-gl');
+
+  if (sez && canvas && gl) {
     const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const immagini = [...svg.querySelectorAll<SVGImageElement>('[data-luna-img]')];
-    const sfoca = svg.querySelector<SVGFEGaussianBlurElement>('[data-sfoca]')!;
-    // Macchia grande = una goccia centrale con due lobi che la rendono irregolare.
-    // Dietro c'è la scia: gocce sempre più piccole, ognuna insegue quella davanti.
-    const scala = [1, 0.62, 0.5, 0.42, 0.32, 0.25, 0.19, 0.14, 0.1];
-    const lobi = [
-      { dx: -0.55, dy: 0.28, fase: 0 },
-      { dx: 0.45, dy: -0.42, fase: 2.1 },
-    ];
-    const gocce = [...svg.querySelectorAll<SVGCircleElement>('[data-goccia]')].map((el, i) => ({ el, f: scala[i], x: 0, y: 0 }));
-    let W = 0, H = 0, R = 200;
+    const vert = `attribute vec2 p; varying vec2 uv; void main(){ uv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }`;
+    const rumore = `
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p){
+        vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+      }`;
+    const fragScia = `precision highp float; varying vec2 uv;
+      uniform sampler2D prec; uniform vec2 dim, da, a; uniform float raggio, tempo, sbiadisci;
+      ${rumore}
+      float segmento(vec2 p, vec2 a0, vec2 b0){ vec2 pa = p - a0, ba = b0 - a0; float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-4), 0.0, 1.0); return length(pa - ba * h); }
+      void main(){
+        // La scia ondeggia come un liquido: si legge il fotogramma prima da un punto spostato dal rumore.
+        vec2 n = vec2(noise(uv * 6.0 + tempo * 0.4), noise(uv * 6.0 + 7.3 - tempo * 0.4)) - 0.5;
+        float v = texture2D(prec, uv + n * 0.004).r * sbiadisci - 0.004;
+        vec2 px = uv * dim;
+        float d = segmento(px, da, a);
+        float m = clamp(1.0 - d / raggio, 0.0, 1.0);
+        gl_FragColor = vec4(vec3(max(v, m)), 1.0);
+      }`;
+    const fragLuna = `precision highp float; varying vec2 uv;
+      uniform sampler2D scia, luna; uniform vec2 dim, centro; uniform float diametro, tempo, buio;
+      ${rumore}
+      void main(){
+        vec2 px = uv * dim;
+        vec2 e = 1.5 / dim;
+        float m = texture2D(scia, uv).r;
+        // Bordo liquido: la soglia oscilla col rumore.
+        float s = 0.42 + (noise(px * 0.012 + tempo * 0.5) - 0.5) * 0.12;
+        float dentro = smoothstep(s - 0.02, s + 0.02, m);
+        // Rifrazione: vicino al bordo la luna si deforma seguendo la pendenza della scia.
+        vec2 g = vec2(texture2D(scia, uv + vec2(e.x, 0.0)).r - texture2D(scia, uv - vec2(e.x, 0.0)).r,
+                      texture2D(scia, uv + vec2(0.0, e.y)).r - texture2D(scia, uv - vec2(0.0, e.y)).r);
+        vec2 lp = (px - centro) / diametro + 0.5 - g * 0.06 * dentro;
+        lp.y = 1.0 - lp.y;
+        // Fuori dall'immagine niente: con CLAMP_TO_EDGE il bordo si allungherebbe in strisce.
+        vec4 c = texture2D(luna, lp) * step(0.0, lp.x) * step(lp.x, 1.0) * step(0.0, lp.y) * step(lp.y, 1.0);
+        float bordo = (smoothstep(s - 0.02, s + 0.02, m) - smoothstep(s + 0.02, s + 0.12, m));
+        vec3 col = c.rgb + bordo * 0.18 * c.a;
+        gl_FragColor = vec4(col, c.a) * mix(buio, 1.0, dentro);
+      }`;
+
+    function programma(f: string) {
+      const p = gl!.createProgram()!;
+      for (const [tipo, src] of [[gl!.VERTEX_SHADER, vert], [gl!.FRAGMENT_SHADER, f]] as const) {
+        const s = gl!.createShader(tipo)!;
+        gl!.shaderSource(s, src);
+        gl!.compileShader(s);
+        if (!gl!.getShaderParameter(s, gl!.COMPILE_STATUS)) console.error(gl!.getShaderInfoLog(s));
+        gl!.attachShader(p, s);
+      }
+      gl!.bindAttribLocation(p, 0, 'p');
+      gl!.linkProgram(p);
+      const u: Record<string, WebGLUniformLocation | null> = {};
+      const n = gl!.getProgramParameter(p, gl!.ACTIVE_UNIFORMS);
+      for (let i = 0; i < n; i++) {
+        const nome = gl!.getActiveUniform(p, i)!.name;
+        u[nome] = gl!.getUniformLocation(p, nome);
+      }
+      return { p, u };
+    }
+    const pScia = programma(fragScia);
+    const pLuna = programma(fragLuna);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+    function texture(w: number, h: number) {
+      const t = gl!.createTexture()!;
+      gl!.bindTexture(gl!.TEXTURE_2D, t);
+      gl!.texImage2D(gl!.TEXTURE_2D, 0, gl!.RGBA, w, h, 0, gl!.RGBA, gl!.UNSIGNED_BYTE, null);
+      for (const [k, v] of [[gl!.TEXTURE_MIN_FILTER, gl!.LINEAR], [gl!.TEXTURE_MAG_FILTER, gl!.LINEAR], [gl!.TEXTURE_WRAP_S, gl!.CLAMP_TO_EDGE], [gl!.TEXTURE_WRAP_T, gl!.CLAMP_TO_EDGE]]) gl!.texParameteri(gl!.TEXTURE_2D, k, v);
+      const fb = gl!.createFramebuffer()!;
+      gl!.bindFramebuffer(gl!.FRAMEBUFFER, fb);
+      gl!.framebufferTexture2D(gl!.FRAMEBUFFER, gl!.COLOR_ATTACHMENT0, gl!.TEXTURE_2D, t, 0);
+      gl!.clearColor(0, 0, 0, 1);
+      gl!.clear(gl!.COLOR_BUFFER_BIT);
+      return { t, fb };
+    }
+
+    const lunaTex = gl.createTexture();
+    let lunaPronta = false;
+    const img = new Image();
+    img.onload = () => {
+      gl.bindTexture(gl.TEXTURE_2D, lunaTex);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+      lunaPronta = true;
+      if (calmo) for (let i = 0; i < 40; i++) disegna(performance.now());
+    };
+    img.src = canvas.dataset.src!;
+
+    let W = 0, H = 0, dpr = 1, R = 160, ld = 0, lx = 0, ly = 0;
+    let scie: { t: WebGLTexture; fb: WebGLFramebuffer }[] = [];
+    let sw = 0, sh = 0;
     const meta = { x: 0, y: 0 };
+    const testa = { x: 0, y: 0 };
+    let prima = { x: 0, y: 0 };
     let ultimoInput = -1e9;
     let visibile = true;
     let raf = 0;
-    let pronto = false;
+    let avviata = false;
+    let ultimo = 0;
 
     function misura() {
       const r = sez!.getBoundingClientRect();
       W = r.width;
       H = r.height;
-      svg!.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      dpr = Math.min(devicePixelRatio || 1, 1.5);
+      canvas!.width = Math.round(W * dpr);
+      canvas!.height = Math.round(H * dpr);
       const largo = W >= 768;
-      // Luna enorme: su desktop arriva sotto il titolo, così la macchia lo fa cambiare colore.
-      const ld = largo ? Math.max(H * 1.5, W * 0.95) : Math.max(W * 1.5, H * 0.7);
-      const lx = largo ? W * 0.64 : W * 0.6;
-      const ly = largo ? H * 0.58 : H * 0.4;
-      for (const img of immagini) {
-        img.setAttribute('x', String(lx - ld / 2));
-        img.setAttribute('y', String(ly - ld / 2));
-        img.setAttribute('width', String(ld));
-        img.setAttribute('height', String(ld));
-      }
-      R = largo ? Math.min(300, Math.max(150, W * 0.16)) : W * 0.34;
-      sfoca.setAttribute('stdDeviation', (R * 0.09).toFixed(1));
-      if (!pronto) {
-        pronto = true;
-        meta.x = W * 0.6;
-        meta.y = H * 0.5;
-        for (const g of gocce) { g.x = meta.x; g.y = meta.y; }
-      }
-      if (calmo) {
-        gocce[0].el.setAttribute('cx', String(W * 0.62));
-        gocce[0].el.setAttribute('cy', String(H * 0.5));
-        gocce[0].el.setAttribute('r', String(R));
+      ld = largo ? Math.max(H * 1.5, W * 0.95) : Math.max(W * 1.5, H * 0.7);
+      lx = largo ? W * 0.64 : W * 0.6;
+      ly = largo ? H * 0.58 : H * 0.4;
+      // Raggio della testa: con la soglia a ~0.42 si vede circa il 60% di questo valore.
+      R = largo ? Math.min(380, Math.max(200, W * 0.2)) : W * 0.42;
+      sw = Math.max(2, Math.round(W / 2));
+      sh = Math.max(2, Math.round(H / 2));
+      scie = [texture(sw, sh), texture(sw, sh)];
+      if (!avviata) {
+        avviata = true;
+        meta.x = testa.x = prima.x = W * 0.62;
+        meta.y = testa.y = prima.y = H * 0.5;
       }
     }
 
     function disegna(ora: number) {
       raf = 0;
-      // Nessuno muove il mouse: la macchia esplora la luna da sola.
-      if (ora - ultimoInput > 2500) {
-        const t = ora / 1000;
+      if (!lunaPronta) {
+        if (visibile && !calmo) raf = requestAnimationFrame(disegna);
+        return;
+      }
+      const t = ora / 1000;
+      // Tutto è tarato su 60 fotogrammi al secondo: con schermi più lenti o più veloci la scia dura uguale.
+      const passi = ultimo ? Math.min(4, (ora - ultimo) / 16.67) : 1;
+      ultimo = ora;
+      if (!calmo && ora - ultimoInput > 2500) {
         meta.x = W * 0.5 + Math.cos(t * 0.35) * W * 0.3;
         meta.y = H * 0.5 + Math.sin(t * 0.55) * H * 0.26;
       }
-      const t = ora / 1000;
-      const testa = gocce[0];
-      gocce.forEach((g, i) => {
-        let tx: number, ty: number, k: number;
-        if (i === 0) {
-          // La testa insegue il puntatore.
-          tx = meta.x; ty = meta.y; k = 0.12;
-        } else if (i <= lobi.length) {
-          // I lobi restano attaccati alla testa e ondeggiano piano.
-          const l = lobi[i - 1];
-          tx = testa.x + R * (l.dx + Math.sin(t * 0.7 + l.fase) * 0.08);
-          ty = testa.y + R * (l.dy + Math.cos(t * 0.6 + l.fase) * 0.08);
-          k = 0.25;
-        } else {
-          // La scia insegue la goccia davanti; da ferma cola un po' in basso a destra.
-          const p = i === lobi.length + 1 ? testa : gocce[i - 1];
-          const dist = R * (p.f + g.f) * 0.75;
-          const a = 0.55 + Math.sin(t * 0.8 + i) * 0.25;
-          tx = p.x + Math.cos(a) * dist;
-          ty = p.y + Math.sin(a) * dist;
-          k = 0.3;
-        }
-        g.x += (tx - g.x) * k;
-        g.y += (ty - g.y) * k;
-        const respiro = i === 0 ? 1 + Math.sin(t * 1.3) * 0.03 : 1;
-        g.el.setAttribute('cx', g.x.toFixed(1));
-        g.el.setAttribute('cy', g.y.toFixed(1));
-        g.el.setAttribute('r', (R * g.f * respiro).toFixed(1));
-      });
-      if (visibile) raf = requestAnimationFrame(disegna);
+      prima = { ...testa };
+      const k = 1 - Math.pow(1 - 0.16, passi);
+      testa.x += (meta.x - testa.x) * k;
+      testa.y += (meta.y - testa.y) * k;
+
+      // 1. aggiorna la scia (coordinate in pixel CSS, y dal basso)
+      const [leggi, scrivi] = scie;
+      gl!.bindFramebuffer(gl!.FRAMEBUFFER, scrivi.fb);
+      gl!.viewport(0, 0, sw, sh);
+      gl!.useProgram(pScia.p);
+      gl!.activeTexture(gl!.TEXTURE0);
+      gl!.bindTexture(gl!.TEXTURE_2D, leggi.t);
+      gl!.uniform1i(pScia.u.prec, 0);
+      gl!.uniform2f(pScia.u.dim, W, H);
+      gl!.uniform2f(pScia.u.da, prima.x, H - prima.y);
+      gl!.uniform2f(pScia.u.a, testa.x, H - testa.y);
+      gl!.uniform1f(pScia.u.raggio, R);
+      gl!.uniform1f(pScia.u.tempo, t);
+      gl!.uniform1f(pScia.u.sbiadisci, Math.pow(0.972, passi));
+      gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
+      scie = [scrivi, leggi];
+
+      // 2. disegna la luna attraverso la scia
+      gl!.bindFramebuffer(gl!.FRAMEBUFFER, null);
+      gl!.viewport(0, 0, canvas!.width, canvas!.height);
+      gl!.clearColor(0, 0, 0, 0);
+      gl!.clear(gl!.COLOR_BUFFER_BIT);
+      gl!.useProgram(pLuna.p);
+      gl!.activeTexture(gl!.TEXTURE0);
+      gl!.bindTexture(gl!.TEXTURE_2D, scrivi.t);
+      gl!.uniform1i(pLuna.u.scia, 0);
+      gl!.activeTexture(gl!.TEXTURE1);
+      gl!.bindTexture(gl!.TEXTURE_2D, lunaTex);
+      gl!.uniform1i(pLuna.u.luna, 1);
+      gl!.uniform2f(pLuna.u.dim, W, H);
+      gl!.uniform2f(pLuna.u.centro, lx, H - ly);
+      gl!.uniform1f(pLuna.u.diametro, ld);
+      gl!.uniform1f(pLuna.u.tempo, t);
+      gl!.uniform1f(pLuna.u.buio, 0.1);
+      gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
+
+      if (visibile && !calmo) raf = requestAnimationFrame(disegna);
     }
 
     function muovi(cx: number, cy: number) {
@@ -174,7 +268,10 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
     let attesa = 0;
     addEventListener('resize', () => {
       clearTimeout(attesa);
-      attesa = window.setTimeout(misura, 150);
+      attesa = window.setTimeout(() => {
+        misura();
+        if (calmo) for (let i = 0; i < 40; i++) disegna(performance.now());
+      }, 150);
     });
 
     if (!calmo) {
@@ -203,7 +300,8 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
     padding-block: 7rem 4rem;
   }
   .luna { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-  .buio { opacity: 0.1; }
+  /* Senza WebGL la luna resta visibile, appena accennata */
+  .senza-gl::before { content: ''; position: absolute; inset: 0; background: url('/img/luna.webp') 65% 55% / auto 150% no-repeat; opacity: 0.18; }
 
   .griglia { position: relative; width: 100%; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2.5rem 1.5rem; align-items: center; }
   .testo { grid-column: 1 / -1; }

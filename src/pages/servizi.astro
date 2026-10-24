@@ -23,7 +23,7 @@ const t = testi.pag_servizi;
     <ul class="problemi">
       {elenchi.problemi.map((p, i) => (
         <li class="problema" style={`--i: ${i}`} data-appari>
-          {p.emoji && <span class="emoji" aria-hidden="true">{p.emoji}</span>}
+          {p.icona && <span class="icona"><Icona nome={p.icona} size={22} /></span>}
           <h3>{p.titolo}</h3>
           {p.testo && <p>{p.testo}</p>}
         </li>
@@ -107,7 +107,8 @@ const t = testi.pag_servizi;
   }
   .problema.visibile { opacity: 1; transform: none; }
   .problema:hover { border-color: var(--accent-border); }
-  .emoji { display: block; font-size: 1.6rem; line-height: 1; margin-bottom: 1.1rem; }
+  /* Icone solo a contorno, monocolore */
+  .icona { display: inline-grid; place-items: center; width: 3rem; height: 3rem; margin-bottom: 1.1rem; border: 1px solid var(--accent-border); border-radius: 12px; color: var(--accent-light); }
   .problema h3 { font-size: var(--fs-base); margin: 0 0 0.6rem; }
   .problema p { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.65; }
 

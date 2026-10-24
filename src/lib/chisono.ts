@@ -8,7 +8,7 @@ export type Sezione =
   | (Base & { tipo: 'statistiche'; voci: { numero: string; prefisso: string; suffisso: string; etichetta: string }[] })
   | (Base & { tipo: 'valori'; testo: string; card: { meta: string; titolo: string; testo: string }[] })
   | (Base & { tipo: 'bento'; box: { dimensione: 'grande' | 'medio' | 'piccolo'; titolo: string; testo: string; tag: string[] }[] })
-  | (Base & { tipo: 'personale'; testo: string; passioni: string[] })
+  | (Base & { tipo: 'personale'; testo: string; passioni: { icona: string; testo: string }[] })
   | (Base & { tipo: 'contatti'; testo: string; pulsante: string; url: string })
   | (Base & { tipo: 'testo'; colonne: number; blocchi: { titolo: string; testo: string }[] })
   | (Base & { tipo: 'percorso'; voci: { periodo: string; titolo: string; luogo: string; testo: string }[] })
@@ -99,7 +99,14 @@ export const SEZIONI_DEFAULT: Sezione[] = [
     etichetta: 'Dietro lo schermo',
     titolo: 'Quando chiudo l’editor di codice…',
     testo: 'Credo che la curiosità fuori dall’ufficio alimenti la creatività nel lavoro. Quando non progetto interfacce o non scrivo codice a Palermo, mi trovi probabilmente in sella alla mia moto, a cercare la pazienza perfetta durante una sessione di pesca, o ai fornelli a sperimentare in cucina (dove, proprio come nel codice, servono gli ingredienti giusti e tempi precisi). Sono inoltre un grande appassionato di fumetti, cultura del Giappone e calcio.',
-    passioni: ['🏍️ Moto', '🎣 Pesca', '🍳 Cucina', '📚 Fumetti', '🗾 Giappone', '⚽ Calcio'],
+    passioni: [
+      { icona: 'moto', testo: 'Moto' },
+      { icona: 'fish', testo: 'Pesca' },
+      { icona: 'chefHat', testo: 'Cucina' },
+      { icona: 'message', testo: 'Fumetti' },
+      { icona: 'torii', testo: 'Giappone' },
+      { icona: 'ball', testo: 'Calcio' },
+    ],
   },
   {
     tipo: 'contatti',
