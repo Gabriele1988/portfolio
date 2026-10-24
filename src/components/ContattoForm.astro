@@ -1,29 +1,104 @@
 ---
+// Modulo contatti: invia a POST {CMS_URL}/wp-json/portfolio/v1/contatto. Testi da "Testi del sito → Contatti".
 import { TURNSTILE_SITE_KEY } from 'astro:env/client';
+import Icona from './Icona.astro';
 import { getTesti } from '../lib/testi';
 
 const t = (await getTesti()).contatti;
 // "[testo]" nel consenso diventa il link all'informativa.
 const [prima, link, dopo] = /\[(.+?)\]/.test(t.privacy) ? t.privacy.split(/\[(.+?)\]/) : [t.privacy, '', ''];
+
+const gruppi = [
+  {
+    nome: 'contatto',
+    domanda: t.campo_contatto,
+    obbligatorio: true,
+    opzioni: [
+      { valore: 'email', label: t.opz_email },
+      { valore: 'telefono', label: t.opz_telefono },
+      { valore: 'whatsapp', label: t.opz_whatsapp },
+    ],
+  },
+  {
+    nome: 'sito',
+    domanda: t.campo_sito,
+    obbligatorio: false,
+    opzioni: [
+      { valore: 'no', label: t.opz_sito_no },
+      { valore: 'si', label: t.opz_sito_si },
+      { valore: 'rifare', label: t.opz_sito_rifare },
+    ],
+  },
+  {
+    nome: 'budget',
+    domanda: t.campo_budget,
+    obbligatorio: false,
+    opzioni: [
+      { valore: 'si', label: t.opz_budget_si },
+      { valore: 'no', label: t.opz_budget_no },
+    ],
+  },
+];
 ---
 
-<form id="contatto" novalidate data-invio={t.invio} data-grazie={t.grazie} data-errore={t.errore}>
-  <label>{t.campo_nome} <input name="nome" autocomplete="name" required maxlength="120" /></label>
-  <label>{t.campo_email} <input name="email" type="email" autocomplete="email" required maxlength="200" /></label>
-  <label>{t.campo_messaggio} <textarea name="messaggio" rows="6" required maxlength="5000"></textarea></label>
+<form id="contatto" class="scheda" novalidate data-invio={t.invio} data-grazie={t.grazie} data-errore={t.errore}>
+  <div class="due">
+    <label>
+      <span class="label obbl">{t.campo_nome}</span>
+      <input name="nome" autocomplete="given-name" required maxlength="80" placeholder={t.ph_nome} />
+    </label>
+    <label>
+      <span class="label obbl">{t.campo_cognome}</span>
+      <input name="cognome" autocomplete="family-name" required maxlength="80" placeholder={t.ph_cognome} />
+    </label>
+  </div>
+  <label>
+    <span class="label">{t.campo_azienda}</span>
+    <input name="azienda" autocomplete="organization" maxlength="120" placeholder={t.ph_azienda} />
+  </label>
+  <label>
+    <span class="label obbl">{t.campo_email}</span>
+    <input name="email" type="email" autocomplete="email" required maxlength="200" placeholder={t.ph_email} />
+  </label>
+
+  {gruppi.map((gr) => (
+    <fieldset>
+      <legend class:list={['label', { obbl: gr.obbligatorio }]}>{gr.domanda}</legend>
+      <div class="pillole">
+        {gr.opzioni.map((o) => (
+          <label class="pillola">
+            <input type="radio" name={gr.nome} value={o.valore} required={gr.obbligatorio} />
+            <span>{o.label}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  ))}
+
+  <!-- Compare solo se si sceglie Telefono o WhatsApp -->
+  <label data-telefono hidden>
+    <span class="label obbl">{t.campo_telefono}</span>
+    <input name="telefono" type="tel" autocomplete="tel" maxlength="40" placeholder={t.ph_telefono} />
+  </label>
+
+  <label>
+    <span class="label obbl">{t.campo_messaggio}</span>
+    <textarea name="messaggio" rows="5" required minlength="10" maxlength="5000" placeholder={t.ph_messaggio}></textarea>
+  </label>
 
   <!-- Campo trappola per i bot: le persone non lo vedono. -->
   <label class="hp" aria-hidden="true">Sito web <input name="sito_web" tabindex="-1" autocomplete="off" /></label>
 
   <label class="check">
     <input name="privacy" type="checkbox" required />
-    <span>{prima}{link && <a href="/privacy/">{link}</a>}{dopo}</span>
+    <span class="obbl">{prima}{link && <a href="/privacy/">{link}</a>}{dopo}</span>
   </label>
 
   {TURNSTILE_SITE_KEY && <div class="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} data-language="it"></div>}
 
-  <button class="btn" type="submit">{t.invia}</button>
+  <button class="invia" type="submit">{t.invia}<Icona nome="send" /></button>
   <p class="esito" role="status" aria-live="polite"></p>
+  <button class="reset" type="reset">{t.reset}</button>
 </form>
 
 {TURNSTILE_SITE_KEY && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
@@ -34,7 +109,24 @@ const [prima, link, dopo] = /\[(.+?)\]/.test(t.privacy) ? t.privacy.split(/\[(.+
   const form = document.querySelector<HTMLFormElement>('#contatto')!;
   const esito = form.querySelector<HTMLElement>('.esito')!;
   const bottone = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+  const boxTelefono = form.querySelector<HTMLElement>('[data-telefono]')!;
+  const telefono = boxTelefono.querySelector<HTMLInputElement>('input')!;
   const caricatoIl = Date.now();
+
+  // Il numero serve solo se la persona vuole essere richiamata o scritta su WhatsApp.
+  function aggiornaTelefono() {
+    const scelta = (form.elements.namedItem('contatto') as RadioNodeList).value;
+    const serve = scelta === 'telefono' || scelta === 'whatsapp';
+    boxTelefono.hidden = !serve;
+    telefono.required = serve;
+  }
+  form.addEventListener('change', (e) => {
+    if ((e.target as HTMLInputElement).name === 'contatto') aggiornaTelefono();
+  });
+  form.addEventListener('reset', () => {
+    esito.textContent = '';
+    setTimeout(aggiornaTelefono);
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -51,7 +143,13 @@ const [prima, link, dopo] = /\[(.+?)\]/.test(t.privacy) ? t.privacy.split(/\[(.+
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nome: dati.nome,
+          cognome: dati.cognome,
+          azienda: dati.azienda ?? '',
           email: dati.email,
+          telefono: boxTelefono.hidden ? '' : (dati.telefono ?? ''),
+          contatto: dati.contatto ?? '',
+          sito: dati.sito ?? '',
+          budget: dati.budget ?? '',
           messaggio: dati.messaggio,
           privacy: dati.privacy === 'on',
           sito_web: dati.sito_web ?? '',
@@ -72,13 +170,76 @@ const [prima, link, dopo] = /\[(.+?)\]/.test(t.privacy) ? t.privacy.split(/\[(.+
 </script>
 
 <style>
-  form { display: grid; gap: 1rem; max-width: 36rem; margin-top: 2rem; }
-  label { display: grid; gap: 0.35rem; font-weight: 600; }
-  input, textarea { font: inherit; padding: 0.7rem 0.85rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
-  .check { display: flex; gap: 0.6rem; align-items: flex-start; font-weight: 400; font-size: var(--fs-md); }
-  .check input { margin-top: 0.3rem; }
+  .scheda {
+    display: grid;
+    gap: 1.5rem;
+    padding: clamp(1.25rem, 3vw, 1.75rem);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .due { display: grid; gap: 1.5rem; }
+  @media (min-width: 30rem) { .due { grid-template-columns: 1fr 1fr; gap: 1rem; } }
+  label, fieldset { display: grid; gap: 0.6rem; min-width: 0; }
+  fieldset { border: 0; margin: 0; padding: 0; }
+  label[hidden] { display: none; }
+
+  .label { font-size: var(--fs-2xs); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0; }
+  .obbl::after { content: ''; display: inline-block; width: 0.3rem; height: 0.3rem; margin-left: 0.4rem; vertical-align: middle; border-radius: 50%; background: var(--accent-light); }
+
+  input:not([type='radio'], [type='checkbox']), textarea {
+    width: 100%;
+    font: inherit;
+    font-size: var(--fs-sm);
+    padding: 0.8rem 0.9rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.2s;
+  }
+  textarea { resize: vertical; min-height: 7.5rem; }
+  input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--muted) 70%, transparent); }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+
+  /* Scelte a pillola */
+  .pillole { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .pillola { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.9rem; border: 1px solid var(--border); border-radius: 0.6rem; background: var(--bg); cursor: pointer; font-size: var(--fs-sm); color: var(--text-soft); transition: border-color 0.2s, color 0.2s; }
+  .pillola:hover { border-color: var(--accent-border); }
+  .pillola input { appearance: none; margin: 0; width: 0.9rem; height: 0.9rem; border: 1.5px solid var(--muted); border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+  .pillola input:checked { border-color: var(--accent-light); }
+  .pillola input:checked::before { content: ''; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--accent-light); }
+  .pillola:has(input:checked) { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
+  .pillola input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .check { display: flex; gap: 0.7rem; align-items: center; font-size: var(--fs-xs); color: var(--text-soft); }
+  .check input { margin: 0; width: 1rem; height: 1rem; accent-color: var(--accent); }
+  .check a { color: var(--accent-light); text-decoration: none; }
   .hp { position: absolute; left: -9999px; }
-  button { justify-self: start; }
-  button:disabled { opacity: 0.6; cursor: wait; }
+
+  .invia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 1.05rem 1.5rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent-btn);
+    color: var(--accent-text);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--fs-sm);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .invia:hover { background: var(--accent); }
+  .invia:disabled { opacity: 0.6; cursor: wait; }
+  .esito { margin: 0; text-align: center; font-size: var(--fs-sm); }
   .esito:empty { display: none; }
+  .reset { justify-self: center; background: none; border: 0; color: var(--muted); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+  .reset:hover { color: var(--text); }
 </style>

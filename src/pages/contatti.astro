@@ -1,18 +1,150 @@
 ---
+import QRCode from 'qrcode';
 import Base from '../layouts/Base.astro';
 import ContattoForm from '../components/ContattoForm.astro';
+import Icona from '../components/Icona.astro';
+import Social from '../components/Social.astro';
 import { getTesti } from '../lib/testi';
+import { linkWhatsapp, social } from '../lib/social';
 
 const { generale: g, contatti: t } = await getTesti();
+const whatsapp = linkWhatsapp(g.whatsapp);
+const canali = [
+  g.email && { icona: 'mail', label: t.label_email, valore: g.email, href: `mailto:${g.email}` },
+  g.telefono && { icona: 'phone', label: t.label_telefono, valore: g.telefono, href: `tel:${g.telefono.replace(/[^\d+]/g, '')}` },
+  whatsapp && { icona: 'whatsapp', label: t.label_whatsapp, valore: t.testo_whatsapp, href: whatsapp, esterno: true },
+].filter(Boolean) as { icona: string; label: string; valore: string; href: string; esterno?: boolean }[];
+
+// QR code della recensione, generato durante la build dal link inserito nel CMS.
+const qr = g.link_recensione
+  ? await QRCode.toString(g.link_recensione, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
+  : '';
 ---
 
 <Base title={t.meta_titolo} description={t.meta_descrizione}>
   <section class="wrap section">
-    <h1>{t.titolo}</h1>
-    <p class="muted">
-      {t.intro}
-      {g.email && <> <a href={`mailto:${g.email}`}>{g.email}</a>.</>}
-    </p>
-    <ContattoForm />
+    <header class="testa">
+      <h1>
+        <span class="evidenza">{t.titolo_evidenza}</span>
+        <span>{t.titolo}</span>
+      </h1>
+      {t.intro && <p class="intro">{t.intro}</p>}
+    </header>
+
+    <div class="colonne">
+      <aside class="info">
+        {canali.length > 0 && (
+          <ul class="canali">
+            {canali.map((c) => (
+              <li>
+                <a class="riquadro canale" href={c.href} target={c.esterno ? '_blank' : undefined} rel={c.esterno ? 'noopener' : undefined}>
+                  <span class="icona"><Icona nome={c.icona} /></span>
+                  <span class="testo">
+                    <span class="label">{c.label}</span>
+                    <span class="valore">{c.valore}</span>
+                  </span>
+                  <span class="freccia"><Icona nome="arrowUpRight" size={14} /></span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {g.link_call && (
+          <div class="riquadro call">
+            <div class="riga">
+              <span class="icona"><Icona nome="calendar" /></span>
+              <div>
+                <p class="forte">{t.call_titolo}</p>
+                <p class="piccolo">{t.call_testo}</p>
+              </div>
+            </div>
+            <a class="pulsante-linea" href={g.link_call} target="_blank" rel="noopener">{t.call_pulsante}<Icona nome="arrowUpRight" size={14} /></a>
+          </div>
+        )}
+
+        {social(g).length > 0 && (
+          <div>
+            <p class="label">{t.seguimi}</p>
+            <Social g={g} />
+          </div>
+        )}
+
+        {g.link_recensione && (
+          <div class="riquadro recensione">
+            <p class="forte">{t.recensione_titolo}</p>
+            <p class="piccolo">{t.recensione_testo}</p>
+            <div class="riga">
+              <a class="qr" href={g.link_recensione} target="_blank" rel="noopener" aria-label={t.recensione_pulsante} set:html={qr} />
+              <div class="cta-qr">
+                <p class="nota">{t.recensione_nota}</p>
+                <a class="pulsante-linea neutro" href={g.link_recensione} target="_blank" rel="noopener">{t.recensione_pulsante}<Icona nome="arrowUpRight" size={14} /></a>
+              </div>
+            </div>
+          </div>
+        )}
+      </aside>
+
+      <div class="modulo">
+        <h2>{t.form_titolo} <span class="evidenza">{t.form_titolo_evidenza}</span>{t.form_titolo_fine}</h2>
+        <ContattoForm />
+      </div>
+    </div>
   </section>
 </Base>
+
+<style>
+  .testa { text-align: center; margin: 3rem auto 6rem; }
+  h1 { font-size: clamp(3.25rem, 11vw, 9.5rem); line-height: 0.95; margin: 0 0 2rem; }
+  h1 span { display: block; }
+  .intro { color: var(--text-soft); font-size: var(--fs-lead); margin: 0; }
+
+  .colonne { display: grid; gap: 3.5rem; max-width: 64rem; margin-inline: auto; }
+  @media (min-width: 64rem) { .colonne { grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; } }
+
+  .info { display: grid; gap: 2rem; }
+  .canali { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.85rem; }
+  .riquadro { display: block; padding: 1rem 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.75); }
+  .canale { display: flex; align-items: center; gap: 1rem; color: var(--text); text-decoration: none; transition: border-color 0.2s; }
+  .canale:hover { border-color: var(--accent-border); }
+  .canale:hover .freccia { color: var(--accent-light); transform: translate(2px, -2px); }
+  .icona { flex-shrink: 0; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 0.6rem; background: var(--accent-soft); color: var(--accent-light); }
+  .testo { display: grid; gap: 0.1rem; min-width: 0; }
+  .label { font-size: var(--fs-2xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.85rem; }
+  .testo .label { margin: 0; }
+  .valore { overflow-wrap: anywhere; }
+  .freccia { margin-left: auto; color: var(--muted); transition: color 0.2s, transform 0.2s; }
+
+  .riquadro p { margin: 0; }
+  .riga { display: flex; align-items: center; gap: 1rem; }
+  .forte { font-weight: 600; }
+  .piccolo { color: var(--muted); font-size: var(--fs-sm); }
+  .call { padding: 1.25rem; display: grid; gap: 1.25rem; }
+  .pulsante-linea {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: var(--accent-light);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--fs-sm);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s;
+  }
+  .pulsante-linea:hover { background: var(--accent-btn); border-color: var(--accent-btn); color: var(--accent-text); }
+  .pulsante-linea.neutro { border-color: var(--border); color: var(--text-soft); }
+
+  .recensione { padding: 1.25rem; display: grid; gap: 1rem; }
+  .qr { flex-shrink: 0; width: 5.5rem; height: 5.5rem; border-radius: 0.4rem; overflow: hidden; background: #fff; }
+  .qr :global(svg) { display: block; width: 100%; height: 100%; }
+  .cta-qr { flex: 1; display: grid; gap: 0.6rem; min-width: 0; }
+  .nota { color: var(--muted); font-size: var(--fs-2xs); }
+
+  .modulo h2 { font-size: var(--fs-lg); margin: 0 0 1.25rem; }
+</style>

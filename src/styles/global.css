@@ -50,7 +50,7 @@
 @media (min-width: 64rem) { :root { --pad: 5rem; } }
 @media (min-width: 80rem) { :root { --pad: 7rem; } }
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 5.5rem; }
 
 /* Scrollbar: Chrome/Edge 121+ e Firefox usano scrollbar-color, Safari i selettori -webkit- */
 html { scrollbar-color: var(--accent) var(--bg); }

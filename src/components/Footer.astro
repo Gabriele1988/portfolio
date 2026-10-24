@@ -1,28 +1,75 @@
 ---
+// Footer: logo e descrizione con i social, navigazione, contatti e dati legali.
+// Tutti i testi e i link arrivano da "Testi del sito → Generale".
+import Icona from './Icona.astro';
+import Social from './Social.astro';
 import { getTesti } from '../lib/testi';
 
 const g = (await getTesti()).generale;
 const anno = new Date().getFullYear();
+const righe = (t: string) => t.split('\n').map((r) => r.trim()).filter(Boolean);
+const voci = [
+  { href: '/progetti/', label: g.menu_progetti },
+  { href: '/#servizi', label: g.menu_servizi },
+  { href: '/contatti/', label: g.menu_contatti },
+  { href: '/privacy/', label: g.footer_privacy },
+];
 ---
 
-<footer class="wrap">
-  <p>
-    © {anno} {g.nome} · {g.citta}
-    {g.email && <>{' · '}<a href={`mailto:${g.email}`}>{g.email}</a></>}
-    {g.telefono && <>{' · '}<a href={`tel:${g.telefono.replace(/\s/g, '')}`}>{g.telefono}</a></>}
-  </p>
-  <p>
-    {[
-      g.github && { href: g.github, label: 'GitHub', rel: 'me' },
-      g.linkedin && { href: g.linkedin, label: 'LinkedIn', rel: 'me' },
-      { href: '/privacy/', label: g.footer_privacy },
-    ]
-      .filter(Boolean)
-      .map((l: any, i) => <>{i > 0 && ' · '}<a href={l.href} rel={l.rel}>{l.label}</a></>)}
-  </p>
+<footer>
+  <div class="wrap">
+    <div class="colonne">
+      <div class="marca">
+        <a class="logo" href="/">{g.nome}</a>
+        {g.footer_descrizione && <p class="descrizione">{righe(g.footer_descrizione).map((r, i) => <>{i > 0 && <br />}{r}</>)}</p>}
+        <Social g={g} />
+      </div>
+
+      <nav aria-label="Footer">
+        <p class="titolo">{g.footer_titolo_nav}</p>
+        <ul>
+          {voci.map((v) => <li><a href={v.href}>{v.label}</a></li>)}
+        </ul>
+      </nav>
+
+      <div>
+        <p class="titolo">{g.footer_titolo_contatti}</p>
+        <ul class="contatti">
+          {g.email && <li><a href={`mailto:${g.email}`}><Icona nome="mail" />{g.email}</a></li>}
+          {g.telefono && <li><a href={`tel:${g.telefono.replace(/[^\d+]/g, '')}`}><Icona nome="phone" />{g.telefono}</a></li>}
+        </ul>
+        {g.dati_legali && <p class="legali">{righe(g.dati_legali).map((r, i) => <>{i > 0 && <br />}{r}</>)}</p>}
+      </div>
+    </div>
+
+    <div class="fondo">
+      <p>© {anno} {g.nome}. {g.copyright}</p>
+      {g.credito && <p>{g.credito}</p>}
+    </div>
+  </div>
 </footer>
 
 <style>
-  footer { padding-block: 3rem; border-top: 1px solid var(--border); margin-top: 4rem; color: var(--muted); font-size: var(--fs-md); }
-  footer p { margin: 0.25rem 0; }
+  footer { position: relative; margin-top: 4rem; font-size: var(--fs-md); }
+  /* Linea sottile colorata in alto */
+  footer::before { content: ''; position: absolute; inset: 0 0 auto; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-border), transparent); }
+  footer p { margin: 0; }
+
+  .colonne { display: grid; gap: 3rem; padding-block: 4.5rem 3.5rem; }
+  @media (min-width: 48rem) { .colonne { grid-template-columns: 1fr 1fr; } .marca { grid-column: 1 / -1; } }
+  @media (min-width: 64rem) { .colonne { grid-template-columns: 2fr 1fr 1fr; } .marca { grid-column: auto; } }
+
+  .marca { display: grid; gap: 1.75rem; align-content: start; }
+  .logo { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-h3); color: var(--accent); text-decoration: none; line-height: 1; }
+  .descrizione { color: var(--muted); font-size: var(--fs-base); line-height: 1.7; }
+
+  .titolo { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 2rem !important; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.9rem; }
+  ul a { color: var(--text); text-decoration: none; transition: color 0.2s; }
+  ul a:hover { color: var(--accent-light); }
+  .contatti a { display: inline-flex; align-items: center; gap: 0.6rem; }
+  .contatti :global(svg) { color: var(--accent-light); }
+  .legali { margin-top: 2rem !important; color: color-mix(in srgb, var(--muted) 60%, transparent); font-size: var(--fs-xs); line-height: 1.7; }
+
+  .fondo { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem 2rem; padding-block: 1.75rem 2.25rem; border-top: 1px solid var(--border); color: color-mix(in srgb, var(--muted) 70%, transparent); font-size: var(--fs-xs); }
 </style>

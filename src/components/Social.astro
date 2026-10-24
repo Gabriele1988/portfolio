@@ -1,0 +1,35 @@
+---
+import Icona from './Icona.astro';
+import { social } from '../lib/social';
+import type { Testi } from '../lib/testi';
+
+interface Props {
+  g: Testi['generale'];
+}
+const reti = social(Astro.props.g);
+---
+
+{reti.length > 0 && (
+  <ul class="social">
+    {reti.map((r) => (
+      <li>
+        <a href={r.url} target="_blank" rel="me noopener" aria-label={r.nome} title={r.nome}><Icona nome={r.icona} size={18} /></a>
+      </li>
+    ))}
+  </ul>
+)}
+
+<style>
+  .social { display: flex; flex-wrap: wrap; gap: 0.75rem; list-style: none; margin: 0; padding: 0; }
+  .social a {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--muted);
+    transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+  }
+  .social a:hover { color: var(--accent-light); border-color: var(--accent-border); background: var(--accent-soft); }
+</style>

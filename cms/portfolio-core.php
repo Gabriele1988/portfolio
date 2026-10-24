@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.4.0
+ * Version:     1.5.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -458,10 +458,18 @@ function portfolio_testi_schema() {
 					'descrizione' => array( 'Descrizione del sito', 'textarea', 'Siti WordPress veloci e applicazioni web con Java, Spring Boot, Angular e PostgreSQL. Lavoro da Palermo, con clienti in tutta Italia.', 'Usata nei motori di ricerca e sotto il titolo della home.' ),
 				),
 				'Contatti' => array(
-					'email'    => array( 'Email', 'email', '' ),
-					'telefono' => array( 'Telefono', 'text', '' ),
-					'github'   => array( 'Profilo GitHub', 'url', 'https://github.com/Gabriele1988' ),
-					'linkedin' => array( 'Profilo LinkedIn', 'url', '' ),
+					'email'           => array( 'Email', 'email', '' ),
+					'telefono'        => array( 'Telefono', 'text', '', 'Come vuoi che si legga, es. +39 333 1234567.' ),
+					'whatsapp'        => array( 'Numero WhatsApp', 'text', '', 'Con prefisso internazionale, es. 393331234567. Vuoto = nessun pulsante WhatsApp.' ),
+					'link_call'       => array( 'Link per prenotare una call', 'url', '', 'Es. Calendly o Google Calendar. Vuoto = riquadro nascosto.' ),
+					'link_recensione' => array( 'Link per lasciare una recensione', 'url', '', 'Es. il link di Google per le recensioni. Il QR code viene creato da questo link. Vuoto = riquadro nascosto.' ),
+				),
+				'Social' => array(
+					'instagram' => array( 'Instagram', 'url', '' ),
+					'facebook'  => array( 'Facebook', 'url', '' ),
+					'linkedin'  => array( 'LinkedIn', 'url', '' ),
+					'github'    => array( 'GitHub', 'url', 'https://github.com/Gabriele1988' ),
+					'youtube'   => array( 'YouTube', 'url', '' ),
 				),
 				'Menu' => array(
 					'menu_home'     => array( 'Voce Home', 'text', 'Home' ),
@@ -471,7 +479,13 @@ function portfolio_testi_schema() {
 					'menu_cta'      => array( 'Pulsante', 'text', 'Richiedi un preventivo' ),
 				),
 				'Footer' => array(
-					'footer_privacy' => array( 'Link privacy', 'text', 'Privacy' ),
+					'footer_descrizione'     => array( 'Testo sotto il logo', 'textarea', "Sviluppatore web a Palermo.\nCreo siti che funzionano, per attività che contano." ),
+					'footer_titolo_nav'      => array( 'Titolo colonna navigazione', 'text', 'Navigazione' ),
+					'footer_titolo_contatti' => array( 'Titolo colonna contatti', 'text', 'Contatti' ),
+					'footer_privacy'         => array( 'Link privacy', 'text', 'Privacy Policy' ),
+					'dati_legali'            => array( 'Dati legali', 'textarea', '', 'Es. P.IVA, regime fiscale, sede. Una riga per riga.' ),
+					'copyright'              => array( 'Copyright', 'text', 'Tutti i diritti riservati.', 'Preceduto da © anno e nome.' ),
+					'credito'                => array( 'Testo in basso a destra', 'text', 'Sviluppato con Astro & ♥' ),
 				),
 			),
 		),
@@ -541,18 +555,57 @@ function portfolio_testi_schema() {
 			'menu'   => 'Contatti',
 			'gruppi' => array(
 				'Intestazione' => array(
-					'titolo' => array( 'Titolo', 'text', 'Richiedi un preventivo' ),
-					'intro'  => array( 'Introduzione', 'textarea', 'Raccontami il tuo progetto, rispondo entro un giorno lavorativo. Oppure scrivi a', 'L\'indirizzo email (Generale) viene aggiunto alla fine.' ),
+					'titolo_evidenza' => array( 'Prima riga del titolo (colorata)', 'text', 'Inizia' ),
+					'titolo'          => array( 'Seconda riga del titolo', 'text', 'tutto da qui.' ),
+					'intro'           => array( 'Sottotitolo', 'text', 'Pronto a creare qualcosa che ancora non esiste?' ),
+				),
+				'Colonna sinistra' => array(
+					'label_email'        => array( 'Etichetta email', 'text', 'Email' ),
+					'label_telefono'     => array( 'Etichetta telefono', 'text', 'Telefono' ),
+					'label_whatsapp'     => array( 'Etichetta WhatsApp', 'text', 'WhatsApp' ),
+					'testo_whatsapp'     => array( 'Testo WhatsApp', 'text', 'Scrivimi su WhatsApp' ),
+					'call_titolo'        => array( 'Call: titolo', 'text', 'Preferisci una call?' ),
+					'call_testo'         => array( 'Call: testo', 'text', 'Prenota 30 minuti per parlare del tuo progetto' ),
+					'call_pulsante'      => array( 'Call: pulsante', 'text', 'Prenota una call' ),
+					'seguimi'            => array( 'Titolo social', 'text', 'Seguimi' ),
+					'recensione_titolo'  => array( 'Recensione: titolo', 'text', 'Hai già lavorato con me?' ),
+					'recensione_testo'   => array( 'Recensione: testo', 'textarea', 'La tua opinione mi aiuta a crescere e a farmi trovare da nuovi clienti.' ),
+					'recensione_nota'    => array( 'Recensione: nota', 'text', 'Scansiona il QR code o clicca il bottone' ),
+					'recensione_pulsante' => array( 'Recensione: pulsante', 'text', 'Recensione' ),
 				),
 				'Modulo' => array(
-					'campo_nome'      => array( 'Campo nome', 'text', 'Nome' ),
-					'campo_email'     => array( 'Campo email', 'text', 'Email' ),
-					'campo_messaggio' => array( 'Campo messaggio', 'text', 'Messaggio' ),
-					'privacy'         => array( 'Consenso privacy', 'textarea', 'Ho letto l\'[informativa privacy] e acconsento al trattamento dei dati per ricevere una risposta.', 'Il testo tra parentesi quadre diventa il link alla pagina Privacy.' ),
-					'invia'           => array( 'Pulsante', 'text', 'Invia richiesta' ),
-					'invio'           => array( 'Messaggio durante l\'invio', 'text', 'Invio in corso…' ),
-					'grazie'          => array( 'Messaggio inviato', 'text', 'Grazie! Ho ricevuto il tuo messaggio e ti risponderò a breve.' ),
-					'errore'          => array( 'Aggiunta in caso di errore', 'text', 'Riprova oppure scrivimi via email.' ),
+					'form_titolo'           => array( 'Titolo', 'text', 'Hai qualcosa da' ),
+					'form_titolo_evidenza'  => array( 'Parte colorata del titolo', 'text', 'chiedermi' ),
+					'form_titolo_fine'      => array( 'Fine del titolo', 'text', '?' ),
+					'campo_nome'            => array( 'Nome', 'text', 'Nome' ),
+					'ph_nome'               => array( 'Nome: suggerimento', 'text', 'Il tuo nome' ),
+					'campo_cognome'         => array( 'Cognome', 'text', 'Cognome' ),
+					'ph_cognome'            => array( 'Cognome: suggerimento', 'text', 'Il tuo cognome' ),
+					'campo_azienda'         => array( 'Azienda', 'text', 'Azienda' ),
+					'ph_azienda'            => array( 'Azienda: suggerimento', 'text', 'Nome azienda (opzionale)' ),
+					'campo_email'           => array( 'Email', 'text', 'Email' ),
+					'ph_email'              => array( 'Email: suggerimento', 'text', 'la-tua@email.it' ),
+					'campo_contatto'        => array( 'Domanda: dove contattarti', 'text', 'Dove posso contattarti?' ),
+					'opz_email'             => array( 'Opzione Email', 'text', 'Email' ),
+					'opz_telefono'          => array( 'Opzione Telefono', 'text', 'Telefono' ),
+					'opz_whatsapp'          => array( 'Opzione WhatsApp', 'text', 'WhatsApp' ),
+					'campo_telefono'        => array( 'Telefono (compare con Telefono o WhatsApp)', 'text', 'Numero di telefono' ),
+					'ph_telefono'           => array( 'Telefono: suggerimento', 'text', '+39 333 1234567' ),
+					'campo_sito'            => array( 'Domanda: hai già un sito', 'text', 'Hai già un sito?' ),
+					'opz_sito_no'           => array( 'Opzione No', 'text', 'No' ),
+					'opz_sito_si'           => array( 'Opzione Sì', 'text', 'Sì' ),
+					'opz_sito_rifare'       => array( 'Opzione Sì, da rifare', 'text', 'Sì, ma va rifatto' ),
+					'campo_budget'          => array( 'Domanda: budget', 'text', 'Hai un budget?' ),
+					'opz_budget_si'         => array( 'Opzione Sì', 'text', 'Sì' ),
+					'opz_budget_no'         => array( 'Opzione No', 'text', 'No' ),
+					'campo_messaggio'       => array( 'Messaggio', 'text', 'Messaggio' ),
+					'ph_messaggio'          => array( 'Messaggio: suggerimento', 'text', 'Raccontami il tuo progetto…' ),
+					'privacy'               => array( 'Consenso privacy', 'textarea', 'Ho letto e accetto la [Privacy Policy]', 'Il testo tra parentesi quadre diventa il link alla pagina Privacy.' ),
+					'invia'                 => array( 'Pulsante', 'text', 'Invia messaggio' ),
+					'reset'                 => array( 'Link per svuotare il modulo', 'text', 'Resetta il form' ),
+					'invio'                 => array( 'Messaggio durante l\'invio', 'text', 'Invio in corso…' ),
+					'grazie'                => array( 'Messaggio inviato', 'text', 'Grazie! Ho ricevuto il tuo messaggio e ti risponderò a breve.' ),
+					'errore'                => array( 'Aggiunta in caso di errore', 'text', 'Riprova oppure scrivimi via email.' ),
 				),
 				'SEO' => array(
 					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Contatti' ),
@@ -643,12 +696,28 @@ function portfolio_contatto( WP_REST_Request $req ) {
 		return new WP_Error( 'troppi', 'Troppi messaggi in poco tempo.', array( 'status' => 429 ) );
 	}
 
-	$nome      = sanitize_text_field( (string) $req->get_param( 'nome' ) );
+	$testo     = function ( $k ) use ( $req ) {
+		return sanitize_text_field( (string) $req->get_param( $k ) );
+	};
+	$scelta    = function ( $k, $ammessi ) use ( $testo ) {
+		$v = $testo( $k );
+		return isset( $ammessi[ $v ] ) ? $ammessi[ $v ] : '';
+	};
+	$nome      = $testo( 'nome' );
+	$cognome   = $testo( 'cognome' );
+	$azienda   = $testo( 'azienda' );
+	$telefono  = $testo( 'telefono' );
 	$email     = sanitize_email( (string) $req->get_param( 'email' ) );
 	$messaggio = sanitize_textarea_field( (string) $req->get_param( 'messaggio' ) );
+	$contatto  = $scelta( 'contatto', array( 'email' => 'Email', 'telefono' => 'Telefono', 'whatsapp' => 'WhatsApp' ) );
+	$sito      = $scelta( 'sito', array( 'no' => 'No', 'si' => 'Sì', 'rifare' => 'Sì, ma va rifatto' ) );
+	$budget    = $scelta( 'budget', array( 'si' => 'Sì', 'no' => 'No' ) );
 
 	if ( '' === $nome || ! is_email( $email ) || mb_strlen( $messaggio ) < 10 ) {
 		return new WP_Error( 'dati', 'Controlla nome, email e messaggio.', array( 'status' => 400 ) );
+	}
+	if ( in_array( $contatto, array( 'Telefono', 'WhatsApp' ), true ) && '' === $telefono ) {
+		return new WP_Error( 'telefono', 'Inserisci il numero di telefono.', array( 'status' => 400 ) );
 	}
 	if ( true !== $req->get_param( 'privacy' ) ) {
 		return new WP_Error( 'privacy', 'Serve il consenso al trattamento dei dati.', array( 'status' => 400 ) );
@@ -672,9 +741,17 @@ function portfolio_contatto( WP_REST_Request $req ) {
 	$to   = defined( 'PORTFOLIO_CONTACT_EMAIL' ) ? PORTFOLIO_CONTACT_EMAIL : get_option( 'admin_email' );
 	$sent = wp_mail(
 		$to,
-		'[Portfolio] Nuova richiesta da ' . $nome,
-		"Nome: {$nome}\nEmail: {$email}\n\n{$messaggio}\n",
-		array( 'Reply-To: ' . $nome . ' <' . $email . '>' )
+		'[Portfolio] Nuova richiesta da ' . trim( "{$nome} {$cognome}" ),
+		implode( "\n", array_filter( array(
+			'Nome: ' . trim( "{$nome} {$cognome}" ),
+			$azienda ? "Azienda: {$azienda}" : '',
+			"Email: {$email}",
+			$telefono ? "Telefono: {$telefono}" : '',
+			$contatto ? "Preferisce essere contattato via: {$contatto}" : '',
+			$sito ? "Ha già un sito: {$sito}" : '',
+			$budget ? "Ha un budget: {$budget}" : '',
+		) ) ) . "\n\n{$messaggio}\n",
+		array( 'Reply-To: ' . trim( "{$nome} {$cognome}" ) . ' <' . $email . '>' )
 	);
 	if ( ! $sent ) {
 		return new WP_Error( 'invio', 'Non sono riuscito a inviare il messaggio.', array( 'status' => 500 ) );

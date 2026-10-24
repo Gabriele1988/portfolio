@@ -14,7 +14,9 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
 ---
 
 <a class="visually-hidden" href="#contenuto">Vai al contenuto</a>
-<header class:list={['wrap', { overlay }]} data-header>
+<!-- Barra sempre visibile: sopra la hero è trasparente, scorrendo prende lo sfondo sfocato. -->
+<div class:list={['barra', { overlay }]} data-barra>
+<header class="wrap" data-header>
   <a class="logo" href="/">{g.nome}</a>
 
   <!-- Desktop -->
@@ -47,9 +49,14 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
     </nav>
   </div>
 </header>
+</div>
 
 <script>
+  const barra = document.querySelector<HTMLElement>('[data-barra]')!;
   const header = document.querySelector<HTMLElement>('[data-header]')!;
+  const scorri = () => barra.classList.toggle('scrollato', window.scrollY > 8);
+  scorri();
+  addEventListener('scroll', scorri, { passive: true });
   const toggle = header.querySelector<HTMLButtonElement>('[data-toggle]')!;
   const menu = header.querySelector<HTMLElement>('[data-menu]')!;
   let chiudiTimer = 0;
@@ -87,12 +94,27 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
 </script>
 
 <style>
-  header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.25rem; }
+  .barra { position: sticky; top: 0; z-index: 40; }
+  .barra.overlay { position: fixed; inset: 0 0 auto; }
+  .barra::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  .barra.scrollato::before { opacity: 1; }
+  header { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.25rem; transition: padding 0.3s ease; }
+  .scrollato header { padding-block: 0.75rem; }
   .logo { position: relative; z-index: 31; font-family: var(--font-display); font-weight: 700; color: var(--text); text-decoration: none; font-size: var(--fs-lg); }
   .desktop { display: flex; align-items: center; gap: 1.5rem; }
   .desktop a:not(.btn) { color: var(--muted); text-decoration: none; }
   .desktop a:not(.btn):hover, .desktop a[aria-current='page'] { color: var(--text); }
-  .overlay { position: absolute; inset: 0 0 auto; z-index: 10; }
   .overlay .logo, .overlay .desktop a:not(.btn) { color: var(--white); }
 
   /* Icona: due linee che diventano una X */
