@@ -1,0 +1,1 @@
+import{t as e}from"./fluid.HEnjJffi.js";var t=document.querySelector(`[data-hero]`),n=t.querySelector(`canvas`),r=matchMedia(`(prefers-reduced-motion: reduce)`).matches?null:e(n,{target:t});t.classList.add(r?`is-live`:`is-static`);
