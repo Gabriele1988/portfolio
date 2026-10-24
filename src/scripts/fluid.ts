@@ -18,6 +18,10 @@ export interface FluidOptions {
     /** Quanto si intravede la foto dove non c'è fumo (0–1). */
     buio?: number;
   };
+  /** Raggio del fumo (predefinito quello dell'originale, 0.002). */
+  raggio?: number;
+  /** Se nessuno muove il mouse, il fumo si muove da solo seguendo una curva. */
+  automatico?: boolean;
 }
 
 const config = {
@@ -232,7 +236,7 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     g.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
     g.uniform2f(splatProgram.uniforms.point, x / canvas.width, 1.0 - y / canvas.height);
     g.uniform3f(splatProgram.uniforms.color, dx, -dy, 1.0);
-    g.uniform1f(splatProgram.uniforms.radius, config.SPLAT_RADIUS);
+    g.uniform1f(splatProgram.uniforms.radius, opts.raggio ?? config.SPLAT_RADIUS);
     blit(velocity.second[1]);
     velocity.swap();
 
@@ -265,6 +269,32 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
     g.uniform1f(advectionProgram.uniforms.dissipation, config.DENSITY_DISSIPATION);
     blit(density.second[1]);
     density.swap();
+
+    // Movimento automatico: parte subito e riprende un paio di secondi dopo l'ultimo movimento del mouse.
+    if (opts.automatico && performance.now() - ultimoInput > 2000) {
+      const t = performance.now() / 1000;
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      const x = w * (0.5 + Math.cos(t * 0.6) * 0.32 + Math.sin(t * 1.3) * 0.06);
+      const y = h * (0.5 + Math.sin(t * 0.9) * 0.28);
+      if (autoPrima) {
+        count++;
+        if (count > 25) {
+          colorArr = [Math.random() + 0.2, Math.random() + 0.2, Math.random() + 0.2];
+          count = 0;
+        }
+        pointer.color = colorArr;
+        pointer.dx = (x - autoPrima.x) * 10.0;
+        pointer.dy = (y - autoPrima.y) * 10.0;
+        pointer.x = x;
+        pointer.y = y;
+        pointer.moved = true;
+      }
+      autoPrima = { x, y };
+      // Il primo movimento vero del mouse non deve "saltare" dalla posizione automatica.
+      hasLast = false;
+    } else {
+      autoPrima = null;
+    }
 
     if (pointer.moved) {
       splat(pointer.x, pointer.y, pointer.dx, pointer.dy, pointer.color);
@@ -347,7 +377,10 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
 
   // Coordinate relative alla canvas, così il fumo segue il mouse anche sopra testo e pulsanti.
   let hasLast = false;
+  let ultimoInput = -1e9;
+  let autoPrima: { x: number; y: number } | null = null;
   function onMove(e: PointerEvent) {
+    ultimoInput = performance.now();
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
