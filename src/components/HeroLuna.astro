@@ -58,10 +58,11 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
 
 <script>
   // Scia liquida in WebGL. Due passaggi per fotogramma:
-  // 1. "scia": una texture a metà risoluzione che ricorda dove è passato il cursore. Ogni fotogramma
-  //    sbiadisce un po' e ondeggia con del rumore; sul cursore si aggiunge una macchia piena.
-  // 2. "luna": la foto si vede dove la scia supera una soglia. La testa, rinnovata ogni fotogramma,
-  //    resta grande; la coda sbiadisce e quindi si assottiglia fino a sparire.
+  // 1. "scia": una texture a metà risoluzione che ricorda dove è passato il cursore con un tratto sottile.
+  //    Ogni fotogramma sbiadisce pochissimo e ondeggia con del rumore, quindi la scia è lunga e si
+  //    assottiglia piano fino a sparire.
+  // 2. "luna": alla scia si somma una grande goccia sul cursore (come metaball, così si fondono con un
+  //    collo morbido) e la foto si vede dove la somma supera una soglia.
   const sez = document.querySelector<HTMLElement>('[data-luna]');
   const canvas = sez?.querySelector<HTMLCanvasElement>('[data-gl]');
   const gl = canvas?.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
@@ -90,12 +91,13 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
         gl_FragColor = vec4(vec3(max(v, m)), 1.0);
       }`;
     const fragLuna = `precision highp float; varying vec2 uv;
-      uniform sampler2D scia, luna; uniform vec2 dim, centro; uniform float diametro, tempo, buio;
+      uniform sampler2D scia, luna; uniform vec2 dim, centro, testa; uniform float diametro, tempo, buio, raggioTesta;
       ${rumore}
       void main(){
         vec2 px = uv * dim;
         vec2 e = 1.5 / dim;
-        float m = texture2D(scia, uv).r;
+        float h = clamp(1.0 - length(px - testa) / raggioTesta, 0.0, 1.0);
+        float m = texture2D(scia, uv).r + h * h * 1.6;
         // Bordo liquido: la soglia oscilla col rumore.
         float s = 0.42 + (noise(px * 0.012 + tempo * 0.5) - 0.5) * 0.12;
         float dentro = smoothstep(s - 0.02, s + 0.02, m);
@@ -166,7 +168,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
     };
     img.src = canvas.dataset.src!;
 
-    let W = 0, H = 0, dpr = 1, R = 160, ld = 0, lx = 0, ly = 0;
+    let W = 0, H = 0, dpr = 1, R = 160, rScia = 30, ld = 0, lx = 0, ly = 0;
     let scie: { t: WebGLTexture; fb: WebGLFramebuffer }[] = [];
     let sw = 0, sh = 0;
     const meta = { x: 0, y: 0 };
@@ -190,7 +192,9 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       lx = largo ? W * 0.64 : W * 0.6;
       ly = largo ? H * 0.58 : H * 0.4;
       // Raggio della testa: con la soglia a ~0.42 si vede circa il 60% di questo valore.
+      // R = goccia sul cursore; la scia è un tratto molto più sottile.
       R = largo ? Math.min(380, Math.max(200, W * 0.2)) : W * 0.42;
+      rScia = R * 0.16;
       sw = Math.max(2, Math.round(W / 2));
       sh = Math.max(2, Math.round(H / 2));
       scie = [texture(sw, sh), texture(sw, sh)];
@@ -231,9 +235,9 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       gl!.uniform2f(pScia.u.dim, W, H);
       gl!.uniform2f(pScia.u.da, prima.x, H - prima.y);
       gl!.uniform2f(pScia.u.a, testa.x, H - testa.y);
-      gl!.uniform1f(pScia.u.raggio, R);
+      gl!.uniform1f(pScia.u.raggio, rScia);
       gl!.uniform1f(pScia.u.tempo, t);
-      gl!.uniform1f(pScia.u.sbiadisci, Math.pow(0.989, passi));
+      gl!.uniform1f(pScia.u.sbiadisci, Math.pow(0.9935, passi));
       gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
       scie = [scrivi, leggi];
 
@@ -253,6 +257,8 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       gl!.uniform2f(pLuna.u.centro, lx, H - ly);
       gl!.uniform1f(pLuna.u.diametro, ld);
       gl!.uniform1f(pLuna.u.tempo, t);
+      gl!.uniform2f(pLuna.u.testa, testa.x, H - testa.y);
+      gl!.uniform1f(pLuna.u.raggioTesta, R);
       gl!.uniform1f(pLuna.u.buio, 0.1);
       gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
 
