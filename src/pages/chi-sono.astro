@@ -1,0 +1,181 @@
+---
+import Base from '../layouts/Base.astro';
+import HeroInchiostro from '../components/HeroInchiostro.astro';
+import Icona from '../components/Icona.astro';
+import { getTesti } from '../lib/testi';
+import { getSezioniChiSono } from '../lib/chisono';
+
+const [testi, sezioni] = await Promise.all([getTesti(), getSezioniChiSono()]);
+const t = testi.chisono;
+const cta = [
+  { testo: t.hero_cta, url: t.hero_cta_url },
+  { testo: t.hero_cta2, url: t.hero_cta2_url },
+].filter((c) => c.testo && c.url);
+---
+
+<Base title={t.meta_titolo} description={t.meta_descrizione} overlayHeader>
+  <HeroInchiostro titolo={t.hero_titolo} sottotitolo={t.hero_sottotitolo} cta={cta} scorri={t.scorri} />
+
+  {t.frase && (
+    <section class="apertura">
+      <div class="pianeta" aria-hidden="true"></div>
+      <div class="wrap">
+        <p class="frase-grande" data-appari>{t.frase}</p>
+      </div>
+    </section>
+  )}
+
+  <div class="wrap sezioni">
+    {sezioni.map((s) =>
+      s.tipo === 'cta' ? (
+        <section class="cta-box" data-appari>
+          {s.titolo && <h2>{s.titolo}</h2>}
+          {s.testo && <p>{s.testo}</p>}
+          <p class="pulsanti">
+            {s.pulsante && s.url && <a class="btn" href={s.url}>{s.pulsante}<Icona nome="arrowRight" /></a>}
+            {s.pulsante2 && s.url2 && <a class="btn btn-ghost" href={s.url2}>{s.pulsante2}</a>}
+          </p>
+        </section>
+      ) : (
+        <section class="sezione" data-appari>
+          <p class="etichetta">{s.etichetta}</p>
+          <div class="corpo">
+            {s.titolo && <h2>{s.titolo}</h2>}
+
+            {s.tipo === 'testo' && (
+              <div class="blocchi" style={`--colonne: ${s.colonne}`}>
+                {s.blocchi.map((b) => (
+                  <div>
+                    {b.titolo && <h3>{b.titolo}</h3>}
+                    {b.testo && <p>{b.testo}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {s.tipo === 'competenze' && (
+              <ul class="competenze">
+                {s.elenco.map((c) => <li>{c}</li>)}
+              </ul>
+            )}
+
+            {s.tipo === 'percorso' && (
+              <ol class="percorso">
+                {s.voci.map((v) => (
+                  <li>
+                    <span class="periodo">{v.periodo}</span>
+                    <div>
+                      <h3>{v.titolo}</h3>
+                      {v.luogo && <p class="luogo">{v.luogo}</p>}
+                      {v.testo && <p>{v.testo}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {s.tipo === 'frase' && <p class="frase">{s.testo}</p>}
+          </div>
+        </section>
+      ),
+    )}
+  </div>
+</Base>
+
+<script>
+  // Le sezioni compaiono mentre si scorre.
+  const el = document.querySelectorAll<HTMLElement>('[data-appari]');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.forEach((e) => e.classList.add('visibile'));
+  } else {
+    const io = new IntersectionObserver(
+      (voci) => {
+        for (const v of voci) {
+          if (v.isIntersecting) {
+            v.target.classList.add('visibile');
+            io.unobserve(v.target);
+          }
+        }
+      },
+      { rootMargin: '0px 0px -12% 0px' },
+    );
+    el.forEach((e) => io.observe(e));
+  }
+</script>
+
+<style>
+  [data-appari] { opacity: 0; transform: translateY(2rem); transition: opacity 0.8s ease, transform 0.9s cubic-bezier(.2, .8, .2, 1); }
+  [data-appari].visibile { opacity: 1; transform: none; }
+
+  /* Frase d'apertura con il pianeta, come nell'immagine di riferimento */
+  .apertura { position: relative; overflow: hidden; padding-block: clamp(6rem, 14vw, 11rem); }
+  .pianeta {
+    position: absolute;
+    left: max(-18rem, -22vw);
+    top: 50%;
+    width: min(70vw, 44rem);
+    aspect-ratio: 1;
+    translate: 0 -50%;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 68% 30%, rgb(255 255 255 / 0.18), transparent 38%),
+      repeating-radial-gradient(circle at 40% 60%, rgb(255 255 255 / 0.025) 0 2px, transparent 2px 7px),
+      radial-gradient(circle at 62% 38%, #46514f, #1d2323 45%, #0b0d0d 72%);
+    box-shadow: inset -3rem -2rem 6rem rgb(0 0 0 / 0.85), 0 0 8rem color-mix(in srgb, var(--accent) 18%, transparent);
+    opacity: 0.85;
+    mask-image: linear-gradient(to bottom, #000 55%, transparent 95%);
+  }
+  .frase-grande {
+    position: relative;
+    margin: 0 0 0 auto;
+    max-width: 22em;
+    font-size: clamp(1.6rem, 3.4vw, 3rem);
+    line-height: 1.35;
+    font-weight: 400;
+    color: var(--text);
+  }
+  @media (max-width: 47.99rem) { .pianeta { opacity: 0.4; } }
+
+  /* Sezioni con etichetta verticale a sinistra */
+  .sezioni { padding-bottom: 4rem; }
+  .sezione { display: grid; gap: 1.25rem; padding-block: 3.5rem; }
+  .etichetta { margin: 0; font-family: var(--mono); font-size: var(--fs-2xs); letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); }
+  .etichetta:empty { display: none; }
+  .corpo { border-top: 1px solid var(--border); padding-top: 2.5rem; }
+  @media (min-width: 64rem) {
+    .sezione { grid-template-columns: 6rem 1fr; gap: 0; padding-block: 0; }
+    .etichetta { writing-mode: vertical-rl; transform: rotate(180deg); justify-self: center; align-self: start; margin-top: 3.5rem; position: sticky; top: 7rem; }
+    .etichetta:empty { display: block; }
+    .corpo { padding-block: 3.5rem 4.5rem; }
+  }
+  .corpo h2 { font-size: var(--fs-h3); margin: 0 0 2rem; }
+  .corpo h3 { font-family: var(--font); font-weight: 600; font-size: var(--fs-base); letter-spacing: 0; margin: 0 0 0.75rem; }
+  .corpo p { margin: 0; color: var(--muted); font-size: var(--fs-md); line-height: 1.75; }
+
+  .blocchi { display: grid; gap: 2.5rem 4rem; }
+  @media (min-width: 48rem) { .blocchi { grid-template-columns: repeat(min(var(--colonne), 2), minmax(0, 1fr)); } }
+  @media (min-width: 80rem) { .blocchi { grid-template-columns: repeat(var(--colonne), minmax(0, 1fr)); } }
+
+  .competenze { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .competenze li { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: var(--fs-sm); transition: border-color 0.2s, color 0.2s; }
+  .competenze li:hover { border-color: var(--accent-border); color: var(--accent-light); }
+
+  .percorso { list-style: none; margin: 0; padding: 0; }
+  .percorso li { display: grid; gap: 0.5rem; padding-block: 1.5rem; border-bottom: 1px solid var(--border); }
+  .percorso li:first-child { padding-top: 0; }
+  .percorso li:last-child { border-bottom: 0; }
+  @media (min-width: 48rem) { .percorso li { grid-template-columns: 11rem 1fr; gap: 2rem; } }
+  .periodo { font-family: var(--mono); font-size: var(--fs-sm); color: var(--accent-light); padding-top: 0.15rem; }
+  .percorso h3 { margin-bottom: 0.25rem !important; }
+  .percorso .luogo { font-size: var(--fs-sm); color: color-mix(in srgb, var(--muted) 80%, transparent); margin-bottom: 0.5rem; }
+
+  .frase { font-size: clamp(1.4rem, 2.6vw, 2.25rem) !important; line-height: 1.4 !important; color: var(--text) !important; max-width: 30em; }
+
+  .cta-box { margin-block: 4rem 2rem; padding: clamp(2.5rem, 6vw, 5rem) 1.5rem; text-align: center; border: 1px solid var(--border); border-radius: var(--radius); background: radial-gradient(80% 120% at 50% 0%, var(--accent-soft), transparent 70%), var(--surface); }
+  .cta-box h2 { font-size: var(--fs-section); margin: 0 0 1rem; }
+  .cta-box p { margin: 0 auto; color: var(--text-soft); max-width: 34rem; }
+  .cta-box .pulsanti { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; margin-top: 2rem; }
+  .cta-box .btn { display: inline-flex; align-items: center; gap: 0.5rem; }
+
+  @media (prefers-reduced-motion: reduce) { [data-appari] { opacity: 1; transform: none; transition: none; } }
+</style>

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.7.0
+ * Version:     1.8.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -504,6 +504,7 @@ function portfolio_testi_schema() {
 					'menu_home'     => array( 'Voce Home', 'text', 'Home' ),
 					'menu_servizi'  => array( 'Voce Servizi', 'text', 'Servizi' ),
 					'menu_progetti' => array( 'Voce Progetti', 'text', 'Progetti' ),
+					'menu_chisono'  => array( 'Voce Chi sono', 'text', 'Chi sono' ),
 					'menu_contatti' => array( 'Voce Contatti', 'text', 'Contatti' ),
 					'menu_cta'      => array( 'Pulsante', 'text', 'Richiedi un preventivo' ),
 				),
@@ -612,6 +613,27 @@ function portfolio_testi_schema() {
 				'SEO' => array(
 					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Servizi' ),
 					'meta_descrizione' => array( 'Descrizione', 'textarea', 'Siti web, applicazioni su misura e WordPress: i problemi che risolvo e come lavoro, passo dopo passo.' ),
+				),
+			),
+		),
+		'chisono' => array(
+			'menu'   => 'Chi sono',
+			'gruppi' => array(
+				'Hero' => array(
+					'hero_titolo'      => array( 'Titolo grande', 'text', 'Gabriele Vilardo' ),
+					'hero_sottotitolo' => array( 'Sottotitolo', 'text', 'Web designer e sviluppatore full-stack a Palermo' ),
+					'hero_cta'         => array( 'Pulsante principale', 'text', 'Lavoriamo insieme' ),
+					'hero_cta_url'     => array( 'Link pulsante principale', 'text', '/contatti/' ),
+					'hero_cta2'        => array( 'Pulsante secondario', 'text', 'Guarda i progetti' ),
+					'hero_cta2_url'    => array( 'Link pulsante secondario', 'text', '/progetti/' ),
+					'scorri'           => array( 'Invito a scorrere', 'text', 'Scorri' ),
+				),
+				'Frase' => array(
+					'frase' => array( 'Frase in evidenza', 'textarea', 'Credo che un buon sito debba essere bello e funzionare davvero: dietro ogni dettaglio c’è codice pulito, e dietro ogni progetto c’è una persona da ascoltare.', 'Il grande testo all’inizio della pagina.' ),
+				),
+				'SEO' => array(
+					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Chi sono' ),
+					'meta_descrizione' => array( 'Descrizione', 'textarea', 'Gabriele Vilardo, web designer e sviluppatore full-stack a Palermo: oltre dieci anni di WordPress, oggi anche applicazioni con Java e Angular.' ),
 				),
 			),
 		),
@@ -761,6 +783,141 @@ add_action( 'acf/init', function () {
 	) );
 } );
 
+/* Sezioni della pagina Chi sono: contenuto flessibile, si aggiungono, tolgono e riordinano. */
+add_action( 'acf/init', function () {
+	if ( ! function_exists( 'acf_add_local_field_group' ) ) {
+		return;
+	}
+	$f = function ( $layout, $nome, $label, $tipo, $extra = array() ) {
+		return array_merge( array( 'key' => "field_cs_{$layout}_{$nome}", 'name' => $nome, 'label' => $label, 'type' => $tipo ), $extra );
+	};
+	$etichetta = function ( $layout ) use ( $f ) {
+		return $f( $layout, 'etichetta', 'Etichetta laterale', 'text', array( 'instructions' => 'Il testo verticale a sinistra, es. Competenze.', 'wrapper' => array( 'width' => 40 ) ) );
+	};
+	$layouts = array(
+		'testo'       => array(
+			'label'  => 'Testo a colonne',
+			'fields' => array(
+				$etichetta( 'testo' ),
+				$f( 'testo', 'colonne', 'Colonne', 'select', array( 'choices' => array( '1' => '1', '2' => '2', '3' => '3' ), 'default_value' => '2', 'wrapper' => array( 'width' => 20 ) ) ),
+				$f( 'testo', 'titolo', 'Titolo (facoltativo)', 'text', array( 'wrapper' => array( 'width' => 40 ) ) ),
+				$f( 'testo', 'blocchi', 'Blocchi', 'repeater', array(
+					'layout'       => 'block',
+					'button_label' => 'Aggiungi blocco',
+					'sub_fields'   => array(
+						array( 'key' => 'field_cs_testo_blocchi_titolo', 'name' => 'titolo', 'label' => 'Titolo', 'type' => 'text' ),
+						array( 'key' => 'field_cs_testo_blocchi_testo', 'name' => 'testo', 'label' => 'Testo', 'type' => 'textarea', 'rows' => 3 ),
+					),
+				) ),
+			),
+		),
+		'percorso'    => array(
+			'label'  => 'Percorso (esperienze e formazione)',
+			'fields' => array(
+				$etichetta( 'percorso' ),
+				$f( 'percorso', 'titolo', 'Titolo (facoltativo)', 'text', array( 'wrapper' => array( 'width' => 60 ) ) ),
+				$f( 'percorso', 'voci', 'Voci', 'repeater', array(
+					'layout'       => 'block',
+					'button_label' => 'Aggiungi voce',
+					'sub_fields'   => array(
+						array( 'key' => 'field_cs_percorso_voci_periodo', 'name' => 'periodo', 'label' => 'Periodo', 'type' => 'text', 'wrapper' => array( 'width' => 25 ) ),
+						array( 'key' => 'field_cs_percorso_voci_titolo', 'name' => 'titolo', 'label' => 'Titolo', 'type' => 'text', 'wrapper' => array( 'width' => 45 ) ),
+						array( 'key' => 'field_cs_percorso_voci_luogo', 'name' => 'luogo', 'label' => 'Dove', 'type' => 'text', 'wrapper' => array( 'width' => 30 ) ),
+						array( 'key' => 'field_cs_percorso_voci_testo', 'name' => 'testo', 'label' => 'Descrizione', 'type' => 'textarea', 'rows' => 2 ),
+					),
+				) ),
+			),
+		),
+		'competenze'  => array(
+			'label'  => 'Competenze',
+			'fields' => array(
+				$etichetta( 'competenze' ),
+				$f( 'competenze', 'titolo', 'Titolo (facoltativo)', 'text', array( 'wrapper' => array( 'width' => 60 ) ) ),
+				$f( 'competenze', 'elenco', 'Competenze', 'textarea', array( 'rows' => 6, 'instructions' => 'Una per riga.' ) ),
+			),
+		),
+		'frase'       => array(
+			'label'  => 'Frase grande',
+			'fields' => array(
+				$etichetta( 'frase' ),
+				$f( 'frase', 'testo', 'Testo', 'textarea', array( 'rows' => 3 ) ),
+			),
+		),
+		'cta'         => array(
+			'label'  => 'Call to action',
+			'fields' => array(
+				$f( 'cta', 'titolo', 'Titolo', 'text' ),
+				$f( 'cta', 'testo', 'Testo', 'textarea', array( 'rows' => 2 ) ),
+				$f( 'cta', 'pulsante', 'Pulsante', 'text', array( 'wrapper' => array( 'width' => 50 ) ) ),
+				$f( 'cta', 'url', 'Link pulsante', 'text', array( 'default_value' => '/contatti/', 'wrapper' => array( 'width' => 50 ) ) ),
+				$f( 'cta', 'pulsante2', 'Secondo pulsante (facoltativo)', 'text', array( 'wrapper' => array( 'width' => 50 ) ) ),
+				$f( 'cta', 'url2', 'Link secondo pulsante', 'text', array( 'wrapper' => array( 'width' => 50 ) ) ),
+			),
+		),
+	);
+	$acf_layouts = array();
+	foreach ( $layouts as $nome => $l ) {
+		$acf_layouts[ "layout_cs_{$nome}" ] = array( 'key' => "layout_cs_{$nome}", 'name' => $nome, 'label' => $l['label'], 'display' => 'block', 'sub_fields' => $l['fields'] );
+	}
+	acf_add_local_field_group( array(
+		'key'        => 'group_portfolio_chisono_sezioni',
+		'title'      => 'Sezioni della pagina',
+		'menu_order' => 10,
+		'fields'     => array(
+			array(
+				'key'          => 'field_cs_sezioni',
+				'name'         => 'chisono_sezioni',
+				'label'        => 'Sezioni',
+				'type'         => 'flexible_content',
+				'button_label' => 'Aggiungi sezione',
+				'instructions' => 'Aggiungi, togli e trascina le sezioni per riordinarle. Se non ce n’è nessuna si vedono quelle predefinite del sito.',
+				'layouts'      => $acf_layouts,
+			),
+		),
+		'location'   => array( array( array( 'param' => 'options_page', 'operator' => '==', 'value' => 'portfolio-chisono' ) ) ),
+	) );
+} );
+
+/** GET /wp-json/portfolio/v1/chi-sono: { sezioni: [ { tipo, ... } ] }. */
+function portfolio_chisono_sezioni() {
+	$righe   = function ( $v ) {
+		return array_values( array_filter( array_map( 'trim', preg_split( '/\r?\n/', (string) $v ) ) ) );
+	};
+	$str     = function ( $row, $k ) {
+		return isset( $row[ $k ] ) ? trim( (string) $row[ $k ] ) : '';
+	};
+	$sezioni = array();
+	$valore  = function_exists( 'get_field' ) ? get_field( 'chisono_sezioni', 'option' ) : array();
+	foreach ( (array) $valore as $row ) {
+		$tipo = isset( $row['acf_fc_layout'] ) ? $row['acf_fc_layout'] : '';
+		$s    = array( 'tipo' => $tipo, 'etichetta' => $str( $row, 'etichetta' ), 'titolo' => $str( $row, 'titolo' ) );
+		if ( 'testo' === $tipo ) {
+			$s['colonne'] = (int) ( $str( $row, 'colonne' ) ?: 2 );
+			$s['blocchi'] = array();
+			foreach ( (array) ( isset( $row['blocchi'] ) ? $row['blocchi'] : array() ) as $b ) {
+				$s['blocchi'][] = array( 'titolo' => $str( $b, 'titolo' ), 'testo' => $str( $b, 'testo' ) );
+			}
+		} elseif ( 'percorso' === $tipo ) {
+			$s['voci'] = array();
+			foreach ( (array) ( isset( $row['voci'] ) ? $row['voci'] : array() ) as $v ) {
+				$s['voci'][] = array( 'periodo' => $str( $v, 'periodo' ), 'titolo' => $str( $v, 'titolo' ), 'luogo' => $str( $v, 'luogo' ), 'testo' => $str( $v, 'testo' ) );
+			}
+		} elseif ( 'competenze' === $tipo ) {
+			$s['elenco'] = $righe( $str( $row, 'elenco' ) );
+		} elseif ( 'frase' === $tipo ) {
+			$s['testo'] = $str( $row, 'testo' );
+		} elseif ( 'cta' === $tipo ) {
+			foreach ( array( 'testo', 'pulsante', 'url', 'pulsante2', 'url2' ) as $k ) {
+				$s[ $k ] = $str( $row, $k );
+			}
+		} else {
+			continue;
+		}
+		$sezioni[] = $s;
+	}
+	return array( 'sezioni' => $sezioni );
+}
+
 /** GET /wp-json/portfolio/v1/servizi: { problemi: [], processo: [], faq: [] }. Elenco vuoto = predefinito del sito. */
 function portfolio_servizi_elenchi() {
 	$righe = function ( $nome, $chiavi ) {
@@ -800,6 +957,11 @@ function portfolio_testi_data() {
 }
 
 add_action( 'rest_api_init', function () {
+	register_rest_route( 'portfolio/v1', '/chi-sono', array(
+		'methods'             => 'GET',
+		'callback'            => 'portfolio_chisono_sezioni',
+		'permission_callback' => '__return_true',
+	) );
 	register_rest_route( 'portfolio/v1', '/servizi', array(
 		'methods'             => 'GET',
 		'callback'            => 'portfolio_servizi_elenchi',
