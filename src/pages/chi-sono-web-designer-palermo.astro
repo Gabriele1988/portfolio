@@ -1,0 +1,438 @@
+---
+import Base from '../layouts/Base.astro';
+import HeroLuna from '../components/HeroLuna.astro';
+import Icona from '../components/Icona.astro';
+import { getTesti } from '../lib/testi';
+import { getSezioniChiSono } from '../lib/chisono';
+
+const [testi, sezioni] = await Promise.all([getTesti(), getSezioniChiSono()]);
+const t = testi.chisono;
+const g = testi.generale;
+const righe = (v: string) => v.split('\n').map((r) => r.trim()).filter(Boolean);
+const paragrafi = (v: string) => v.split(/\n\s*\n/).map((r) => r.trim()).filter(Boolean);
+const cta = [
+  { testo: t.hero_cta, url: t.hero_cta_url },
+  { testo: t.hero_cta2, url: t.hero_cta2_url },
+].filter((c) => c.testo && c.url);
+
+// Contatti cliccabili, dai campi di "Testi del sito → Generale".
+const cifre = g.telefono.replace(/[^\d+]/g, '');
+const telefono = cifre && (cifre.startsWith('+') ? cifre : `+39${cifre}`);
+const mappa = g.indirizzo && `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.indirizzo)}`;
+
+// Dati strutturati per Google: la persona, l'attività locale e la pagina profilo.
+const sitoUrl = new URL('/', Astro.site).href;
+const pagina = new URL(Astro.url.pathname, Astro.site).href;
+const parti = g.indirizzo.match(/^(.*?),\s*(\d{5})\s+(.+?)(?:\s*\(([A-Za-z]{2})\))?$/);
+const indirizzo = g.indirizzo && {
+  '@type': 'PostalAddress',
+  ...(parti
+    ? { streetAddress: parti[1], postalCode: parti[2], addressLocality: parti[3], ...(parti[4] && { addressRegion: parti[4].toUpperCase() }) }
+    : { streetAddress: g.indirizzo, addressLocality: g.citta }),
+  addressCountry: 'IT',
+};
+const competenze = [...new Set(sezioni.flatMap((s) => (s.tipo === 'bento' ? s.box.flatMap((b) => b.tag) : s.tipo === 'competenze' ? s.elenco : [])))];
+const contatti = {
+  ...(telefono && { telephone: telefono }),
+  ...(g.email && { email: g.email }),
+  ...(indirizzo && { address: indirizzo }),
+};
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Person',
+      '@id': `${sitoUrl}#persona`,
+      name: g.nome_completo,
+      jobTitle: 'Web Designer e Sviluppatore WordPress',
+      description: t.meta_descrizione,
+      url: pagina,
+      ...(t.hero_foto && { image: t.hero_foto }),
+      ...contatti,
+      worksFor: { '@id': `${sitoUrl}#attivita` },
+      ...(competenze.length && { knowsAbout: competenze }),
+      hasCredential: {
+        '@type': 'EducationalOccupationalCredential',
+        name: 'Adobe Certified Associate',
+        credentialCategory: 'certification',
+        recognizedBy: { '@type': 'Organization', name: 'Adobe' },
+      },
+      sameAs: [g.linkedin, g.github, g.instagram, g.facebook, g.youtube].filter(Boolean),
+    },
+    {
+      '@type': 'ProfessionalService',
+      '@id': `${sitoUrl}#attivita`,
+      name: `${g.nome_completo} – Web Designer ${g.citta}`,
+      description: t.meta_descrizione,
+      url: sitoUrl,
+      ...(t.hero_foto && { image: t.hero_foto }),
+      ...contatti,
+      areaServed: { '@type': 'City', name: g.citta },
+      founder: { '@id': `${sitoUrl}#persona` },
+    },
+    {
+      '@type': 'ProfilePage',
+      '@id': pagina,
+      url: pagina,
+      name: t.meta_titolo,
+      inLanguage: 'it-IT',
+      mainEntity: { '@id': `${sitoUrl}#persona` },
+    },
+  ],
+};
+---
+
+<Base title={t.meta_titolo} description={t.meta_descrizione} image={t.hero_foto || undefined} overlayHeader titoloEsatto>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <HeroLuna
+    occhiello={t.hero_occhiello}
+    titolo={t.hero_titolo}
+    testo={t.hero_sottotitolo}
+    cta={cta}
+    foto={t.hero_foto}
+    fotoAlt={t.hero_foto_alt}
+    badge={righe(t.hero_badge)}
+  />
+
+  {sezioni.map((s) => {
+    const id = s.ancora || undefined;
+    const testa = (
+      <>
+        {s.etichetta && <p class="occhiello">{s.etichetta}</p>}
+        {s.titolo && <h2>{s.titolo}</h2>}
+      </>
+    );
+
+    if (s.tipo === 'statistiche') return (
+      <section class="wrap numeri" id={id} data-appari>
+        <ul>
+          {s.voci.map((v) => (
+            <li>
+              <span class="numero">{v.prefisso}<span data-conta={/^\d+$/.test(v.numero) ? v.numero : undefined}>{v.numero}</span>{v.suffisso}</span>
+              <span class="didascalia">{v.etichetta}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+
+    if (s.tipo === 'valori') return (
+      <section class="wrap g12 valori" id={id}>
+        <div class="intro" data-appari>
+          {testa}
+          {s.testo && <p class="testo">{s.testo}</p>}
+        </div>
+        <div class="card">
+          {s.card.map((c) => (
+            <article data-appari>
+              {c.meta && <p class="meta">{c.meta}</p>}
+              <h3>{c.titolo}</h3>
+              <p>{c.testo}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+
+    if (s.tipo === 'bento') return (
+      <section class="wrap bento" id={id}>
+        <div class="testa" data-appari>{testa}</div>
+        <div class="griglia-bento">
+          {s.box.map((b) => (
+            <article class={b.dimensione} data-appari>
+              {b.dimensione === 'grande' && (
+                <div class="finestra" aria-hidden="true">
+                  <span class="barra"><i></i><i></i><i></i></span>
+                  <span class="riga lunga"></span><span class="riga"></span>
+                  <span class="blocchi-ui"><b></b><b></b><b></b></span>
+                </div>
+              )}
+              <h3>{b.titolo}</h3>
+              {b.testo && <p>{b.testo}</p>}
+              {b.tag.length > 0 && <ul class="tag">{b.tag.map((x) => <li>{x}</li>)}</ul>}
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+
+    if (s.tipo === 'percorso') return (
+      <section class="wrap percorso" id={id}>
+        <div class="testa" data-appari>{testa}</div>
+        <ol class="linea" data-linea>
+          {s.voci.map((v) => (
+            <li data-appari>
+              <span class="punto" aria-hidden="true"></span>
+              <div class="tappa">
+                <p class="periodo">{v.periodo}</p>
+                <h3>{v.titolo}</h3>
+                {v.luogo && <p class="luogo">{v.luogo}</p>}
+                {v.testo && <p>{v.testo}</p>}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+    );
+
+    if (s.tipo === 'personale') return (
+      <section class="contrasto" id={id}>
+        <div class="wrap g12">
+          <div class="intro" data-appari>{testa}</div>
+          <div class="corpo" data-appari>
+            {paragrafi(s.testo).map((p) => <p>{p}</p>)}
+            {s.passioni.length > 0 && <ul class="passioni">{s.passioni.map((x) => <li>{x}</li>)}</ul>}
+          </div>
+        </div>
+      </section>
+    );
+
+    if (s.tipo === 'contatti') return (
+      <section class="wrap" id={id}>
+        <div class="chiusura g12" data-appari>
+          <div class="intro">
+            {testa}
+            {s.testo && <p class="testo">{s.testo}</p>}
+            {s.pulsante && s.url && <a class="btn solleva" href={s.url}>{s.pulsante}<Icona nome="arrowRight" /></a>}
+          </div>
+          <ul class="rapidi">
+            {g.indirizzo && (
+              <li><a href={mappa} target="_blank" rel="noopener"><Icona nome="mapPin" /><span><small>Studio / base operativa</small>{g.indirizzo}</span></a></li>
+            )}
+            {telefono && (
+              <li><a href={`tel:${telefono}`}><Icona nome="phone" /><span><small>Telefono</small>{g.telefono}</span></a></li>
+            )}
+            {g.whatsapp && (
+              <li><a href={`https://wa.me/${g.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener"><Icona nome="whatsapp" /><span><small>WhatsApp</small>{g.telefono || g.whatsapp}</span></a></li>
+            )}
+            {g.email && (
+              <li><a href={`mailto:${g.email}`}><Icona nome="mail" /><span><small>Email</small>{g.email}</span></a></li>
+            )}
+          </ul>
+        </div>
+      </section>
+    );
+
+    if (s.tipo === 'cta') return (
+      <section class="wrap" id={id}>
+        <div class="cta-box" data-appari>
+          {s.titolo && <h2>{s.titolo}</h2>}
+          {s.testo && <p>{s.testo}</p>}
+          <p class="pulsanti">
+            {s.pulsante && s.url && <a class="btn solleva" href={s.url}>{s.pulsante}<Icona nome="arrowRight" /></a>}
+            {s.pulsante2 && s.url2 && <a class="btn btn-ghost solleva" href={s.url2}>{s.pulsante2}</a>}
+          </p>
+        </div>
+      </section>
+    );
+
+    // Sezioni semplici: testo a colonne, competenze, frase grande.
+    return (
+      <section class="wrap semplice" id={id} data-appari>
+        {testa}
+        {s.tipo === 'testo' && (
+          <div class="blocchi" style={`--colonne: ${s.colonne}`}>
+            {s.blocchi.map((b) => (
+              <div>
+                {b.titolo && <h3>{b.titolo}</h3>}
+                {b.testo && <p>{b.testo}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+        {s.tipo === 'competenze' && <ul class="tag">{s.elenco.map((c) => <li>{c}</li>)}</ul>}
+        {s.tipo === 'frase' && <p class="frase">{s.testo}</p>}
+      </section>
+    );
+  })}
+</Base>
+
+<script>
+  const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Numeri che contano da zero quando entrano nello schermo.
+  function conta(el: HTMLElement) {
+    const fine = Number(el.dataset.conta);
+    const inizio = performance.now();
+    const durata = 1600;
+    const passo = (ora: number) => {
+      const p = Math.min(1, (ora - inizio) / durata);
+      el.textContent = String(Math.round(fine * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) requestAnimationFrame(passo);
+    };
+    requestAnimationFrame(passo);
+  }
+
+  // Le sezioni compaiono mentre si scorre.
+  const el = document.querySelectorAll<HTMLElement>('[data-appari]');
+  if (calmo) {
+    el.forEach((e) => e.classList.add('visibile'));
+  } else {
+    const io = new IntersectionObserver(
+      (voci) => {
+        for (const v of voci) {
+          if (!v.isIntersecting) continue;
+          v.target.classList.add('visibile');
+          v.target.querySelectorAll<HTMLElement>('[data-conta]').forEach(conta);
+          io.unobserve(v.target);
+        }
+      },
+      { rootMargin: '0px 0px -12% 0px' },
+    );
+    el.forEach((e) => io.observe(e));
+  }
+
+  // La linea del percorso si riempie mentre si scorre.
+  const linee = document.querySelectorAll<HTMLElement>('[data-linea]');
+  if (linee.length && !calmo) {
+    const aggiorna = () => {
+      for (const l of linee) {
+        const r = l.getBoundingClientRect();
+        const p = Math.min(1, Math.max(0, (innerHeight * 0.6 - r.top) / r.height));
+        l.style.setProperty('--riempi', p.toFixed(3));
+      }
+    };
+    addEventListener('scroll', aggiorna, { passive: true });
+    aggiorna();
+  }
+</script>
+
+<style>
+  [data-appari] { opacity: 0; transform: translateY(2rem); transition: opacity 0.8s ease, transform 0.9s cubic-bezier(.2, .8, .2, 1); }
+  [data-appari].visibile { opacity: 1; transform: none; }
+
+  section { padding-block: clamp(4rem, 9vw, 7.5rem); }
+  .g12 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2.5rem 1.5rem; }
+  .g12 > * { grid-column: 1 / -1; }
+
+  .occhiello { margin: 0 0 1rem; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-light); }
+  h2 { margin: 0; font-size: var(--fs-section); line-height: 1.08; letter-spacing: -0.02em; max-width: 22ch; }
+  h3 { margin: 0 0 0.75rem; font-size: var(--fs-lg); line-height: 1.25; }
+  p { margin: 0; }
+  .testo { margin-top: 1.5rem; color: var(--text-soft); font-size: var(--fs-base); line-height: 1.75; max-width: 38rem; }
+
+  /* Effetto sollevamento dei pulsanti */
+  .solleva { min-height: 48px; display: inline-flex; align-items: center; gap: 0.5rem; transition: transform 0.25s cubic-bezier(.2, .8, .2, 1), box-shadow 0.25s, background 0.2s; }
+  .solleva:hover { transform: translateY(-3px); box-shadow: 0 12px 28px -12px var(--accent); }
+
+  /* Badge che si illuminano al passaggio */
+  .tag { list-style: none; margin: 1.5rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .tag li { padding: 0.45rem 0.9rem; border: 1px solid var(--border); border-radius: 999px; background: color-mix(in srgb, var(--bg) 60%, transparent); font-family: var(--mono); font-size: var(--fs-xs); color: var(--text-soft); transition: border-color 0.25s, color 0.25s, box-shadow 0.25s, background 0.25s; }
+  .tag li:hover { border-color: var(--accent-light); color: var(--accent-glow); background: var(--accent-soft); box-shadow: 0 0 22px -6px var(--accent); }
+
+  /* Numeri */
+  .numeri { padding-block: 0 clamp(3rem, 6vw, 5rem); }
+  .numeri ul { list-style: none; margin: 0; padding: 2rem 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem 1.5rem; border-top: 1px solid var(--border); }
+  @media (min-width: 64rem) { .numeri ul { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .numeri li { display: grid; gap: 0.4rem; }
+  .numero { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.75rem, 3.6vw, 3rem); line-height: 1; color: var(--accent-light); font-variant-numeric: tabular-nums; }
+  .didascalia { color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; }
+
+  /* S2: testo a sinistra, card impilate a destra */
+  @media (min-width: 64rem) {
+    .valori .intro { grid-column: 1 / span 5; align-self: start; position: sticky; top: 7rem; }
+    .valori .card { grid-column: 7 / -1; }
+  }
+  .card { display: grid; gap: 1rem; }
+  .card article { padding: clamp(1.5rem, 3vw, 2.25rem); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); transition: border-color 0.3s, translate 0.3s; }
+  .card article:hover { border-color: var(--accent-border); translate: 0 -4px; }
+  .card .meta { margin-bottom: 0.9rem; font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent-light); letter-spacing: 0.08em; }
+  .card p:not(.meta) { color: var(--muted); line-height: 1.75; }
+
+  /* S3: bento grid */
+  .bento .testa { margin-bottom: 2.5rem; }
+  .griglia-bento { display: grid; gap: 1rem; }
+  .griglia-bento article { position: relative; overflow: hidden; padding: clamp(1.5rem, 3vw, 2.5rem); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); transition: border-color 0.3s; }
+  .griglia-bento article:hover { border-color: var(--accent-border); }
+  .griglia-bento p { color: var(--muted); line-height: 1.7; max-width: 34rem; }
+  .griglia-bento .grande { background: radial-gradient(90% 80% at 100% 100%, var(--accent-soft), transparent 70%), var(--surface); }
+  .griglia-bento .grande h3 { font-size: var(--fs-h3); }
+  @media (min-width: 48rem) {
+    .griglia-bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: dense; }
+    .griglia-bento .grande { grid-column: 1 / -1; }
+  }
+  @media (min-width: 64rem) {
+    .griglia-bento { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .griglia-bento article { grid-column: span 5; }
+    .griglia-bento .grande { grid-column: span 7; grid-row: span 3; display: flex; flex-direction: column; justify-content: flex-end; min-height: 26rem; }
+  }
+
+  /* Finestra stilizzata nel riquadro grande: richiama il lavoro di interfaccia */
+  .finestra { display: none; }
+  @media (min-width: 64rem) {
+    .finestra { display: grid; gap: 0.9rem; margin-bottom: auto; padding: 1.25rem; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--bg) 70%, transparent); max-width: 30rem; }
+    .grande:hover .finestra { border-color: var(--accent-border); }
+    .finestra .barra { display: flex; gap: 0.4rem; }
+    .finestra .barra i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--border); }
+    .finestra .barra i:first-child { background: var(--accent); }
+    .finestra .riga { height: 0.6rem; width: 45%; border-radius: 999px; background: rgb(255 255 255 / 0.08); }
+    .finestra .riga.lunga { width: 75%; height: 0.9rem; background: rgb(255 255 255 / 0.14); }
+    .finestra .blocchi-ui { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.6rem; margin-top: 0.4rem; }
+    .finestra .blocchi-ui b { height: 4.5rem; border-radius: 8px; background: rgb(255 255 255 / 0.05); }
+    .finestra .blocchi-ui b:first-child { background: linear-gradient(135deg, var(--accent-soft), rgb(255 255 255 / 0.04)); }
+    .griglia-bento .grande h3 { margin-top: 2.5rem; }
+  }
+
+  /* S4: timeline verticale, alternata su desktop */
+  .percorso .testa { margin-bottom: 3rem; }
+  .linea { --riempi: 0; position: relative; list-style: none; margin: 0; padding: 0; display: grid; gap: 2.5rem; }
+  .linea::before, .linea::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0.5rem; width: 2px; translate: -50% 0; background: var(--border); }
+  .linea::after { background: linear-gradient(var(--accent-light), var(--accent)); transform-origin: top; scale: 1 var(--riempi); }
+  .linea li { position: relative; padding-left: 2.5rem; }
+  .punto { position: absolute; left: 0.5rem; top: 0.35rem; width: 1rem; height: 1rem; translate: -50% 0; border-radius: 50%; background: var(--bg); border: 2px solid var(--accent-light); box-shadow: 0 0 0 6px var(--bg); z-index: 1; }
+  .periodo { font-family: var(--mono); font-size: var(--fs-sm); color: var(--accent-light); margin-bottom: 0.5rem; }
+  .luogo { font-size: var(--fs-sm); color: var(--text-soft); margin-bottom: 0.5rem; }
+  .tappa p:last-child:not(.periodo):not(.luogo) { color: var(--muted); line-height: 1.75; max-width: 34rem; }
+  @media (min-width: 64rem) {
+    .linea::before, .linea::after { left: 50%; }
+    .linea li { width: 50%; padding: 0 3.5rem 0 0; text-align: right; }
+    .linea li:nth-child(even) { margin-left: 50%; padding: 0 0 3.5rem 3.5rem; padding-bottom: 0; text-align: left; }
+    .linea li:nth-child(odd) .punto { left: 100%; }
+    .linea li:nth-child(even) .punto { left: 0; }
+    .linea li:nth-child(odd) .tappa p { margin-left: auto; }
+  }
+
+  /* S5: sfondo a contrasto */
+  .contrasto { background: radial-gradient(70% 120% at 0% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), rgb(9 22 26); border-block: 1px solid var(--accent-border); }
+  @media (min-width: 64rem) {
+    .contrasto .intro { grid-column: 1 / span 5; }
+    .contrasto .corpo { grid-column: 7 / -1; }
+  }
+  .contrasto .corpo p { font-size: var(--fs-lg); line-height: 1.7; color: var(--text); }
+  .contrasto .corpo p + p { margin-top: 1.25rem; }
+  .passioni { list-style: none; margin: 2rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .passioni li { padding: 0.55rem 1rem; border-radius: 999px; background: rgb(255 255 255 / 0.06); border: 1px solid rgb(255 255 255 / 0.1); font-size: var(--fs-sm); }
+
+  /* S6: chiusura con contatti */
+  .chiusura { padding: clamp(2rem, 5vw, 4.5rem); border: 1px solid var(--accent-border); border-radius: calc(var(--radius) * 1.5); background: radial-gradient(90% 120% at 100% 0%, var(--accent-soft), transparent 65%), var(--surface); align-items: center; }
+  .chiusura h2 { font-size: clamp(1.75rem, 3.4vw, 3rem); }
+  .chiusura .btn { margin-top: 2rem; }
+  @media (min-width: 64rem) {
+    .chiusura .intro { grid-column: 1 / span 7; }
+    .chiusura .rapidi { grid-column: 9 / -1; }
+  }
+  .rapidi { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+  .rapidi a { display: flex; align-items: center; gap: 1rem; min-height: 48px; padding: 0.75rem 1rem; border-radius: 12px; color: var(--text); text-decoration: none; transition: background 0.2s, color 0.2s; }
+  .rapidi a:hover { background: var(--accent-soft); color: var(--accent-glow); }
+  .rapidi :global(svg) { flex: none; color: var(--accent-light); }
+  .rapidi span { display: grid; gap: 0.15rem; overflow-wrap: anywhere; }
+  .rapidi small { font-family: var(--mono); font-size: var(--fs-2xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+  /* Sezioni semplici e vecchia call to action */
+  .semplice h2 { margin-bottom: 2rem; }
+  .blocchi { display: grid; gap: 2.5rem 4rem; }
+  @media (min-width: 48rem) { .blocchi { grid-template-columns: repeat(min(var(--colonne), 2), minmax(0, 1fr)); } }
+  @media (min-width: 80rem) { .blocchi { grid-template-columns: repeat(var(--colonne), minmax(0, 1fr)); } }
+  .blocchi p { color: var(--muted); line-height: 1.75; }
+  .frase { font-size: clamp(1.4rem, 2.6vw, 2.25rem); line-height: 1.4; max-width: 30em; }
+  .cta-box { padding: clamp(2.5rem, 6vw, 5rem) 1.5rem; text-align: center; border: 1px solid var(--border); border-radius: var(--radius); background: radial-gradient(80% 120% at 50% 0%, var(--accent-soft), transparent 70%), var(--surface); }
+  .cta-box h2 { margin: 0 auto 1rem; }
+  .cta-box p { margin: 0 auto; color: var(--text-soft); max-width: 34rem; }
+  .cta-box .pulsanti { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; margin-top: 2rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-appari] { opacity: 1; transform: none; transition: none; }
+    .linea { --riempi: 1; }
+  }
+</style>

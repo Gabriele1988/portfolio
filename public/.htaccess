@@ -1,6 +1,9 @@
 # Copiato in dist/ e quindi nella root del sito su Plesk (Apache).
 ErrorDocument 404 /404.html
 
+# La pagina Chi sono ha cambiato indirizzo.
+RedirectMatch 301 ^/chi-sono/?$ /chi-sono-web-designer-palermo/
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteCond %{HTTPS} !=on

@@ -18,6 +18,8 @@ interface Props {
   noindex?: boolean;
   /** Header trasparente sopra la hero (solo home). */
   overlayHeader?: boolean;
+  /** Usa il titolo così com'è, senza aggiungere il nome del sito. */
+  titoloEsatto?: boolean;
 }
 
 // Clash Display (Fontshare, gratuito) non è su npm: se i file sono in public/fonts/ li usiamo per i titoli.
@@ -27,9 +29,9 @@ const clashCss = clash
   .join('');
 
 const g = (await getTesti()).generale;
-const { title, description: desc, image, noindex = false, overlayHeader = false } = Astro.props;
+const { title, description: desc, image, noindex = false, overlayHeader = false, titoloEsatto = false } = Astro.props;
 const description = desc || g.descrizione;
-const fullTitle = title ? `${title} · ${g.nome}` : `${g.nome} · ${g.ruolo}`;
+const fullTitle = title ? (titoloEsatto ? title : `${title} · ${g.nome}`) : `${g.nome} · ${g.ruolo}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = image ? new URL(image, Astro.site).href : undefined;
 ---
@@ -51,6 +53,7 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     {ogImage && <meta property="og:image" content={ogImage} />}
     <meta name="twitter:card" content="summary_large_image" />
     {!NOINDEX && <link rel="sitemap" href="/sitemap-index.xml" />}
+    <slot name="head" />
   </head>
   <body>
     <Starfield />

@@ -1,10 +1,15 @@
 // Sezioni della pagina Chi sono: WordPress → "Testi del sito → Chi sono" (contenuto flessibile,
 // endpoint portfolio/v1/chi-sono). Se nel CMS non c'è nessuna sezione si usano quelle qui sotto,
-// scritte a partire dal curriculum.
+// scritte a partire dal curriculum e dalla strategia SEO della pagina.
 import { CMS_URL } from 'astro:env/client';
 
-interface Base { etichetta: string; titolo: string }
+interface Base { etichetta: string; titolo: string; ancora?: string }
 export type Sezione =
+  | (Base & { tipo: 'statistiche'; voci: { numero: string; prefisso: string; suffisso: string; etichetta: string }[] })
+  | (Base & { tipo: 'valori'; testo: string; card: { meta: string; titolo: string; testo: string }[] })
+  | (Base & { tipo: 'bento'; box: { dimensione: 'grande' | 'medio' | 'piccolo'; titolo: string; testo: string; tag: string[] }[] })
+  | (Base & { tipo: 'personale'; testo: string; passioni: string[] })
+  | (Base & { tipo: 'contatti'; testo: string; pulsante: string; url: string })
   | (Base & { tipo: 'testo'; colonne: number; blocchi: { titolo: string; testo: string }[] })
   | (Base & { tipo: 'percorso'; voci: { periodo: string; titolo: string; luogo: string; testo: string }[] })
   | (Base & { tipo: 'competenze'; elenco: string[] })
@@ -13,68 +18,96 @@ export type Sezione =
 
 export const SEZIONI_DEFAULT: Sezione[] = [
   {
-    tipo: 'testo',
-    etichetta: 'Chi sono',
+    tipo: 'statistiche',
+    etichetta: '',
     titolo: '',
-    colonne: 2,
-    blocchi: [
+    voci: [
+      { numero: '11', prefisso: '+', suffisso: '', etichetta: 'anni di esperienza nel web design' },
+      { numero: '2014–2025', prefisso: '', suffisso: '', etichetta: 'in agenzia a Palermo' },
+      { numero: 'ACA', prefisso: '', suffisso: '', etichetta: 'Adobe Certified Associate' },
+      { numero: '2026', prefisso: '', suffisso: '', etichetta: 'Java Full-Stack & AI Engineering' },
+    ],
+  },
+  {
+    tipo: 'valori',
+    ancora: 'metodo',
+    etichetta: 'Il metodo',
+    titolo: 'Più di un semplice Web Designer: perché scegliere un profilo ibrido',
+    testo: 'Molti designer creano layout bellissimi ma difficili da navigare; molti programmatori scrivono ottimo codice trascurando l’impatto visivo. Il mio approccio nasce dall’incontro tra questi due mondi, insieme all’abitudine al contatto diretto con le persone e alla gestione dei clienti che ho maturato sul campo.',
+    card: [
       {
-        titolo: 'Oltre dieci anni di WordPress',
-        testo: 'Dal 2014 progetto e sviluppo siti WordPress per aziende e professionisti: temi su misura, page builder come Elementor e personalizzazioni grafiche e funzionali.',
+        meta: '2014 – 2025',
+        titolo: 'Esperienza consolidata sul campo',
+        testo: 'Dal 2014 al 2025 ho lavorato come Web Designer presso l’agenzia Tivitti Web e Comunicazione a Palermo, sviluppando e gestendo decine di siti web per imprese e professionisti locali e nazionali.',
       },
       {
-        titolo: 'Oggi anche full-stack',
-        testo: 'Nel 2026 ho completato il bootcamp Java Full-Stack & AI Engineer: Java, API REST, Hibernate, PostgreSQL e Angular. Così costruisco anche applicazioni web su misura.',
+        meta: 'WordPress · Elementor',
+        titolo: 'Padronanza di WordPress ed Elementor',
+        testo: 'Non mi limito a installare template predefiniti. Utilizzo i page builder in modo avanzato, scrivendo codice HTML5, CSS3 e PHP personalizzato per superare ogni limite grafico o funzionale.',
       },
       {
-        titolo: 'Precisione e cura estetica',
-        testo: 'Ho iniziato come web designer, con certificazioni Adobe e anni di Photoshop: per questo tengo allo stesso modo al codice pulito e a un risultato bello da vedere.',
-      },
-      {
-        titolo: 'Un solo referente',
-        testo: 'Parli direttamente con chi progetta e scrive il codice: niente passaggi di mano, tempi chiari e un sito che sai gestire anche da solo.',
+        meta: '2026',
+        titolo: 'Visione Full-Stack e innovazione',
+        testo: 'Il web evolve velocemente. Per offrire soluzioni sempre all’avanguardia, nel 2026 ho ampliato il mio bagaglio tecnico con un percorso intensivo in Java Full-Stack & AI Engineering, integrando logiche di programmazione avanzata, gestione database (MySQL/PostgreSQL) e framework moderni come Angular.',
       },
     ],
   },
   {
-    tipo: 'competenze',
+    tipo: 'bento',
     etichetta: 'Competenze',
-    titolo: 'Gli strumenti che uso ogni giorno',
-    elenco: ['WordPress', 'Elementor', 'HTML5', 'CSS3', 'JavaScript', 'PHP', 'Java', 'Hibernate / JPA', 'API REST', 'MySQL', 'PostgreSQL', 'Angular', 'Git e GitHub', 'Photoshop'],
+    titolo: 'Il mio arsenale tecnico al servizio del tuo progetto',
+    box: [
+      {
+        dimensione: 'grande',
+        titolo: 'CMS & Front-End Design',
+        testo: 'Progettazione di interfacce responsive e orientate all’utente.',
+        tag: ['WordPress', 'Elementor Pro', 'HTML5', 'CSS3', 'JavaScript (ES6+)', 'Angular'],
+      },
+      {
+        dimensione: 'medio',
+        titolo: 'Architettura Back-End & Dati',
+        testo: 'Logica lato server, API e database relazionali.',
+        tag: ['PHP', 'Java', 'API RESTful', 'MySQL', 'PostgreSQL', 'Git / GitHub'],
+      },
+      {
+        dimensione: 'medio',
+        titolo: 'Visual Design & Certificazioni',
+        testo: 'Suite Adobe (Photoshop). Certificato Adobe Certified Associate per la comunicazione visiva e web.',
+        tag: ['Photoshop', 'Adobe Certified Associate'],
+      },
+      {
+        dimensione: 'piccolo',
+        titolo: 'Comunicazione & Marketing',
+        testo: 'Campagne DEM e newsletter con MailUp, fondamenti di Social Media Marketing e redazione contenuti, grazie al mio passato nella redazione editoriale locale.',
+        tag: ['MailUp', 'Social Media', 'Copywriting'],
+      },
+    ],
   },
   {
     tipo: 'percorso',
     etichetta: 'Percorso',
-    titolo: '',
+    titolo: 'La mia evoluzione professionale',
     voci: [
-      { periodo: '2026', titolo: 'Java Full-Stack & AI Engineer', luogo: 'Bootcamp', testo: 'Java e programmazione a oggetti, API RESTful, Hibernate/JPA, Maven e Tomcat, database MySQL e PostgreSQL, Angular, Git.' },
-      { periodo: '2014 – 2025', titolo: 'Web designer', luogo: 'Libero professionista', testo: 'Sviluppo e gestione di siti WordPress per clienti aziendali e professionisti, con personalizzazioni grafiche e funzionali.' },
-      { periodo: '2015', titolo: 'Corsi WordPress e Social Media Marketing', luogo: 'Corsi Web Italia', testo: 'Due percorsi con attestato.' },
-      { periodo: '2008 – 2011', titolo: 'Certificazioni web e design', luogo: 'CPU Academy, Microsales, Eureka Engineering', testo: 'Web Mastering e Design, Adobe Certified Associate (Photoshop e Dreamweaver CS3), Photoshop CS4 Advanced, 3D Studio Max.' },
-      { periodo: '2007', titolo: 'Diploma di liceo scientifico', luogo: 'Liceo G. Galilei, Palermo', testo: '' },
+      { periodo: '2026', titolo: 'L’evoluzione Full-Stack & AI', luogo: '', testo: 'Specializzazione in sviluppo Java Full-Stack, Angular e tecnologie AI per portare l’ingegneria del software dentro i progetti web.' },
+      { periodo: '2014 – 2025', titolo: 'Un decennio in agenzia a Palermo', luogo: 'Tivitti Web e Comunicazione', testo: 'Web Designer presso Tivitti Web e Comunicazione. Oltre dieci anni dedicati a tradurre le esigenze di aziende e professionisti in siti web performanti.' },
+      { periodo: '2012 – 2015', titolo: 'Content & Digital Marketing', luogo: '', testo: 'Collaborazioni editoriali giornalistiche (L’Informatore) e specializzazione in WordPress e Social Media Marketing. Perché un sito senza contenuti efficaci è solo una scatola vuota.' },
+      { periodo: '2008 – 2011', titolo: 'Le fondamenta e le certificazioni', luogo: '', testo: 'Formazione intensiva in Web Mastering, Multimedia e conseguimento delle certificazioni ufficiali Adobe.' },
     ],
   },
   {
-    tipo: 'testo',
-    etichetta: 'Fuori dal lavoro',
-    titolo: '',
-    colonne: 1,
-    blocchi: [
-      {
-        titolo: 'Quando non scrivo codice',
-        testo: 'Mi trovi in moto, a pesca o ai fornelli. Seguo il calcio, leggo fumetti e ho una grande passione per il Giappone.',
-      },
-    ],
+    tipo: 'personale',
+    etichetta: 'Dietro lo schermo',
+    titolo: 'Quando chiudo l’editor di codice…',
+    testo: 'Credo che la curiosità fuori dall’ufficio alimenti la creatività nel lavoro. Quando non progetto interfacce o non scrivo codice a Palermo, mi trovi probabilmente in sella alla mia moto, a cercare la pazienza perfetta durante una sessione di pesca, o ai fornelli a sperimentare in cucina (dove, proprio come nel codice, servono gli ingredienti giusti e tempi precisi). Sono inoltre un grande appassionato di fumetti, cultura del Giappone e calcio.',
+    passioni: ['🏍️ Moto', '🎣 Pesca', '🍳 Cucina', '📚 Fumetti', '🗾 Giappone', '⚽ Calcio'],
   },
   {
-    tipo: 'cta',
-    etichetta: '',
-    titolo: 'Lavoriamo insieme',
-    testo: 'Hai un progetto in mente? Raccontamelo: ti rispondo entro un giorno lavorativo.',
-    pulsante: 'Richiedi un preventivo',
+    tipo: 'contatti',
+    etichetta: 'Contatti',
+    titolo: 'Hai un progetto in mente? Parliamone davanti a un caffè a Palermo (o in videochiamata).',
+    testo: 'Che tu abbia bisogno di creare un nuovo sito web da zero, fare il restyling della tua piattaforma attuale o risolvere problemi tecnici su WordPress, sono qui per aiutarti.',
+    pulsante: 'Scrivimi ora per un preventivo gratuito',
     url: '/contatti/',
-    pulsante2: 'Guarda i progetti',
-    url2: '/progetti/',
   },
 ];
 

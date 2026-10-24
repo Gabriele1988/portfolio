@@ -32,6 +32,10 @@ export default defineConfig({
   build: {
     format: 'directory',
   },
+  // Vecchio indirizzo della pagina Chi sono (su Apache il 301 vero è in public/.htaccess).
+  redirects: {
+    '/chi-sono': '/chi-sono-web-designer-palermo/',
+  },
   integrations: NOINDEX ? [] : [sitemap({ filter: (url) => !nascosti.has(url) })],
   image: {
     // Le immagini del CMS vengono scaricate e ottimizzate (WebP/AVIF) durante la build,

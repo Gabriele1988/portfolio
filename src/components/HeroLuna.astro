@@ -1,0 +1,338 @@
+---
+// Hero della pagina Chi sono: una grande luna nascosta nel buio che si illumina dove passa il mouse
+// (o il dito, su telefono). Quando nessuno la tocca, una luce la esplora da sola.
+// Titolo e testi usano mix-blend-mode: difference, quindi cambiano colore sopra la parte illuminata.
+import { Image } from 'astro:assets';
+
+interface Props {
+  occhiello: string;
+  titolo: string;
+  testo: string;
+  cta: { testo: string; url: string }[];
+  foto: string;
+  fotoAlt: string;
+  badge: string[];
+}
+const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
+---
+
+<section class="hero-luna" data-luna>
+  <canvas class="luna" aria-hidden="true"></canvas>
+
+  <div class="wrap griglia">
+    <div class="testo">
+      {occhiello && <p class="occhiello" data-blend>{occhiello}</p>}
+      <h1 data-blend>{titolo}</h1>
+      {testo && <p class="lead" data-blend>{testo}</p>}
+      {cta.length > 0 && (
+        <p class="cta">
+          {cta.map((c, i) => <a class:list={['btn', { 'btn-ghost': i > 0 }]} href={c.url}>{c.testo}</a>)}
+        </p>
+      )}
+    </div>
+
+    <div class:list={['visual', { 'con-foto': foto }]}>
+      {foto && (
+        <div class="foto">
+          <Image
+            src={foto}
+            alt={fotoAlt}
+            inferSize
+            format="webp"
+            widths={[400, 640, 900]}
+            sizes="(min-width: 64rem) 32vw, 80vw"
+            loading="eager"
+            fetchpriority="high"
+          />
+        </div>
+      )}
+      {badge.length > 0 && (
+        <ul class="badge" aria-label="Tecnologie">
+          {badge.map((b, i) => <li style={`--i: ${i}`}>{b}</li>)}
+        </ul>
+      )}
+    </div>
+  </div>
+</section>
+
+<script>
+  const sez = document.querySelector<HTMLElement>('[data-luna]');
+  const canvas = sez?.querySelector('canvas');
+  const ctx = canvas?.getContext('2d');
+  if (sez && canvas && ctx) {
+    const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const VITA = 2600; // ms di vita di ogni "pennellata" di luce
+    const BUIO = 0.1; // quanto si intravede la luna dove non c'è luce
+    let W = 0, H = 0, dpr = 1;
+    let lx = 0, ly = 0, ld = 0, raggio = 160;
+    let luna: HTMLCanvasElement | undefined;
+    let ultimoInput = -1e9;
+    let visibile = true;
+    let raf = 0;
+    const punti: { x: number; y: number; t: number }[] = [];
+
+    // Numeri casuali ripetibili: la luna è sempre la stessa a ogni visita.
+    function casuale(seme: number) {
+      return () => {
+        seme = (seme + 0x6d2b79f5) | 0;
+        let t = Math.imul(seme ^ (seme >>> 15), 1 | seme);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    /** Disegna la luna (diametro D in pixel reali) su un canvas a parte: si fa una volta sola. */
+    function creaLuna(D: number) {
+      const c = document.createElement('canvas');
+      c.width = c.height = D;
+      const g = c.getContext('2d')!;
+      const r = D / 2;
+      const rnd = casuale(42);
+      g.save();
+      g.beginPath();
+      g.arc(r, r, r, 0, Math.PI * 2);
+      g.clip();
+      g.fillStyle = '#e6e6e1';
+      g.fillRect(0, 0, D, D);
+
+      // Grana della superficie: rumore a più scale, sfumato.
+      for (const [n, a] of [[5, 0.45], [16, 0.3], [64, 0.2], [256, 0.16]] as const) {
+        const nc = document.createElement('canvas');
+        nc.width = nc.height = n;
+        const nx = nc.getContext('2d')!;
+        const img = nx.createImageData(n, n);
+        for (let i = 0; i < n * n; i++) {
+          const v = rnd() * 255;
+          img.data.set([v, v, v, 255], i * 4);
+        }
+        nx.putImageData(img, 0, 0);
+        g.globalAlpha = a;
+        g.globalCompositeOperation = 'overlay';
+        g.imageSmoothingQuality = 'high';
+        g.drawImage(nc, 0, 0, D, D);
+      }
+
+      // Mari: grandi zone più scure.
+      g.globalCompositeOperation = 'multiply';
+      g.globalAlpha = 1;
+      const mari = [[0.34, 0.3, 0.2], [0.55, 0.36, 0.15], [0.3, 0.55, 0.17], [0.48, 0.58, 0.12], [0.64, 0.24, 0.1], [0.2, 0.4, 0.11], [0.42, 0.75, 0.09]];
+      for (const [mx, my, mr] of mari) {
+        const x = mx * D, y = my * D, rr = mr * D * (0.9 + rnd() * 0.3);
+        const gr = g.createRadialGradient(x, y, 0, x, y, rr);
+        gr.addColorStop(0, 'rgb(150 152 152)');
+        gr.addColorStop(0.6, 'rgb(190 191 190)');
+        gr.addColorStop(1, 'rgb(255 255 255 / 0)');
+        g.fillStyle = gr;
+        g.beginPath();
+        g.arc(x, y, rr, 0, Math.PI * 2);
+        g.fill();
+      }
+
+      // Crateri: luce da in alto a destra, ombra sul bordo interno opposto.
+      g.globalCompositeOperation = 'source-over';
+      for (let i = 0; i < 300; i++) {
+        const cr = D * (0.002 + Math.pow(rnd(), 4) * 0.045);
+        const ang = rnd() * Math.PI * 2;
+        const dist = Math.sqrt(rnd()) * (r - cr);
+        const x = r + Math.cos(ang) * dist, y = r + Math.sin(ang) * dist;
+        const lin = g.createLinearGradient(x + cr * 0.7, y - cr * 0.7, x - cr * 0.7, y + cr * 0.7);
+        lin.addColorStop(0, 'rgb(0 0 0 / 0.26)');
+        lin.addColorStop(0.5, 'rgb(0 0 0 / 0.05)');
+        lin.addColorStop(1, 'rgb(255 255 255 / 0.14)');
+        g.fillStyle = lin;
+        g.beginPath();
+        g.arc(x, y, cr, 0, Math.PI * 2);
+        g.fill();
+        if (cr > D * 0.02) {
+          g.strokeStyle = 'rgb(255 255 255 / 0.12)';
+          g.lineWidth = cr * 0.12;
+          g.beginPath();
+          g.arc(x, y, cr * 1.04, Math.PI * 0.6, Math.PI * 1.4);
+          g.stroke();
+        }
+      }
+
+      // Un cratere giovane con i raggi chiari, come Tycho.
+      const tx = r * 0.82, ty = r * 1.62;
+      g.strokeStyle = 'rgb(255 255 255 / 0.07)';
+      for (let i = 0; i < 26; i++) {
+        const a = rnd() * Math.PI * 2, l = D * (0.12 + rnd() * 0.3);
+        g.lineWidth = D * (0.002 + rnd() * 0.004);
+        g.beginPath();
+        g.moveTo(tx, ty);
+        g.lineTo(tx + Math.cos(a) * l, ty + Math.sin(a) * l);
+        g.stroke();
+      }
+
+      // Volume della sfera: più chiara in alto a destra, scura sul bordo.
+      const sf = g.createRadialGradient(r * 1.3, r * 0.7, r * 0.05, r, r, r);
+      sf.addColorStop(0, 'rgb(255 255 255 / 0.16)');
+      sf.addColorStop(0.5, 'rgb(0 0 0 / 0)');
+      sf.addColorStop(0.8, 'rgb(0 0 0 / 0.22)');
+      sf.addColorStop(1, 'rgb(0 0 0 / 0.7)');
+      g.fillStyle = sf;
+      g.fillRect(0, 0, D, D);
+      g.restore();
+      return c;
+    }
+
+    function misura() {
+      const r = sez!.getBoundingClientRect();
+      W = r.width;
+      H = r.height;
+      dpr = Math.min(devicePixelRatio || 1, 1.5);
+      canvas!.width = Math.round(W * dpr);
+      canvas!.height = Math.round(H * dpr);
+      const largo = W >= 768;
+      // Su desktop la luna è enorme e arriva sotto il titolo, così la luce lo fa cambiare colore.
+      ld = largo ? Math.max(H * 1.5, W * 0.95) : Math.max(W * 1.5, H * 0.7);
+      lx = largo ? W * 0.64 : W * 0.6;
+      ly = largo ? H * 0.58 : H * 0.4;
+      raggio = Math.min(230, Math.max(120, W * 0.13));
+      const D = Math.round(ld * dpr);
+      if (!luna || Math.abs(luna.width - D) > D * 0.15) luna = creaLuna(D);
+      if (calmo) disegnaFermo();
+    }
+
+    function disegnaFermo() {
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx!.clearRect(0, 0, W, H);
+      ctx!.globalAlpha = 0.45;
+      ctx!.drawImage(luna!, lx - ld / 2, ly - ld / 2, ld, ld);
+      ctx!.globalAlpha = 1;
+    }
+
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    function aggiungi(x: number, y: number, ora: number) {
+      const u = punti[punti.length - 1];
+      if (u && Math.hypot(u.x - x, u.y - y) < 10 && ora - u.t < 80) return;
+      punti.push({ x, y, t: ora });
+      if (punti.length > 160) punti.shift();
+    }
+
+    function disegna(ora: number) {
+      raf = 0;
+      // Nessuno muove il mouse: una luce gira da sola sulla luna.
+      if (ora - ultimoInput > 2500) {
+        const t = ora / 1000;
+        aggiungi(W * 0.5 + Math.cos(t * 0.42) * W * 0.32, H * 0.5 + Math.sin(t * 0.63) * H * 0.28, ora);
+      }
+      while (punti.length && ora - punti[0].t > VITA) punti.shift();
+
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx!.clearRect(0, 0, W, H);
+      ctx!.globalCompositeOperation = 'source-over';
+      for (const p of punti) {
+        const eta = (ora - p.t) / VITA;
+        const a = (1 - eta) * (1 - eta);
+        const rr = raggio * (0.55 + 0.8 * easeOut(eta));
+        const gr = ctx!.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr);
+        gr.addColorStop(0, `rgb(255 255 255 / ${a})`);
+        gr.addColorStop(0.55, `rgb(255 255 255 / ${a * 0.55})`);
+        gr.addColorStop(1, 'rgb(255 255 255 / 0)');
+        ctx!.fillStyle = gr;
+        ctx!.fillRect(p.x - rr, p.y - rr, rr * 2, rr * 2);
+      }
+      // La luce fa da maschera: la luna si vede solo lì, e appena appena nel resto.
+      ctx!.globalCompositeOperation = 'source-in';
+      ctx!.drawImage(luna!, lx - ld / 2, ly - ld / 2, ld, ld);
+      ctx!.globalCompositeOperation = 'destination-over';
+      ctx!.globalAlpha = BUIO;
+      ctx!.drawImage(luna!, lx - ld / 2, ly - ld / 2, ld, ld);
+      ctx!.globalAlpha = 1;
+      ctx!.globalCompositeOperation = 'source-over';
+      if (visibile) raf = requestAnimationFrame(disegna);
+    }
+
+    function muovi(cx: number, cy: number) {
+      const r = sez!.getBoundingClientRect();
+      const ora = performance.now();
+      ultimoInput = ora;
+      aggiungi(cx - r.left, cy - r.top, ora);
+    }
+
+    misura();
+    let attesa = 0;
+    addEventListener('resize', () => {
+      clearTimeout(attesa);
+      attesa = window.setTimeout(misura, 150);
+    });
+
+    if (!calmo) {
+      sez.addEventListener('pointermove', (e) => muovi(e.clientX, e.clientY));
+      sez.addEventListener('pointerdown', (e) => muovi(e.clientX, e.clientY));
+      // Su telefono il dito che scorre la pagina interrompe i pointer event: si ascolta anche il touch.
+      sez.addEventListener('touchmove', (e) => muovi(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+      new IntersectionObserver(([v]) => {
+        visibile = v.isIntersecting;
+        if (visibile && !raf) raf = requestAnimationFrame(disegna);
+      }).observe(sez);
+    }
+  }
+</script>
+
+<style>
+  .hero-luna {
+    position: relative;
+    min-height: 100vh;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    isolation: isolate;
+    background: var(--bg);
+    padding-block: 7rem 4rem;
+  }
+  .luna { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  .griglia { position: relative; width: 100%; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2.5rem 1.5rem; align-items: center; }
+  .testo { grid-column: 1 / -1; }
+  .visual { grid-column: 1 / -1; position: relative; }
+  @media (min-width: 64rem) {
+    .testo { grid-column: 1 / span 7; }
+    .visual { grid-column: 8 / -1; min-height: 30rem; }
+  }
+
+  [data-blend] { color: var(--white); mix-blend-mode: difference; }
+  .occhiello { margin: 0 0 1.5rem; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.18em; text-transform: uppercase; }
+  h1 { margin: 0; font-size: clamp(2.25rem, 5.2vw, 4.75rem); line-height: 1.02; letter-spacing: -0.03em; max-width: 16ch; }
+  .lead { margin: 1.75rem 0 0; max-width: 36rem; font-size: var(--fs-lead); line-height: 1.6; color: rgb(205 207 201); }
+  .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 2.25rem 0 0; }
+  .cta .btn { min-height: 48px; display: inline-flex; align-items: center; transition: transform 0.25s cubic-bezier(.2, .8, .2, 1), box-shadow 0.25s, background 0.2s; }
+  .cta .btn:hover { transform: translateY(-3px); box-shadow: 0 12px 28px -12px var(--accent); }
+  .cta .btn-ghost { background: color-mix(in srgb, var(--bg) 70%, transparent); color: var(--text); border-color: var(--border); backdrop-filter: blur(6px); }
+
+  .foto { position: relative; width: min(100%, 24rem); margin-inline: auto; aspect-ratio: 4 / 5; border-radius: calc(var(--radius) * 1.5); overflow: hidden; border: 1px solid var(--border); box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.8); }
+  .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Badge flottanti: attorno alla foto, o attorno alla luna se la foto non c'è */
+  .badge { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .badge li {
+    padding: 0.6rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 75%, transparent);
+    backdrop-filter: blur(8px);
+    font-family: var(--mono);
+    font-size: var(--fs-sm);
+    color: var(--text);
+    transition: border-color 0.25s, color 0.25s, box-shadow 0.25s;
+  }
+  .badge li:hover { border-color: var(--accent-light); color: var(--accent-glow); box-shadow: 0 0 24px -4px var(--accent); }
+  .con-foto .badge { margin-top: 1.25rem; justify-content: center; }
+
+  @media (min-width: 64rem) {
+    .badge { position: absolute; inset: 0; display: block; pointer-events: none; }
+    .badge li { position: absolute; pointer-events: auto; animation: galleggia 6s ease-in-out infinite; animation-delay: calc(var(--i) * -1.4s); }
+    .badge li:nth-child(6n + 1) { top: 12%; left: 6%; }
+    .badge li:nth-child(6n + 2) { top: 26%; right: 2%; }
+    .badge li:nth-child(6n + 3) { bottom: 24%; left: 0; }
+    .badge li:nth-child(6n + 4) { bottom: 9%; right: 10%; }
+    .badge li:nth-child(6n + 5) { top: 2%; right: 30%; }
+    .badge li:nth-child(6n + 6) { bottom: 0; left: 34%; }
+    .con-foto .badge { margin: 0; }
+  }
+  @keyframes galleggia { 50% { translate: 0 -10px; } }
+  @media (prefers-reduced-motion: reduce) { .badge li { animation: none !important; } }
+</style>

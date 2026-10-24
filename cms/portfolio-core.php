@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.8.0
+ * Version:     1.9.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -358,6 +358,8 @@ add_action( 'acf/init', function () {
 					'instructions'  => isset( $c[3] ) ? $c[3] : '',
 					'rows'          => 'textarea' === $c[1] ? 3 : '',
 					'media_upload'  => 0,
+					'return_format' => 'id',
+					'preview_size'  => 'medium',
 				);
 			}
 		}
@@ -482,14 +484,16 @@ function portfolio_testi_schema() {
 			'gruppi' => array(
 				'Identità' => array(
 					'nome'        => array( 'Nome (logo)', 'text', 'Gabriele' ),
+					'nome_completo' => array( 'Nome e cognome', 'text', 'Gabriele Vilardo', 'Usato nei dati per Google (scheda persona e attività).' ),
 					'ruolo'       => array( 'Ruolo', 'text', 'Sviluppatore web full-stack' ),
 					'citta'       => array( 'Città', 'text', 'Palermo' ),
 					'descrizione' => array( 'Descrizione del sito', 'textarea', 'Siti WordPress veloci e applicazioni web con Java, Spring Boot, Angular e PostgreSQL. Lavoro da Palermo, con clienti in tutta Italia.', 'Usata nei motori di ricerca e sotto il titolo della home.' ),
 				),
 				'Contatti' => array(
-					'email'           => array( 'Email', 'email', '' ),
-					'telefono'        => array( 'Telefono', 'text', '', 'Come vuoi che si legga, es. +39 333 1234567.' ),
-					'whatsapp'        => array( 'Numero WhatsApp', 'text', '', 'Con prefisso internazionale, es. 393331234567. Vuoto = nessun pulsante WhatsApp.' ),
+					'email'           => array( 'Email', 'email', 'gvilardo@hotmail.com' ),
+					'telefono'        => array( 'Telefono', 'text', '340 4800981', 'Come vuoi che si legga, es. +39 333 1234567.' ),
+					'whatsapp'        => array( 'Numero WhatsApp', 'text', '393404800981', 'Con prefisso internazionale, es. 393331234567. Vuoto = nessun pulsante WhatsApp.' ),
+					'indirizzo'       => array( 'Indirizzo', 'text', 'Via Resuttana 367, 90146 Palermo (PA)', 'Mostrato nella pagina Chi sono e nei dati per Google Maps. Formato: via e civico, CAP città (provincia).' ),
 					'link_call'       => array( 'Link per prenotare una call', 'url', '', 'Es. Calendly o Google Calendar. Vuoto = riquadro nascosto.' ),
 					'link_recensione' => array( 'Link per lasciare una recensione', 'url', '', 'Es. il link di Google per le recensioni. Il QR code viene creato da questo link. Vuoto = riquadro nascosto.' ),
 				),
@@ -620,20 +624,20 @@ function portfolio_testi_schema() {
 			'menu'   => 'Chi sono',
 			'gruppi' => array(
 				'Hero' => array(
-					'hero_titolo'      => array( 'Titolo grande', 'text', 'Gabriele Vilardo' ),
-					'hero_sottotitolo' => array( 'Sottotitolo', 'text', 'Web designer e sviluppatore full-stack a Palermo' ),
-					'hero_cta'         => array( 'Pulsante principale', 'text', 'Lavoriamo insieme' ),
+					'hero_occhiello'   => array( 'Testo sopra il titolo', 'text', 'Gabriele Vilardo — Web Designer & Developer a Palermo' ),
+					'hero_titolo'      => array( 'Titolo (H1)', 'textarea', 'Unisco precisione tecnica e cura estetica per dare forma al tuo business online.' ),
+					'hero_sottotitolo' => array( 'Testo sotto il titolo', 'textarea', 'Con oltre 10 anni di esperienza nello sviluppo di siti web a Palermo, aiuto aziende e professionisti a distinguersi sul web attraverso progetti WordPress su misura, veloci e pensati per convertire.' ),
+					'hero_cta'         => array( 'Pulsante principale', 'text', 'Richiedi una consulenza gratuita' ),
 					'hero_cta_url'     => array( 'Link pulsante principale', 'text', '/contatti/' ),
-					'hero_cta2'        => array( 'Pulsante secondario', 'text', 'Guarda i progetti' ),
-					'hero_cta2_url'    => array( 'Link pulsante secondario', 'text', '/progetti/' ),
-					'scorri'           => array( 'Invito a scorrere', 'text', 'Scorri' ),
-				),
-				'Frase' => array(
-					'frase' => array( 'Frase in evidenza', 'textarea', 'Credo che un buon sito debba essere bello e funzionare davvero: dietro ogni dettaglio c’è codice pulito, e dietro ogni progetto c’è una persona da ascoltare.', 'Il grande testo all’inizio della pagina.' ),
+					'hero_cta2'        => array( 'Pulsante secondario', 'text', 'Esplora il mio metodo ↓' ),
+					'hero_cta2_url'    => array( 'Link pulsante secondario', 'text', '#metodo', 'Con # porta a una sezione della pagina che ha quell’ancora.' ),
+					'hero_foto'        => array( 'Foto', 'image', '', 'Una tua foto vera, verticale (circa 4:5). Vuoto = si vede solo la luna.' ),
+					'hero_foto_alt'    => array( 'Descrizione della foto', 'text', 'Gabriele Vilardo, web designer a Palermo, al lavoro' ),
+					'hero_badge'       => array( 'Badge attorno alla foto', 'textarea', "WordPress\nElementor\nHTML5 / CSS3\nJava", 'Uno per riga.' ),
 				),
 				'SEO' => array(
-					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Chi sono' ),
-					'meta_descrizione' => array( 'Descrizione', 'textarea', 'Gabriele Vilardo, web designer e sviluppatore full-stack a Palermo: oltre dieci anni di WordPress, oggi anche applicazioni con Java e Angular.' ),
+					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Gabriele Vilardo | Web Designer e Sviluppatore WordPress a Palermo', 'Usato così com’è, senza aggiungere il nome del sito. Meglio sotto i 60 caratteri.' ),
+					'meta_descrizione' => array( 'Descrizione', 'textarea', 'Cerchi un Web Designer a Palermo? Sono Gabriele Vilardo: +10 anni di esperienza in siti WordPress, Elementor, codice custom e sviluppo Full-Stack. Scopri di più.', 'Meglio sotto i 160 caratteri.' ),
 				),
 			),
 		),
@@ -792,9 +796,79 @@ add_action( 'acf/init', function () {
 		return array_merge( array( 'key' => "field_cs_{$layout}_{$nome}", 'name' => $nome, 'label' => $label, 'type' => $tipo ), $extra );
 	};
 	$etichetta = function ( $layout ) use ( $f ) {
-		return $f( $layout, 'etichetta', 'Etichetta laterale', 'text', array( 'instructions' => 'Il testo verticale a sinistra, es. Competenze.', 'wrapper' => array( 'width' => 40 ) ) );
+		return $f( $layout, 'etichetta', 'Occhiello', 'text', array( 'instructions' => 'Il testo piccolo sopra il titolo, es. Competenze.', 'wrapper' => array( 'width' => 40 ) ) );
+	};
+	$rep = function ( $layout, $nome, $label, $bottone, $sub ) {
+		$campi = array();
+		foreach ( $sub as $k => $c ) {
+			$campo = array( 'key' => "field_cs_{$layout}_{$nome}_{$k}", 'name' => $k, 'label' => $c[0], 'type' => $c[1], 'wrapper' => array( 'width' => $c[2] ) );
+			if ( 'textarea' === $c[1] ) {
+				$campo['rows'] = 3;
+			}
+			if ( isset( $c[3] ) ) {
+				$campo = array_merge( $campo, $c[3] );
+			}
+			$campi[] = $campo;
+		}
+		return array( 'key' => "field_cs_{$layout}_{$nome}", 'name' => $nome, 'label' => $label, 'type' => 'repeater', 'layout' => 'block', 'button_label' => $bottone, 'sub_fields' => $campi );
 	};
 	$layouts = array(
+		'statistiche' => array(
+			'label'  => 'Numeri in evidenza',
+			'fields' => array(
+				$rep( 'statistiche', 'voci', 'Numeri', 'Aggiungi numero', array(
+					'numero'    => array( 'Numero o testo breve', 'text', 25, array( 'instructions' => 'Se è un numero intero si anima contando, es. 11. Altrimenti resta fisso, es. 2014–2025.' ) ),
+					'prefisso'  => array( 'Prima', 'text', 10, array( 'instructions' => 'Es. +' ) ),
+					'suffisso'  => array( 'Dopo', 'text', 10 ),
+					'etichetta' => array( 'Didascalia', 'text', 55 ),
+				) ),
+			),
+		),
+		'valori'      => array(
+			'label'  => 'Testo con card (perché scegliermi)',
+			'fields' => array(
+				$etichetta( 'valori' ),
+				$f( 'valori', 'titolo', 'Titolo', 'text', array( 'wrapper' => array( 'width' => 60 ) ) ),
+				$f( 'valori', 'testo', 'Testo introduttivo', 'textarea', array( 'rows' => 3 ) ),
+				$rep( 'valori', 'card', 'Card', 'Aggiungi card', array(
+					'meta'   => array( 'Dettaglio sopra il titolo', 'text', 30, array( 'instructions' => 'Facoltativo, es. 2014 – 2025.' ) ),
+					'titolo' => array( 'Titolo', 'text', 70 ),
+					'testo'  => array( 'Testo', 'textarea', 100 ),
+				) ),
+			),
+		),
+		'bento'       => array(
+			'label'  => 'Griglia competenze (bento)',
+			'fields' => array(
+				$etichetta( 'bento' ),
+				$f( 'bento', 'titolo', 'Titolo', 'text', array( 'wrapper' => array( 'width' => 60 ) ) ),
+				$rep( 'bento', 'box', 'Riquadri', 'Aggiungi riquadro', array(
+					'dimensione' => array( 'Dimensione', 'select', 25, array( 'choices' => array( 'grande' => 'Grande', 'medio' => 'Medio', 'piccolo' => 'Piccolo' ), 'default_value' => 'medio' ) ),
+					'titolo'     => array( 'Titolo', 'text', 75 ),
+					'testo'      => array( 'Testo', 'textarea', 60 ),
+					'tag'        => array( 'Badge', 'textarea', 40, array( 'instructions' => 'Uno per riga, si illuminano al passaggio del mouse.' ) ),
+				) ),
+			),
+		),
+		'personale'   => array(
+			'label'  => 'Sezione personale (sfondo a contrasto)',
+			'fields' => array(
+				$etichetta( 'personale' ),
+				$f( 'personale', 'titolo', 'Titolo', 'text', array( 'wrapper' => array( 'width' => 60 ) ) ),
+				$f( 'personale', 'testo', 'Testo', 'textarea', array( 'rows' => 5, 'instructions' => 'Una riga vuota separa i paragrafi.' ) ),
+				$f( 'personale', 'passioni', 'Passioni', 'textarea', array( 'rows' => 4, 'instructions' => 'Una per riga, anche con emoji, es. 🏍️ Moto.' ) ),
+			),
+		),
+		'contatti'    => array(
+			'label'  => 'Chiusura con contatti',
+			'fields' => array(
+				$etichetta( 'contatti' ),
+				$f( 'contatti', 'titolo', 'Titolo', 'text' ),
+				$f( 'contatti', 'testo', 'Testo', 'textarea', array( 'rows' => 2 ) ),
+				$f( 'contatti', 'pulsante', 'Pulsante', 'text', array( 'wrapper' => array( 'width' => 50 ) ) ),
+				$f( 'contatti', 'url', 'Link pulsante', 'text', array( 'default_value' => '/contatti/', 'wrapper' => array( 'width' => 50 ), 'instructions' => 'Indirizzo, telefono, WhatsApp ed email arrivano da Testi del sito → Generale.' ) ),
+			),
+		),
 		'testo'       => array(
 			'label'  => 'Testo a colonne',
 			'fields' => array(
@@ -857,6 +931,8 @@ add_action( 'acf/init', function () {
 	);
 	$acf_layouts = array();
 	foreach ( $layouts as $nome => $l ) {
+		// Ogni sezione può avere un'ancora, per i link interni come "#metodo".
+		$l['fields'][] = $f( $nome, 'ancora', 'Ancora (facoltativa)', 'text', array( 'instructions' => 'Una parola senza spazi, es. metodo: la sezione si raggiunge con il link #metodo.' ) );
 		$acf_layouts[ "layout_cs_{$nome}" ] = array( 'key' => "layout_cs_{$nome}", 'name' => $nome, 'label' => $l['label'], 'display' => 'block', 'sub_fields' => $l['fields'] );
 	}
 	acf_add_local_field_group( array(
@@ -890,8 +966,38 @@ function portfolio_chisono_sezioni() {
 	$valore  = function_exists( 'get_field' ) ? get_field( 'chisono_sezioni', 'option' ) : array();
 	foreach ( (array) $valore as $row ) {
 		$tipo = isset( $row['acf_fc_layout'] ) ? $row['acf_fc_layout'] : '';
-		$s    = array( 'tipo' => $tipo, 'etichetta' => $str( $row, 'etichetta' ), 'titolo' => $str( $row, 'titolo' ) );
-		if ( 'testo' === $tipo ) {
+		$s    = array( 'tipo' => $tipo, 'etichetta' => $str( $row, 'etichetta' ), 'titolo' => $str( $row, 'titolo' ), 'ancora' => sanitize_title( $str( $row, 'ancora' ) ) );
+		$sub  = function ( $nome, $chiavi ) use ( $row, $str ) {
+			$out = array();
+			foreach ( (array) ( isset( $row[ $nome ] ) ? $row[ $nome ] : array() ) as $r ) {
+				$item = array();
+				foreach ( $chiavi as $k ) {
+					$item[ $k ] = $str( $r, $k );
+				}
+				$out[] = $item;
+			}
+			return $out;
+		};
+		if ( 'statistiche' === $tipo ) {
+			$s['voci'] = $sub( 'voci', array( 'numero', 'prefisso', 'suffisso', 'etichetta' ) );
+		} elseif ( 'valori' === $tipo ) {
+			$s['testo'] = $str( $row, 'testo' );
+			$s['card']  = $sub( 'card', array( 'meta', 'titolo', 'testo' ) );
+		} elseif ( 'bento' === $tipo ) {
+			$s['box'] = array();
+			foreach ( $sub( 'box', array( 'dimensione', 'titolo', 'testo', 'tag' ) ) as $b ) {
+				$b['dimensione'] = in_array( $b['dimensione'], array( 'grande', 'medio', 'piccolo' ), true ) ? $b['dimensione'] : 'medio';
+				$b['tag']        = $righe( $b['tag'] );
+				$s['box'][]      = $b;
+			}
+		} elseif ( 'personale' === $tipo ) {
+			$s['testo']    = $str( $row, 'testo' );
+			$s['passioni'] = $righe( $str( $row, 'passioni' ) );
+		} elseif ( 'contatti' === $tipo ) {
+			foreach ( array( 'testo', 'pulsante', 'url' ) as $k ) {
+				$s[ $k ] = $str( $row, $k );
+			}
+		} elseif ( 'testo' === $tipo ) {
 			$s['colonne'] = (int) ( $str( $row, 'colonne' ) ?: 2 );
 			$s['blocchi'] = array();
 			foreach ( (array) ( isset( $row['blocchi'] ) ? $row['blocchi'] : array() ) as $b ) {
@@ -949,6 +1055,10 @@ function portfolio_testi_data() {
 		foreach ( $def['gruppi'] as $campi ) {
 			foreach ( $campi as $nome => $c ) {
 				$v = get_option( "options_{$pagina}_{$nome}", '' );
+				if ( 'image' === $c[1] ) {
+					// Le immagini sono salvate come ID: al sito serve l'indirizzo del file originale.
+					$v = $v ? (string) wp_get_attachment_url( (int) $v ) : '';
+				}
 				$out[ $pagina ][ $nome ] = is_string( $v ) ? trim( $v ) : '';
 			}
 		}
