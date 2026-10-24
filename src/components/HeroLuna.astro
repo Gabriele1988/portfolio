@@ -58,11 +58,11 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
 
 <script>
   // Scia liquida in WebGL. Due passaggi per fotogramma:
-  // 1. "scia": una texture a metà risoluzione che ricorda dove è passato il cursore con un tratto sottile.
-  //    Ogni fotogramma sbiadisce pochissimo e ondeggia con del rumore, quindi la scia è lunga e si
-  //    assottiglia piano fino a sparire.
-  // 2. "luna": alla scia si somma una grande goccia sul cursore (come metaball, così si fondono con un
-  //    collo morbido) e la foto si vede dove la somma supera una soglia.
+  // 1. "scia": una texture a metà risoluzione che ricorda dove è passato il cursore. Ogni passaggio lascia
+  //    un valore che scende dal centro verso il bordo; ogni fotogramma si toglie la stessa quantità a tutti.
+  // 2. "luna": la foto si vede dove la scia supera una soglia. Visto che il valore cala in modo costante,
+  //    la larghezza visibile si riduce in modo graduale col tempo: la scia parte larga come la goccia sul
+  //    cursore e si stringe senza scalini fino a una punta.
   const sez = document.querySelector<HTMLElement>('[data-luna]');
   const canvas = sez?.querySelector<HTMLCanvasElement>('[data-gl]');
   const gl = canvas?.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
@@ -78,26 +78,27 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
         return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
       }`;
     const fragScia = `precision highp float; varying vec2 uv;
-      uniform sampler2D prec; uniform vec2 dim, da, a; uniform float raggio, tempo, sbiadisci;
+      uniform sampler2D prec; uniform vec2 dim, da, a; uniform float raggio, tempo, togli;
       ${rumore}
       float segmento(vec2 p, vec2 a0, vec2 b0){ vec2 pa = p - a0, ba = b0 - a0; float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-4), 0.0, 1.0); return length(pa - ba * h); }
       void main(){
         // La scia ondeggia come un liquido: si legge il fotogramma prima da un punto spostato dal rumore.
         vec2 n = vec2(noise(uv * 6.0 + tempo * 0.4), noise(uv * 6.0 + 7.3 - tempo * 0.4)) - 0.5;
-        float v = texture2D(prec, uv + n * 0.004).r * sbiadisci - 0.0015;
+        float v = texture2D(prec, uv + n * 0.0012).r - togli;
         vec2 px = uv * dim;
         float d = segmento(px, da, a);
-        float m = clamp(1.0 - d / raggio, 0.0, 1.0);
+        // Profilo a radice: col calo costante la larghezza visibile scende come (tempo rimasto)²,
+        // quindi la scia si stringe subito in modo morbido e poi si affina in una punta lunga.
+        float m = clamp(1.0 - sqrt(d / raggio), 0.0, 1.0);
         gl_FragColor = vec4(vec3(max(v, m)), 1.0);
       }`;
     const fragLuna = `precision highp float; varying vec2 uv;
-      uniform sampler2D scia, luna; uniform vec2 dim, centro, testa; uniform float diametro, tempo, buio, raggioTesta;
+      uniform sampler2D scia, luna; uniform vec2 dim, centro; uniform float diametro, tempo, buio;
       ${rumore}
       void main(){
         vec2 px = uv * dim;
         vec2 e = 1.5 / dim;
-        float h = clamp(1.0 - length(px - testa) / raggioTesta, 0.0, 1.0);
-        float m = texture2D(scia, uv).r + h * h * 1.6;
+        float m = texture2D(scia, uv).r;
         // Bordo liquido: la soglia oscilla col rumore.
         float s = 0.42 + (noise(px * 0.012 + tempo * 0.5) - 0.5) * 0.12;
         float dentro = smoothstep(s - 0.02, s + 0.02, m);
@@ -168,7 +169,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
     };
     img.src = canvas.dataset.src!;
 
-    let W = 0, H = 0, dpr = 1, R = 160, rScia = 30, ld = 0, lx = 0, ly = 0;
+    let W = 0, H = 0, dpr = 1, R = 160, ld = 0, lx = 0, ly = 0;
     let scie: { t: WebGLTexture; fb: WebGLFramebuffer }[] = [];
     let sw = 0, sh = 0;
     const meta = { x: 0, y: 0 };
@@ -192,9 +193,8 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       lx = largo ? W * 0.64 : W * 0.6;
       ly = largo ? H * 0.58 : H * 0.4;
       // Raggio della testa: con la soglia a ~0.42 si vede circa il 60% di questo valore.
-      // R = goccia sul cursore; la scia è un tratto molto più sottile.
-      R = largo ? Math.min(380, Math.max(200, W * 0.2)) : W * 0.42;
-      rScia = R * 0.16;
+      // Raggio della goccia sul cursore: con il profilo a radice e la soglia a ~0.42 se ne vede circa un terzo.
+      R = (largo ? Math.min(380, Math.max(200, W * 0.2)) : W * 0.42) * 1.73;
       sw = Math.max(2, Math.round(W / 2));
       sh = Math.max(2, Math.round(H / 2));
       scie = [texture(sw, sh), texture(sw, sh)];
@@ -235,9 +235,10 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       gl!.uniform2f(pScia.u.dim, W, H);
       gl!.uniform2f(pScia.u.da, prima.x, H - prima.y);
       gl!.uniform2f(pScia.u.a, testa.x, H - testa.y);
-      gl!.uniform1f(pScia.u.raggio, rScia);
+      gl!.uniform1f(pScia.u.raggio, R);
       gl!.uniform1f(pScia.u.tempo, t);
-      gl!.uniform1f(pScia.u.sbiadisci, Math.pow(0.9935, passi));
+      // La scia impiega circa 2,6 secondi a stringersi fino a sparire.
+      gl!.uniform1f(pScia.u.togli, (0.58 / 155) * passi);
       gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
       scie = [scrivi, leggi];
 
@@ -257,8 +258,6 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       gl!.uniform2f(pLuna.u.centro, lx, H - ly);
       gl!.uniform1f(pLuna.u.diametro, ld);
       gl!.uniform1f(pLuna.u.tempo, t);
-      gl!.uniform2f(pLuna.u.testa, testa.x, H - testa.y);
-      gl!.uniform1f(pLuna.u.raggioTesta, R);
       gl!.uniform1f(pLuna.u.buio, 0.1);
       gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
 
