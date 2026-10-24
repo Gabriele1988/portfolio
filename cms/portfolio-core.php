@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.6.0
+ * Version:     1.7.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -106,6 +106,21 @@ add_action( 'acf/init', function () {
 		'location' => array( array( array( 'param' => 'post_type', 'operator' => '==', 'value' => 'progetti' ) ) ),
 		'position' => 'acf_after_title',
 	) );
+
+	// Riquadro SEO del progetto, sotto il contenuto.
+	acf_add_local_field_group( array(
+		'key'      => 'group_portfolio_progetto_seo',
+		'title'    => 'SEO',
+		'fields'   => array(
+			array( 'key' => 'field_portfolio_seo_titolo', 'name' => 'seo_titolo', 'label' => 'Titolo SEO', 'type' => 'text', 'maxlength' => 70, 'instructions' => 'Il titolo che compare su Google (circa 50-60 caratteri). Vuoto = titolo del progetto.' ),
+			array( 'key' => 'field_portfolio_seo_descrizione', 'name' => 'seo_descrizione', 'label' => 'Meta descrizione', 'type' => 'textarea', 'rows' => 2, 'maxlength' => 170, 'instructions' => 'Il testo sotto il titolo su Google (circa 140-160 caratteri). Vuoto = estratto.' ),
+			array( 'key' => 'field_portfolio_seo_immagine', 'name' => 'seo_immagine', 'label' => 'Immagine per i social', 'type' => 'image', 'return_format' => 'id', 'preview_size' => 'medium', 'instructions' => 'Mostrata quando il link viene condiviso (WhatsApp, LinkedIn, Facebook). Vuoto = immagine in evidenza.' ),
+			array( 'key' => 'field_portfolio_seo_noindex', 'name' => 'seo_noindex', 'label' => 'Nascondi dai motori di ricerca', 'type' => 'true_false', 'ui' => 1, 'instructions' => 'La pagina resta visibile sul sito ma Google non la indicizza.' ),
+		),
+		'location' => array( array( array( 'param' => 'post_type', 'operator' => '==', 'value' => 'progetti' ) ) ),
+		'position' => 'normal',
+		'menu_order' => 20,
+	) );
 } );
 
 /* -------------------------------------------------------------------------
@@ -131,6 +146,20 @@ add_action( 'rest_api_init', function () {
 				$out[ $name ] = $v;
 			}
 			return $out;
+		},
+		'schema'       => array( 'type' => 'object' ),
+	) );
+
+	register_rest_field( 'progetti', 'seo', array(
+		'get_callback' => function ( $post ) {
+			$img_id = (int) get_post_meta( $post['id'], 'seo_immagine', true );
+			$img    = $img_id ? wp_get_attachment_image_src( $img_id, 'full' ) : false;
+			return array(
+				'titolo'      => trim( (string) get_post_meta( $post['id'], 'seo_titolo', true ) ),
+				'descrizione' => trim( (string) get_post_meta( $post['id'], 'seo_descrizione', true ) ),
+				'immagine'    => $img ? array( 'src' => $img[0], 'width' => (int) $img[1], 'height' => (int) $img[2] ) : null,
+				'noindex'     => (bool) get_post_meta( $post['id'], 'seo_noindex', true ),
+			);
 		},
 		'schema'       => array( 'type' => 'object' ),
 	) );
@@ -896,4 +925,286 @@ add_action( 'phpmailer_init', function ( $mailer ) {
 	if ( defined( 'PORTFOLIO_SMTP_USER' ) ) {
 		$mailer->setFrom( PORTFOLIO_SMTP_USER, get_bloginfo( 'name' ) );
 	}
+} );
+
+/* -------------------------------------------------------------------------
+ * Statistiche delle visite (senza cookie, senza servizi esterni)
+ * Il sito invia POST /wp-json/portfolio/v1/visita a ogni pagina vista.
+ * Non salviamo IP né dati personali: il visitatore unico è un'impronta
+ * che cambia ogni giorno (sale giornaliero), come fanno Plausible e simili.
+ * ---------------------------------------------------------------------- */
+define( 'PORTFOLIO_STATS_DB', '1' );
+
+function portfolio_stats_tabella() {
+	global $wpdb;
+	return $wpdb->prefix . 'portfolio_visite';
+}
+
+add_action( 'admin_init', function () {
+	if ( get_option( 'portfolio_stats_db' ) === PORTFOLIO_STATS_DB ) {
+		return;
+	}
+	global $wpdb;
+	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+	$t = portfolio_stats_tabella();
+	dbDelta( "CREATE TABLE {$t} (
+		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		giorno date NOT NULL,
+		creato datetime NOT NULL,
+		pagina varchar(200) NOT NULL DEFAULT '',
+		sorgente varchar(80) NOT NULL DEFAULT '',
+		dispositivo varchar(10) NOT NULL DEFAULT '',
+		browser varchar(20) NOT NULL DEFAULT '',
+		visitatore char(16) NOT NULL DEFAULT '',
+		PRIMARY KEY  (id),
+		KEY giorno (giorno),
+		KEY giorno_visitatore (giorno, visitatore)
+	) {$wpdb->get_charset_collate()};" );
+	update_option( 'portfolio_stats_db', PORTFOLIO_STATS_DB );
+} );
+
+/** Nome leggibile della provenienza dal referrer (o da utm_source). */
+function portfolio_stats_sorgente( $referrer, $utm ) {
+	if ( '' !== $utm ) {
+		return mb_substr( ucfirst( sanitize_text_field( $utm ) ), 0, 80 );
+	}
+	$host = strtolower( (string) wp_parse_url( $referrer, PHP_URL_HOST ) );
+	$host = preg_replace( '/^(www|m|l|lm)\./', '', $host );
+	if ( '' === $host ) {
+		return 'Diretto';
+	}
+	$sito = strtolower( (string) wp_parse_url( portfolio_site_url(), PHP_URL_HOST ) );
+	if ( $sito && preg_replace( '/^www\./', '', $sito ) === $host ) {
+		return '';
+	}
+	$noti = array(
+		'/(^|\.)google\./'                  => 'Google',
+		'/(^|\.)bing\.com$/'                => 'Bing',
+		'/(^|\.)duckduckgo\.com$/'          => 'DuckDuckGo',
+		'/(^|\.)yahoo\./'                   => 'Yahoo',
+		'/(^|\.)ecosia\.org$/'              => 'Ecosia',
+		'/(^|\.)instagram\.com$/'           => 'Instagram',
+		'/(^|\.)facebook\.com$|^fb\.me$/'   => 'Facebook',
+		'/(^|\.)linkedin\.com$|^lnkd\.in$/' => 'LinkedIn',
+		'/^t\.co$|(^|\.)x\.com$|twitter\.com$/' => 'X',
+		'/(^|\.)tiktok\.com$/'              => 'TikTok',
+		'/(^|\.)youtube\.com$|^youtu\.be$/' => 'YouTube',
+		'/(^|\.)whatsapp\.com$|^wa\.me$/'   => 'WhatsApp',
+		'/(^|\.)github\.com$/'              => 'GitHub',
+		'/chatgpt\.com$|openai\.com$/'      => 'ChatGPT',
+		'/perplexity\.ai$/'                 => 'Perplexity',
+	);
+	foreach ( $noti as $re => $nome ) {
+		if ( preg_match( $re, $host ) ) {
+			return $nome;
+		}
+	}
+	return mb_substr( $host, 0, 80 );
+}
+
+function portfolio_stats_browser( $ua ) {
+	$elenco = array( 'Edg/' => 'Edge', 'OPR/' => 'Opera', 'SamsungBrowser' => 'Samsung', 'Firefox/' => 'Firefox', 'CriOS' => 'Chrome', 'Chrome/' => 'Chrome', 'Safari/' => 'Safari' );
+	foreach ( $elenco as $chiave => $nome ) {
+		if ( false !== strpos( $ua, $chiave ) ) {
+			return $nome;
+		}
+	}
+	return 'Altro';
+}
+
+function portfolio_visita( WP_REST_Request $req ) {
+	$site   = portfolio_site_url();
+	$origin = get_http_origin();
+	if ( $site && $origin && untrailingslashit( $origin ) !== $site ) {
+		return new WP_REST_Response( null, 204 );
+	}
+	$ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) : '';
+	if ( '' === $ua || preg_match( '/bot|crawl|spider|slurp|headless|lighthouse|preview|monitor|curl|wget|python/i', $ua ) ) {
+		return new WP_REST_Response( null, 204 );
+	}
+	// Il sito invia testo semplice (sendBeacon), quindi leggiamo il corpo a mano.
+	$d = json_decode( $req->get_body(), true );
+	if ( ! is_array( $d ) || empty( $d['p'] ) ) {
+		return new WP_REST_Response( null, 204 );
+	}
+	$pagina = '/' . ltrim( (string) wp_parse_url( (string) $d['p'], PHP_URL_PATH ), '/' );
+	$pagina = mb_substr( sanitize_text_field( $pagina ), 0, 200 );
+	$sorg   = portfolio_stats_sorgente( isset( $d['r'] ) ? (string) $d['r'] : '', isset( $d['u'] ) ? (string) $d['u'] : '' );
+	$w      = isset( $d['w'] ) ? (int) $d['w'] : 0;
+	$disp   = $w && $w < 768 ? 'Mobile' : ( $w && $w < 1100 ? 'Tablet' : 'Desktop' );
+
+	// Impronta giornaliera: IP + browser + sale che cambia ogni giorno, troncata. L'IP non viene salvato.
+	$oggi = current_time( 'Y-m-d' );
+	$sale = get_option( 'portfolio_stats_sale' );
+	if ( ! is_array( $sale ) || $sale['giorno'] !== $oggi ) {
+		$sale = array( 'giorno' => $oggi, 'valore' => wp_generate_password( 32, true, true ) );
+		update_option( 'portfolio_stats_sale', $sale, false );
+	}
+	$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? (string) wp_unslash( $_SERVER['REMOTE_ADDR'] ) : '';
+
+	global $wpdb;
+	$wpdb->insert( portfolio_stats_tabella(), array(
+		'giorno'      => $oggi,
+		'creato'      => current_time( 'mysql' ),
+		'pagina'      => $pagina,
+		'sorgente'    => $sorg,
+		'dispositivo' => $disp,
+		'browser'     => portfolio_stats_browser( $ua ),
+		'visitatore'  => substr( hash( 'sha256', $sale['valore'] . $ip . $ua ), 0, 16 ),
+	) );
+	// Ogni tanto eliminiamo le visite più vecchie di 13 mesi.
+	if ( 1 === wp_rand( 1, 200 ) ) {
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . portfolio_stats_tabella() . ' WHERE giorno < %s', gmdate( 'Y-m-d', strtotime( '-400 days' ) ) ) );
+	}
+	return new WP_REST_Response( null, 204 );
+}
+
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'portfolio/v1', '/visita', array(
+		'methods'             => 'POST',
+		'callback'            => 'portfolio_visita',
+		'permission_callback' => '__return_true',
+	) );
+} );
+
+/** Dati aggregati per il periodo (ultimi $giorni giorni, oggi compreso). */
+function portfolio_stats_dati( $giorni ) {
+	global $wpdb;
+	$t     = portfolio_stats_tabella();
+	$da    = gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' -' . ( $giorni - 1 ) . ' days' ) );
+	$prima = gmdate( 'Y-m-d', strtotime( $da . ' -' . $giorni . ' days' ) );
+	$tot   = function ( $dal, $al ) use ( $wpdb, $t ) {
+		return $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS viste, COUNT(DISTINCT giorno, visitatore) AS visitatori FROM {$t} WHERE giorno >= %s AND giorno < %s", $dal, $al ), ARRAY_A );
+	};
+	$top = function ( $col, $limite = 10 ) use ( $wpdb, $t, $da ) {
+		return $wpdb->get_results( $wpdb->prepare( "SELECT {$col} AS nome, COUNT(DISTINCT giorno, visitatore) AS visitatori, COUNT(*) AS viste FROM {$t} WHERE giorno >= %s AND {$col} <> '' GROUP BY {$col} ORDER BY visitatori DESC, viste DESC LIMIT %d", $da, $limite ), ARRAY_A );
+	};
+	$per_giorno = $wpdb->get_results( $wpdb->prepare( "SELECT giorno, COUNT(*) AS viste, COUNT(DISTINCT visitatore) AS visitatori FROM {$t} WHERE giorno >= %s GROUP BY giorno", $da ), OBJECT_K );
+	$serie      = array();
+	for ( $i = 0; $i < $giorni; $i++ ) {
+		$g       = gmdate( 'Y-m-d', strtotime( $da . " +{$i} days" ) );
+		$serie[] = array( 'giorno' => $g, 'visitatori' => isset( $per_giorno[ $g ] ) ? (int) $per_giorno[ $g ]->visitatori : 0, 'viste' => isset( $per_giorno[ $g ] ) ? (int) $per_giorno[ $g ]->viste : 0 );
+	}
+	return array(
+		'attuale'     => $tot( $da, gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' +1 day' ) ) ),
+		'precedente'  => $tot( $prima, $da ),
+		'serie'       => $serie,
+		'pagine'      => $top( 'pagina' ),
+		'sorgenti'    => $top( 'sorgente' ),
+		'dispositivi' => $top( 'dispositivo', 5 ),
+		'browser'     => $top( 'browser', 6 ),
+	);
+}
+
+function portfolio_stats_variazione( $ora, $prima ) {
+	if ( ! $prima ) {
+		return '';
+	}
+	$v = round( ( $ora - $prima ) / $prima * 100 );
+	return sprintf( '<span class="pstat-var %s">%s%d%%</span>', $v >= 0 ? 'su' : 'giu', $v >= 0 ? '+' : '', $v );
+}
+
+function portfolio_stats_grafico( $serie ) {
+	$max = max( 1, max( array_column( $serie, 'visitatori' ) ) );
+	$n   = count( $serie );
+	$out = '<div class="pstat-grafico" style="--n:' . $n . '">';
+	foreach ( $serie as $p ) {
+		$h    = round( $p['visitatori'] / $max * 100 );
+		$data = date_i18n( 'j M', strtotime( $p['giorno'] ) );
+		$out .= sprintf( '<div class="pstat-barra" title="%s: %d visitatori, %d visualizzazioni"><span style="height:%d%%"></span></div>', esc_attr( $data ), $p['visitatori'], $p['viste'], $h );
+	}
+	$out .= '</div><div class="pstat-asse"><span>' . esc_html( date_i18n( 'j M', strtotime( $serie[0]['giorno'] ) ) ) . '</span><span>' . esc_html( date_i18n( 'j M', strtotime( end( $serie )['giorno'] ) ) ) . '</span></div>';
+	return $out;
+}
+
+function portfolio_stats_tabella_html( $titolo, $righe, $colonna ) {
+	$max = $righe ? max( 1, (int) $righe[0]['visitatori'] ) : 1;
+	$out = '<div class="pstat-box"><h3>' . esc_html( $titolo ) . '</h3>';
+	if ( ! $righe ) {
+		return $out . '<p class="pstat-vuoto">Nessun dato nel periodo.</p></div>';
+	}
+	$out .= '<table><thead><tr><th>' . esc_html( $colonna ) . '</th><th>Visitatori</th></tr></thead><tbody>';
+	foreach ( $righe as $r ) {
+		$out .= sprintf( '<tr><td><span class="pstat-fondo" style="width:%d%%"></span><span class="pstat-nome">%s</span></td><td>%d</td></tr>', round( $r['visitatori'] / $max * 100 ), esc_html( $r['nome'] ), $r['visitatori'] );
+	}
+	return $out . '</tbody></table></div>';
+}
+
+function portfolio_stats_css() {
+	return '<style>
+	.pstat-wrap{max-width:1200px}
+	.pstat-periodi{display:flex;gap:6px;margin:12px 0 20px}
+	.pstat-periodi a{padding:6px 14px;border:1px solid #c3c4c7;border-radius:999px;text-decoration:none;color:#1d2327;background:#fff}
+	.pstat-periodi a.attivo{background:#0b8793;border-color:#0b8793;color:#fff}
+	.pstat-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+	.pstat-kpi div,.pstat-box{background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:16px}
+	.pstat-kpi strong{display:block;font-size:28px;line-height:1.2;margin-top:4px}
+	.pstat-kpi small{color:#646970;text-transform:uppercase;letter-spacing:.05em}
+	.pstat-var{font-size:12px;font-weight:600;margin-left:6px}.pstat-var.su{color:#008a20}.pstat-var.giu{color:#d63638}
+	.pstat-grafico{display:grid;grid-template-columns:repeat(var(--n),1fr);align-items:end;gap:3px;height:180px}
+	.pstat-barra{height:100%;display:flex;align-items:flex-end}
+	.pstat-barra span{display:block;width:100%;min-height:2px;background:#0b8793;border-radius:3px 3px 0 0}
+	.pstat-barra:hover span{background:#1aa3ae}
+	.pstat-asse{display:flex;justify-content:space-between;color:#646970;font-size:12px;margin-top:6px}
+	.pstat-griglia{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:12px}
+	.pstat-box h3{margin:0 0 12px;font-size:14px}
+	.pstat-box table{width:100%;border-collapse:collapse}
+	.pstat-box th{text-align:left;color:#646970;font-weight:400;font-size:12px;padding:4px 8px}
+	.pstat-box th:last-child,.pstat-box td:last-child{text-align:right;width:80px}
+	.pstat-box td{position:relative;padding:6px 8px}
+	.pstat-fondo{position:absolute;inset:3px auto 3px 0;background:#e6f4f5;border-radius:4px}
+	.pstat-nome{position:relative;word-break:break-all}
+	.pstat-vuoto{color:#646970}
+	</style>';
+}
+
+// Pagina "Statistiche" nel menu.
+add_action( 'admin_menu', function () {
+	add_menu_page( 'Statistiche del sito', 'Statistiche', 'edit_posts', 'portfolio-statistiche', 'portfolio_stats_pagina', 'dashicons-chart-area', 3 );
+} );
+
+function portfolio_stats_pagina() {
+	$periodi = array( 7 => '7 giorni', 30 => '30 giorni', 90 => '90 giorni', 365 => '12 mesi' );
+	$giorni  = isset( $_GET['giorni'] ) && isset( $periodi[ (int) $_GET['giorni'] ] ) ? (int) $_GET['giorni'] : 30; // phpcs:ignore WordPress.Security.NonceVerification
+	$d       = portfolio_stats_dati( $giorni );
+	$viste   = (int) $d['attuale']['viste'];
+	$vis     = (int) $d['attuale']['visitatori'];
+	echo portfolio_stats_css(); // phpcs:ignore WordPress.Security.EscapeOutput
+	echo '<div class="wrap pstat-wrap"><h1>Statistiche del sito</h1>';
+	echo '<p>Visite al sito pubblico, raccolte senza cookie e senza dati personali.</p>';
+	echo '<div class="pstat-periodi">';
+	foreach ( $periodi as $n => $label ) {
+		printf( '<a class="%s" href="%s">%s</a>', $n === $giorni ? 'attivo' : '', esc_url( add_query_arg( 'giorni', $n ) ), esc_html( $label ) );
+	}
+	echo '</div><div class="pstat-kpi">';
+	printf( '<div><small>Visitatori unici</small><strong>%s%s</strong></div>', esc_html( number_format_i18n( $vis ) ), portfolio_stats_variazione( $vis, (int) $d['precedente']['visitatori'] ) ); // phpcs:ignore
+	printf( '<div><small>Pagine viste</small><strong>%s%s</strong></div>', esc_html( number_format_i18n( $viste ) ), portfolio_stats_variazione( $viste, (int) $d['precedente']['viste'] ) ); // phpcs:ignore
+	printf( '<div><small>Pagine per visitatore</small><strong>%s</strong></div>', esc_html( $vis ? number_format_i18n( $viste / $vis, 1 ) : '0' ) );
+	$prima = $d['sorgenti'] ? $d['sorgenti'][0]['nome'] : '—';
+	printf( '<div><small>Provenienza principale</small><strong>%s</strong></div>', esc_html( $prima ) );
+	echo '</div><div class="pstat-box"><h3>Visitatori al giorno</h3>' . portfolio_stats_grafico( $d['serie'] ) . '</div>'; // phpcs:ignore
+	echo '<div class="pstat-griglia">';
+	echo portfolio_stats_tabella_html( 'Provenienza', $d['sorgenti'], 'Sorgente' ); // phpcs:ignore
+	echo portfolio_stats_tabella_html( 'Pagine più viste', $d['pagine'], 'Pagina' ); // phpcs:ignore
+	echo portfolio_stats_tabella_html( 'Dispositivi', $d['dispositivi'], 'Tipo' ); // phpcs:ignore
+	echo portfolio_stats_tabella_html( 'Browser', $d['browser'], 'Browser' ); // phpcs:ignore
+	echo '</div></div>';
+}
+
+// Riquadro riassuntivo nella Bacheca.
+add_action( 'wp_dashboard_setup', function () {
+	if ( ! current_user_can( 'edit_posts' ) ) {
+		return;
+	}
+	wp_add_dashboard_widget( 'portfolio_statistiche', 'Visite al sito (ultimi 7 giorni)', function () {
+		$d   = portfolio_stats_dati( 7 );
+		$vis = (int) $d['attuale']['visitatori'];
+		echo portfolio_stats_css(); // phpcs:ignore
+		echo '<div class="pstat-kpi" style="grid-template-columns:1fr 1fr">';
+		printf( '<div><small>Visitatori</small><strong>%s%s</strong></div>', esc_html( number_format_i18n( $vis ) ), portfolio_stats_variazione( $vis, (int) $d['precedente']['visitatori'] ) ); // phpcs:ignore
+		printf( '<div><small>Pagine viste</small><strong>%s</strong></div>', esc_html( number_format_i18n( (int) $d['attuale']['viste'] ) ) );
+		echo '</div>' . portfolio_stats_grafico( $d['serie'] ); // phpcs:ignore
+		echo portfolio_stats_tabella_html( 'Provenienza', array_slice( $d['sorgenti'], 0, 5 ), 'Sorgente' ); // phpcs:ignore
+		printf( '<p><a href="%s">Tutte le statistiche →</a></p>', esc_url( admin_url( 'admin.php?page=portfolio-statistiche' ) ) );
+	} );
 } );

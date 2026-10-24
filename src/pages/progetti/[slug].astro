@@ -13,12 +13,13 @@ export const getStaticPaths = (async () => {
 const { progetto: p } = Astro.props as { progetto: Progetto };
 
 const t = (await getTesti()).progetti;
-const og = p.copertina
-  ? await getImage({ src: p.copertina.src, width: 1200, height: 630, fit: 'cover', format: 'jpg' })
+const immagineSocial = p.seo.immagine ?? p.copertina;
+const og = immagineSocial
+  ? await getImage({ src: immagineSocial.src, width: 1200, height: 630, fit: 'cover', format: 'jpg' })
   : undefined;
 ---
 
-<Base title={p.titolo} description={p.estratto} image={og?.src}>
+<Base title={p.seo.titolo || p.titolo} description={p.seo.descrizione || p.estratto} image={og?.src} noindex={p.seo.noindex}>
   <article class="wrap section">
     <p><a href="/progetti/">{t.torna}</a></p>
     <h1>{p.titolo}</h1>

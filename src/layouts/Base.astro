@@ -14,6 +14,8 @@ interface Props {
   title?: string;
   description?: string;
   image?: string;
+  /** Esclude solo questa pagina dai motori di ricerca. */
+  noindex?: boolean;
   /** Header trasparente sopra la hero (solo home). */
   overlayHeader?: boolean;
 }
@@ -25,7 +27,7 @@ const clashCss = clash
   .join('');
 
 const g = (await getTesti()).generale;
-const { title, description: desc, image, overlayHeader = false } = Astro.props;
+const { title, description: desc, image, noindex = false, overlayHeader = false } = Astro.props;
 const description = desc || g.descrizione;
 const fullTitle = title ? `${title} · ${g.nome}` : `${g.nome} · ${g.ruolo}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -39,7 +41,7 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    {NOINDEX ? <meta name="robots" content="noindex, nofollow" /> : <link rel="canonical" href={canonical} />}
+    {NOINDEX || noindex ? <meta name="robots" content={NOINDEX ? 'noindex, nofollow' : 'noindex, follow'} /> : <link rel="canonical" href={canonical} />}
     {clashCss && <style set:html={clashCss} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
@@ -57,5 +59,18 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
       <slot />
     </main>
     <Footer />
+    <script>
+      // Statistiche senza cookie: una richiesta al CMS per ogni pagina vista (vedi "Statistiche" in WordPress).
+      import { CMS_URL } from 'astro:env/client';
+      if (CMS_URL && !/^(localhost|127\.)/.test(location.hostname) && navigator.doNotTrack !== '1') {
+        const dati = JSON.stringify({
+          p: location.pathname,
+          r: document.referrer,
+          u: new URLSearchParams(location.search).get('utm_source') ?? '',
+          w: innerWidth,
+        });
+        navigator.sendBeacon?.(`${CMS_URL}/wp-json/portfolio/v1/visita`, new Blob([dati], { type: 'text/plain' }));
+      }
+    </script>
   </body>
 </html>

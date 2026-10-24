@@ -37,6 +37,8 @@ export interface Progetto {
   inEvidenza: boolean;
   copertina?: Immagine;
   servizi: Servizio[];
+  /** Riquadro SEO del progetto in WordPress: valori vuoti = titolo, estratto e copertina. */
+  seo: { titolo: string; descrizione: string; immagine?: Immagine; noindex: boolean };
 }
 
 const API = CMS_URL ? `${CMS_URL}/wp-json/wp/v2` : '';
@@ -120,6 +122,12 @@ function toProgetto(p: any): Progetto {
     risultato: f.risultato ?? '',
     inEvidenza: Boolean(f.in_evidenza ?? f.inEvidenza),
     copertina: copertina(p),
+    seo: {
+      titolo: p.seo?.titolo ?? '',
+      descrizione: p.seo?.descrizione ?? '',
+      immagine: p.seo?.immagine?.src ? { ...p.seo.immagine, alt: '' } : undefined,
+      noindex: Boolean(p.seo?.noindex),
+    },
     servizi: termini
       .filter((t) => t?.taxonomy === 'servizi')
       .map((t) => ({ id: t.id, nome: decode(t.name), slug: t.slug })),

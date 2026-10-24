@@ -12,6 +12,19 @@ const NOINDEX = env.NOINDEX !== 'false';
 
 const cms = CMS_URL ? new URL(CMS_URL) : undefined;
 
+// Progetti con "Nascondi dai motori di ricerca": fuori dalla sitemap.
+async function progettiNascosti() {
+  if (!CMS_URL || NOINDEX) return new Set();
+  try {
+    const res = await fetch(`${CMS_URL}/wp-json/wp/v2/progetti?per_page=100&_fields=slug,seo`);
+    const items = res.ok ? await res.json() : [];
+    return new Set(items.filter((p) => p.seo?.noindex).map((p) => `${SITE_URL}/progetti/${p.slug}/`));
+  } catch {
+    return new Set();
+  }
+}
+const nascosti = await progettiNascosti();
+
 export default defineConfig({
   site: SITE_URL,
   output: 'static',
@@ -19,7 +32,7 @@ export default defineConfig({
   build: {
     format: 'directory',
   },
-  integrations: NOINDEX ? [] : [sitemap()],
+  integrations: NOINDEX ? [] : [sitemap({ filter: (url) => !nascosti.has(url) })],
   image: {
     // Le immagini del CMS vengono scaricate e ottimizzate (WebP/AVIF) durante la build,
     // quindi il sito pubblicato non dipende dal dominio del CMS.
