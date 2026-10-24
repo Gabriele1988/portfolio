@@ -1,0 +1,124 @@
+---
+import Base from '../layouts/Base.astro';
+import ServiziHome from '../components/ServiziHome.astro';
+import Timeline from '../components/Timeline.astro';
+import Faq from '../components/Faq.astro';
+import Icona from '../components/Icona.astro';
+import { getHome } from '../lib/wp';
+import { getTesti } from '../lib/testi';
+import { getElenchiServizi } from '../lib/servizi';
+
+const [home, testi, elenchi] = await Promise.all([getHome(), getTesti(), getElenchiServizi()]);
+const t = testi.pag_servizi;
+---
+
+<Base title={t.meta_titolo} description={t.meta_descrizione}>
+  <section class="wrap section testa">
+    <h1>{t.titolo} <span class="evidenza">{t.titolo_evidenza}</span></h1>
+    {t.intro && <p class="intro">{t.intro}</p>}
+  </section>
+
+  <section class="wrap section">
+    <h2 class="titolo-sezione">{t.problemi_titolo} <span class="evidenza">{t.problemi_evidenza}</span></h2>
+    <ul class="problemi">
+      {elenchi.problemi.map((p, i) => (
+        <li class="problema" style={`--i: ${i}`} data-appari>
+          {p.emoji && <span class="emoji" aria-hidden="true">{p.emoji}</span>}
+          <h3>{p.titolo}</h3>
+          {p.testo && <p>{p.testo}</p>}
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <ServiziHome servizi={home.servizi} />
+
+  <section class="wrap section processo">
+    <header class="intestazione">
+      {t.processo_etichetta && <p class="etichetta">{t.processo_etichetta}</p>}
+      <h2 class="titolo-sezione">{t.processo_titolo} <span class="evidenza">{t.processo_evidenza}</span></h2>
+      {t.processo_intro && <p class="intro">{t.processo_intro}</p>}
+    </header>
+    <Timeline fasi={elenchi.processo} step={t.step} />
+  </section>
+
+  <hr class="sep" />
+
+  <section class="wrap section">
+    <header class="intestazione">
+      {t.faq_etichetta && <p class="etichetta">{t.faq_etichetta}</p>}
+      <h2 class="titolo-sezione">{t.faq_titolo} <span class="evidenza">{t.faq_evidenza}</span></h2>
+    </header>
+    <Faq domande={elenchi.faq} />
+  </section>
+
+  <hr class="sep" />
+
+  <section class="wrap section chiusura">
+    <h2>{t.cta_titolo}</h2>
+    {t.cta_testo && <p class="intro">{t.cta_testo}</p>}
+    <a class="btn grande" href="/contatti/">{t.cta_pulsante}<Icona nome="arrowRight" /></a>
+  </section>
+</Base>
+
+<script>
+  // Le card dei problemi compaiono una dopo l'altra quando entrano nello schermo.
+  const card = document.querySelectorAll<HTMLElement>('[data-appari]');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    card.forEach((c) => c.classList.add('visibile'));
+  } else {
+    const io = new IntersectionObserver(
+      (voci) => {
+        for (const v of voci) {
+          if (v.isIntersecting) {
+            v.target.classList.add('visibile');
+            io.unobserve(v.target);
+          }
+        }
+      },
+      { rootMargin: '0px 0px -10% 0px' },
+    );
+    card.forEach((c) => io.observe(c));
+  }
+</script>
+
+<style>
+  .testa { text-align: center; padding-top: 5rem; padding-bottom: 6rem; }
+  h1 { font-size: var(--fs-page); max-width: 14ch; margin: 0 auto 1.75rem; line-height: 1; }
+  .intro { color: var(--text-soft); font-size: var(--fs-lead); max-width: 38rem; margin: 0 auto; }
+
+  .titolo-sezione { font-size: var(--fs-section); text-align: center; margin: 0 0 3rem; }
+  .intestazione { text-align: center; margin-bottom: 4rem; }
+  .intestazione .titolo-sezione { margin-bottom: 1rem; }
+  .etichetta { font-family: var(--mono); font-size: var(--fs-sm); letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.75rem; }
+
+  .problemi { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+  @media (min-width: 40rem) { .problemi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 64rem) { .problemi { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; } }
+  .problema {
+    padding: 1.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.3s, opacity 0.6s ease, transform 0.7s cubic-bezier(.2, .8, .2, 1);
+    transition-delay: 0s, calc(var(--i) * 0.07s), calc(var(--i) * 0.07s);
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  .problema.visibile { opacity: 1; transform: none; }
+  .problema:hover { border-color: var(--accent-border); }
+  .emoji { display: block; font-size: 1.6rem; line-height: 1; margin-bottom: 1.1rem; }
+  .problema h3 { font-size: var(--fs-base); margin: 0 0 0.6rem; }
+  .problema p { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.65; }
+
+  .processo { overflow-x: clip; }
+
+  .sep { border: 0; height: 1px; margin: 2rem 0; background: linear-gradient(90deg, transparent, var(--accent-border), transparent); }
+
+  .chiusura { text-align: center; padding-block: 5rem 6rem; }
+  .chiusura h2 { font-size: var(--fs-section); margin: 0 0 1rem; }
+  .chiusura .intro { margin-bottom: 2.25rem; }
+  .grande { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.95rem 1.75rem; font-family: var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; font-size: var(--fs-sm); }
+
+  @media (prefers-reduced-motion: reduce) { .problema { transition: border-color 0.3s; } }
+</style>

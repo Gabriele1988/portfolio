@@ -1,0 +1,50 @@
+---
+// Domande frequenti a fisarmonica (details/summary: funziona anche senza JavaScript).
+import Icona from './Icona.astro';
+import type { Domanda } from '../lib/servizi';
+
+interface Props {
+  domande: Domanda[];
+}
+const { domande } = Astro.props;
+---
+
+<div class="faq">
+  {domande.map((d) => (
+    <details>
+      <summary>
+        <span>{d.domanda}</span>
+        <span class="segno" aria-hidden="true"><Icona nome="plus" size={14} /></span>
+      </summary>
+      <div class="risposta">
+        <p>{d.risposta}</p>
+      </div>
+    </details>
+  ))}
+</div>
+
+<style>
+  .faq { display: grid; gap: 0.85rem; max-width: 48rem; margin-inline: auto; }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.75); transition: border-color 0.3s; }
+  details[open], details:hover { border-color: var(--accent-border); }
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem 1.35rem;
+    cursor: pointer;
+    list-style: none;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--fs-base);
+  }
+  summary::-webkit-details-marker { display: none; }
+  .segno { flex-shrink: 0; display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; border: 1px solid var(--border); color: var(--muted); transition: transform 0.3s, color 0.3s, background-color 0.3s; }
+  details[open] .segno { transform: rotate(45deg); color: var(--accent-text); background: var(--accent-btn); border-color: var(--accent-btn); }
+  .risposta { padding: 0 1.35rem 1.25rem; color: var(--text-soft); font-size: var(--fs-sm); line-height: 1.7; }
+  .risposta p { margin: 0; }
+  details[open] .risposta { animation: apri 0.35s ease; }
+  @keyframes apri { from { opacity: 0; transform: translateY(-0.4rem); } }
+  @media (prefers-reduced-motion: reduce) { details[open] .risposta { animation: none; } }
+</style>

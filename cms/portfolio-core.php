@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.5.0
+ * Version:     1.6.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -551,6 +551,41 @@ function portfolio_testi_schema() {
 				),
 			),
 		),
+		'pag_servizi' => array(
+			'menu'   => 'Servizi',
+			'gruppi' => array(
+				'Intestazione' => array(
+					'titolo'          => array( 'Titolo', 'text', 'Quello che so fare,' ),
+					'titolo_evidenza' => array( 'Parte colorata del titolo', 'text', 'fatto bene' ),
+					'intro'           => array( 'Introduzione', 'textarea', 'Ogni progetto è diverso, ma il mio approccio è sempre lo stesso: ascoltare, progettare e costruire qualcosa che funziona davvero.' ),
+				),
+				'Problemi' => array(
+					'problemi_titolo'   => array( 'Titolo', 'text', 'Quali problemi' ),
+					'problemi_evidenza' => array( 'Parte colorata del titolo', 'text', 'risolvo' ),
+				),
+				'Processo' => array(
+					'processo_etichetta' => array( 'Etichetta', 'text', 'Processo' ),
+					'processo_titolo'    => array( 'Titolo', 'text', 'Come' ),
+					'processo_evidenza'  => array( 'Parte colorata del titolo', 'text', 'lavoro' ),
+					'processo_intro'     => array( 'Introduzione', 'textarea', 'Dal primo contatto al supporto dopo il lancio, ogni fase è trasparente.' ),
+					'step'               => array( 'Parola prima del numero', 'text', 'Step' ),
+				),
+				'FAQ' => array(
+					'faq_etichetta' => array( 'Etichetta', 'text', 'FAQ' ),
+					'faq_titolo'    => array( 'Titolo', 'text', 'Domande' ),
+					'faq_evidenza'  => array( 'Parte colorata del titolo', 'text', 'frequenti' ),
+				),
+				'Chiusura' => array(
+					'cta_titolo'   => array( 'Titolo', 'text', 'Hai trovato quello che cercavi?' ),
+					'cta_testo'    => array( 'Testo', 'textarea', 'Raccontami il tuo progetto e troviamo insieme la soluzione giusta.' ),
+					'cta_pulsante' => array( 'Pulsante', 'text', 'Parliamone' ),
+				),
+				'SEO' => array(
+					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Servizi' ),
+					'meta_descrizione' => array( 'Descrizione', 'textarea', 'Siti web, applicazioni su misura e WordPress: i problemi che risolvo e come lavoro, passo dopo passo.' ),
+				),
+			),
+		),
 		'contatti' => array(
 			'menu'   => 'Contatti',
 			'gruppi' => array(
@@ -639,6 +674,87 @@ function portfolio_testi_schema() {
 	);
 }
 
+/* Elenchi della pagina Servizi (repeater): problemi, fasi del processo, domande frequenti. */
+add_action( 'acf/init', function () {
+	if ( ! function_exists( 'acf_add_local_field_group' ) ) {
+		return;
+	}
+	$rep = function ( $nome, $label, $bottone, $sub ) {
+		$fields = array();
+		foreach ( $sub as $k => $c ) {
+			$f = array( 'key' => "field_ps_{$nome}_{$k}", 'name' => $k, 'label' => $c[0], 'type' => $c[1], 'wrapper' => array( 'width' => $c[2] ) );
+			if ( isset( $c[3] ) ) {
+				$f['choices'] = $c[3];
+			}
+			if ( 'textarea' === $c[1] ) {
+				$f['rows'] = 3;
+			}
+			$fields[] = $f;
+		}
+		return array(
+			'key'          => "field_ps_{$nome}",
+			'name'         => "pag_servizi_{$nome}",
+			'label'        => $label,
+			'type'         => 'repeater',
+			'layout'       => 'block',
+			'button_label' => $bottone,
+			'collapsed'    => "field_ps_{$nome}_" . array_keys( $sub )[ 'faq' === $nome ? 0 : 1 ],
+			'instructions' => 'Lasciando vuoto si vede l\'elenco predefinito del sito.',
+			'sub_fields'   => $fields,
+		);
+	};
+	$icone = array(
+		'message' => 'Fumetto (contatto)', 'search' => 'Lente (analisi)', 'palette' => 'Tavolozza (design)', 'layout' => 'Layout (prototipi)',
+		'code' => 'Codice (sviluppo)', 'rocket' => 'Razzo (lancio)', 'wrench' => 'Chiave inglese (supporto)', 'server' => 'Server',
+		'chart' => 'Grafico', 'zap' => 'Fulmine', 'globe' => 'Globo', 'smartphone' => 'Smartphone',
+	);
+	acf_add_local_field_group( array(
+		'key'        => 'group_portfolio_servizi_elenchi',
+		'title'      => 'Elenchi della pagina',
+		'menu_order' => 10,
+		'fields'     => array(
+			$rep( 'problemi', 'Problemi che risolvo', 'Aggiungi problema', array(
+				'emoji'  => array( 'Emoji', 'text', 15 ),
+				'titolo' => array( 'Titolo', 'text', 85 ),
+				'testo'  => array( 'Testo', 'textarea', 100 ),
+			) ),
+			$rep( 'processo', 'Fasi del processo', 'Aggiungi fase', array(
+				'icona'  => array( 'Icona', 'select', 30, $icone ),
+				'titolo' => array( 'Titolo', 'text', 70 ),
+				'testo'  => array( 'Testo', 'textarea', 100 ),
+			) ),
+			$rep( 'faq', 'Domande frequenti', 'Aggiungi domanda', array(
+				'domanda'  => array( 'Domanda', 'text', 100 ),
+				'risposta' => array( 'Risposta', 'textarea', 100 ),
+			) ),
+		),
+		'location'   => array( array( array( 'param' => 'options_page', 'operator' => '==', 'value' => 'portfolio-pag_servizi' ) ) ),
+	) );
+} );
+
+/** GET /wp-json/portfolio/v1/servizi: { problemi: [], processo: [], faq: [] }. Elenco vuoto = predefinito del sito. */
+function portfolio_servizi_elenchi() {
+	$righe = function ( $nome, $chiavi ) {
+		$v   = function_exists( 'get_field' ) ? get_field( "pag_servizi_{$nome}", 'option' ) : array();
+		$out = array();
+		foreach ( (array) $v as $row ) {
+			$item = array();
+			foreach ( $chiavi as $k ) {
+				$item[ $k ] = isset( $row[ $k ] ) ? trim( (string) $row[ $k ] ) : '';
+			}
+			if ( '' !== $item[ $chiavi[1] ] || '' !== $item[ $chiavi[0] ] ) {
+				$out[] = $item;
+			}
+		}
+		return $out;
+	};
+	return array(
+		'problemi' => $righe( 'problemi', array( 'emoji', 'titolo', 'testo' ) ),
+		'processo' => $righe( 'processo', array( 'icona', 'titolo', 'testo' ) ),
+		'faq'      => $righe( 'faq', array( 'domanda', 'risposta' ) ),
+	);
+}
+
 /** GET /wp-json/portfolio/v1/testi: { pagina: { campo: valore } }. I campi mai salvati arrivano vuoti. */
 function portfolio_testi_data() {
 	$out = array();
@@ -655,6 +771,11 @@ function portfolio_testi_data() {
 }
 
 add_action( 'rest_api_init', function () {
+	register_rest_route( 'portfolio/v1', '/servizi', array(
+		'methods'             => 'GET',
+		'callback'            => 'portfolio_servizi_elenchi',
+		'permission_callback' => '__return_true',
+	) );
 	register_rest_route( 'portfolio/v1', '/testi', array(
 		'methods'             => 'GET',
 		'callback'            => 'portfolio_testi_data',
