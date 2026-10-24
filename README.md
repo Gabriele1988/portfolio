@@ -106,3 +106,7 @@ confrontala con questa: la parte nuova è l'endpoint `portfolio/v1/contatto` e l
 2. GitHub: cambia `SITE_URL`, `CMS_URL` e metti `NOINDEX=false`.
 3. Plesk: collega Git al nuovo dominio (stesso repository, branch `deploy`) e attiva Let's Encrypt.
 4. Rilancia la build.
+
+## Immagini
+
+`public/img/luna.webp`: faccia visibile della Luna ricavata dal mosaico NASA LRO (pubblico dominio), distribuito come `lunar_surface.jpg` negli esempi di globe.gl.

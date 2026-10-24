@@ -1,6 +1,7 @@
 ---
-// Hero della pagina Chi sono: una grande luna nascosta nel buio che si illumina dove passa il mouse
-// (o il dito, su telefono). Quando nessuno la tocca, una luce la esplora da sola.
+// Hero della pagina Chi sono: una foto vera della luna (mosaico NASA LRO, public/img/luna.webp) resta al buio
+// e appare dentro una macchia d'inchiostro che segue il mouse (o il dito): una goccia grande con una
+// piccola scia di gocce dietro. Quando nessuno la muove, la macchia gira da sola.
 // Titolo e testi usano mix-blend-mode: difference, quindi cambiano colore sopra la parte illuminata.
 import { Image } from 'astro:assets';
 
@@ -17,7 +18,21 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
 ---
 
 <section class="hero-luna" data-luna>
-  <canvas class="luna" aria-hidden="true"></canvas>
+  <svg class="luna" aria-hidden="true" data-svg>
+    <defs>
+      <filter id="goo-luna" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="18" data-sfoca />
+        <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -10" />
+      </filter>
+      <mask id="maschera-luna" maskUnits="userSpaceOnUse" x="0" y="0" width="10000" height="10000">
+        <g filter="url(#goo-luna)" fill="#fff">
+          {Array.from({ length: 9 }, () => <circle cx="-999" cy="-999" r="0" data-goccia />)}
+        </g>
+      </mask>
+    </defs>
+    <image href="/img/luna.webp" class="buio" data-luna-img />
+    <image href="/img/luna.webp" mask="url(#maschera-luna)" data-luna-img />
+  </svg>
 
   <div class="wrap griglia">
     <div class="testo">
@@ -57,199 +72,102 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
 
 <script>
   const sez = document.querySelector<HTMLElement>('[data-luna]');
-  const canvas = sez?.querySelector('canvas');
-  const ctx = canvas?.getContext('2d');
-  if (sez && canvas && ctx) {
+  const svg = sez?.querySelector<SVGSVGElement>('[data-svg]');
+  if (sez && svg) {
     const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const VITA = 2600; // ms di vita di ogni "pennellata" di luce
-    const BUIO = 0.1; // quanto si intravede la luna dove non c'è luce
-    let W = 0, H = 0, dpr = 1;
-    let lx = 0, ly = 0, ld = 0, raggio = 160;
-    let luna: HTMLCanvasElement | undefined;
+    const immagini = [...svg.querySelectorAll<SVGImageElement>('[data-luna-img]')];
+    const sfoca = svg.querySelector<SVGFEGaussianBlurElement>('[data-sfoca]')!;
+    // Macchia grande = una goccia centrale con due lobi che la rendono irregolare.
+    // Dietro c'è la scia: gocce sempre più piccole, ognuna insegue quella davanti.
+    const scala = [1, 0.62, 0.5, 0.42, 0.32, 0.25, 0.19, 0.14, 0.1];
+    const lobi = [
+      { dx: -0.55, dy: 0.28, fase: 0 },
+      { dx: 0.45, dy: -0.42, fase: 2.1 },
+    ];
+    const gocce = [...svg.querySelectorAll<SVGCircleElement>('[data-goccia]')].map((el, i) => ({ el, f: scala[i], x: 0, y: 0 }));
+    let W = 0, H = 0, R = 200;
+    const meta = { x: 0, y: 0 };
     let ultimoInput = -1e9;
     let visibile = true;
     let raf = 0;
-    const punti: { x: number; y: number; t: number }[] = [];
-
-    // Numeri casuali ripetibili: la luna è sempre la stessa a ogni visita.
-    function casuale(seme: number) {
-      return () => {
-        seme = (seme + 0x6d2b79f5) | 0;
-        let t = Math.imul(seme ^ (seme >>> 15), 1 | seme);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-      };
-    }
-
-    /** Disegna la luna (diametro D in pixel reali) su un canvas a parte: si fa una volta sola. */
-    function creaLuna(D: number) {
-      const c = document.createElement('canvas');
-      c.width = c.height = D;
-      const g = c.getContext('2d')!;
-      const r = D / 2;
-      const rnd = casuale(42);
-      g.save();
-      g.beginPath();
-      g.arc(r, r, r, 0, Math.PI * 2);
-      g.clip();
-      g.fillStyle = '#e6e6e1';
-      g.fillRect(0, 0, D, D);
-
-      // Grana della superficie: rumore a più scale, sfumato.
-      for (const [n, a] of [[5, 0.45], [16, 0.3], [64, 0.2], [256, 0.16]] as const) {
-        const nc = document.createElement('canvas');
-        nc.width = nc.height = n;
-        const nx = nc.getContext('2d')!;
-        const img = nx.createImageData(n, n);
-        for (let i = 0; i < n * n; i++) {
-          const v = rnd() * 255;
-          img.data.set([v, v, v, 255], i * 4);
-        }
-        nx.putImageData(img, 0, 0);
-        g.globalAlpha = a;
-        g.globalCompositeOperation = 'overlay';
-        g.imageSmoothingQuality = 'high';
-        g.drawImage(nc, 0, 0, D, D);
-      }
-
-      // Mari: grandi zone più scure.
-      g.globalCompositeOperation = 'multiply';
-      g.globalAlpha = 1;
-      const mari = [[0.34, 0.3, 0.2], [0.55, 0.36, 0.15], [0.3, 0.55, 0.17], [0.48, 0.58, 0.12], [0.64, 0.24, 0.1], [0.2, 0.4, 0.11], [0.42, 0.75, 0.09]];
-      for (const [mx, my, mr] of mari) {
-        const x = mx * D, y = my * D, rr = mr * D * (0.9 + rnd() * 0.3);
-        const gr = g.createRadialGradient(x, y, 0, x, y, rr);
-        gr.addColorStop(0, 'rgb(150 152 152)');
-        gr.addColorStop(0.6, 'rgb(190 191 190)');
-        gr.addColorStop(1, 'rgb(255 255 255 / 0)');
-        g.fillStyle = gr;
-        g.beginPath();
-        g.arc(x, y, rr, 0, Math.PI * 2);
-        g.fill();
-      }
-
-      // Crateri: luce da in alto a destra, ombra sul bordo interno opposto.
-      g.globalCompositeOperation = 'source-over';
-      for (let i = 0; i < 300; i++) {
-        const cr = D * (0.002 + Math.pow(rnd(), 4) * 0.045);
-        const ang = rnd() * Math.PI * 2;
-        const dist = Math.sqrt(rnd()) * (r - cr);
-        const x = r + Math.cos(ang) * dist, y = r + Math.sin(ang) * dist;
-        const lin = g.createLinearGradient(x + cr * 0.7, y - cr * 0.7, x - cr * 0.7, y + cr * 0.7);
-        lin.addColorStop(0, 'rgb(0 0 0 / 0.26)');
-        lin.addColorStop(0.5, 'rgb(0 0 0 / 0.05)');
-        lin.addColorStop(1, 'rgb(255 255 255 / 0.14)');
-        g.fillStyle = lin;
-        g.beginPath();
-        g.arc(x, y, cr, 0, Math.PI * 2);
-        g.fill();
-        if (cr > D * 0.02) {
-          g.strokeStyle = 'rgb(255 255 255 / 0.12)';
-          g.lineWidth = cr * 0.12;
-          g.beginPath();
-          g.arc(x, y, cr * 1.04, Math.PI * 0.6, Math.PI * 1.4);
-          g.stroke();
-        }
-      }
-
-      // Un cratere giovane con i raggi chiari, come Tycho.
-      const tx = r * 0.82, ty = r * 1.62;
-      g.strokeStyle = 'rgb(255 255 255 / 0.07)';
-      for (let i = 0; i < 26; i++) {
-        const a = rnd() * Math.PI * 2, l = D * (0.12 + rnd() * 0.3);
-        g.lineWidth = D * (0.002 + rnd() * 0.004);
-        g.beginPath();
-        g.moveTo(tx, ty);
-        g.lineTo(tx + Math.cos(a) * l, ty + Math.sin(a) * l);
-        g.stroke();
-      }
-
-      // Volume della sfera: più chiara in alto a destra, scura sul bordo.
-      const sf = g.createRadialGradient(r * 1.3, r * 0.7, r * 0.05, r, r, r);
-      sf.addColorStop(0, 'rgb(255 255 255 / 0.16)');
-      sf.addColorStop(0.5, 'rgb(0 0 0 / 0)');
-      sf.addColorStop(0.8, 'rgb(0 0 0 / 0.22)');
-      sf.addColorStop(1, 'rgb(0 0 0 / 0.7)');
-      g.fillStyle = sf;
-      g.fillRect(0, 0, D, D);
-      g.restore();
-      return c;
-    }
+    let pronto = false;
 
     function misura() {
       const r = sez!.getBoundingClientRect();
       W = r.width;
       H = r.height;
-      dpr = Math.min(devicePixelRatio || 1, 1.5);
-      canvas!.width = Math.round(W * dpr);
-      canvas!.height = Math.round(H * dpr);
+      svg!.setAttribute('viewBox', `0 0 ${W} ${H}`);
       const largo = W >= 768;
-      // Su desktop la luna è enorme e arriva sotto il titolo, così la luce lo fa cambiare colore.
-      ld = largo ? Math.max(H * 1.5, W * 0.95) : Math.max(W * 1.5, H * 0.7);
-      lx = largo ? W * 0.64 : W * 0.6;
-      ly = largo ? H * 0.58 : H * 0.4;
-      raggio = Math.min(230, Math.max(120, W * 0.13));
-      const D = Math.round(ld * dpr);
-      if (!luna || Math.abs(luna.width - D) > D * 0.15) luna = creaLuna(D);
-      if (calmo) disegnaFermo();
-    }
-
-    function disegnaFermo() {
-      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx!.clearRect(0, 0, W, H);
-      ctx!.globalAlpha = 0.45;
-      ctx!.drawImage(luna!, lx - ld / 2, ly - ld / 2, ld, ld);
-      ctx!.globalAlpha = 1;
-    }
-
-    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-
-    function aggiungi(x: number, y: number, ora: number) {
-      const u = punti[punti.length - 1];
-      if (u && Math.hypot(u.x - x, u.y - y) < 10 && ora - u.t < 80) return;
-      punti.push({ x, y, t: ora });
-      if (punti.length > 160) punti.shift();
+      // Luna enorme: su desktop arriva sotto il titolo, così la macchia lo fa cambiare colore.
+      const ld = largo ? Math.max(H * 1.5, W * 0.95) : Math.max(W * 1.5, H * 0.7);
+      const lx = largo ? W * 0.64 : W * 0.6;
+      const ly = largo ? H * 0.58 : H * 0.4;
+      for (const img of immagini) {
+        img.setAttribute('x', String(lx - ld / 2));
+        img.setAttribute('y', String(ly - ld / 2));
+        img.setAttribute('width', String(ld));
+        img.setAttribute('height', String(ld));
+      }
+      R = largo ? Math.min(300, Math.max(150, W * 0.16)) : W * 0.34;
+      sfoca.setAttribute('stdDeviation', (R * 0.09).toFixed(1));
+      if (!pronto) {
+        pronto = true;
+        meta.x = W * 0.6;
+        meta.y = H * 0.5;
+        for (const g of gocce) { g.x = meta.x; g.y = meta.y; }
+      }
+      if (calmo) {
+        gocce[0].el.setAttribute('cx', String(W * 0.62));
+        gocce[0].el.setAttribute('cy', String(H * 0.5));
+        gocce[0].el.setAttribute('r', String(R));
+      }
     }
 
     function disegna(ora: number) {
       raf = 0;
-      // Nessuno muove il mouse: una luce gira da sola sulla luna.
+      // Nessuno muove il mouse: la macchia esplora la luna da sola.
       if (ora - ultimoInput > 2500) {
         const t = ora / 1000;
-        aggiungi(W * 0.5 + Math.cos(t * 0.42) * W * 0.32, H * 0.5 + Math.sin(t * 0.63) * H * 0.28, ora);
+        meta.x = W * 0.5 + Math.cos(t * 0.35) * W * 0.3;
+        meta.y = H * 0.5 + Math.sin(t * 0.55) * H * 0.26;
       }
-      while (punti.length && ora - punti[0].t > VITA) punti.shift();
-
-      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx!.clearRect(0, 0, W, H);
-      ctx!.globalCompositeOperation = 'source-over';
-      for (const p of punti) {
-        const eta = (ora - p.t) / VITA;
-        const a = (1 - eta) * (1 - eta);
-        const rr = raggio * (0.55 + 0.8 * easeOut(eta));
-        const gr = ctx!.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr);
-        gr.addColorStop(0, `rgb(255 255 255 / ${a})`);
-        gr.addColorStop(0.55, `rgb(255 255 255 / ${a * 0.55})`);
-        gr.addColorStop(1, 'rgb(255 255 255 / 0)');
-        ctx!.fillStyle = gr;
-        ctx!.fillRect(p.x - rr, p.y - rr, rr * 2, rr * 2);
-      }
-      // La luce fa da maschera: la luna si vede solo lì, e appena appena nel resto.
-      ctx!.globalCompositeOperation = 'source-in';
-      ctx!.drawImage(luna!, lx - ld / 2, ly - ld / 2, ld, ld);
-      ctx!.globalCompositeOperation = 'destination-over';
-      ctx!.globalAlpha = BUIO;
-      ctx!.drawImage(luna!, lx - ld / 2, ly - ld / 2, ld, ld);
-      ctx!.globalAlpha = 1;
-      ctx!.globalCompositeOperation = 'source-over';
+      const t = ora / 1000;
+      const testa = gocce[0];
+      gocce.forEach((g, i) => {
+        let tx: number, ty: number, k: number;
+        if (i === 0) {
+          // La testa insegue il puntatore.
+          tx = meta.x; ty = meta.y; k = 0.12;
+        } else if (i <= lobi.length) {
+          // I lobi restano attaccati alla testa e ondeggiano piano.
+          const l = lobi[i - 1];
+          tx = testa.x + R * (l.dx + Math.sin(t * 0.7 + l.fase) * 0.08);
+          ty = testa.y + R * (l.dy + Math.cos(t * 0.6 + l.fase) * 0.08);
+          k = 0.25;
+        } else {
+          // La scia insegue la goccia davanti; da ferma cola un po' in basso a destra.
+          const p = i === lobi.length + 1 ? testa : gocce[i - 1];
+          const dist = R * (p.f + g.f) * 0.75;
+          const a = 0.55 + Math.sin(t * 0.8 + i) * 0.25;
+          tx = p.x + Math.cos(a) * dist;
+          ty = p.y + Math.sin(a) * dist;
+          k = 0.3;
+        }
+        g.x += (tx - g.x) * k;
+        g.y += (ty - g.y) * k;
+        const respiro = i === 0 ? 1 + Math.sin(t * 1.3) * 0.03 : 1;
+        g.el.setAttribute('cx', g.x.toFixed(1));
+        g.el.setAttribute('cy', g.y.toFixed(1));
+        g.el.setAttribute('r', (R * g.f * respiro).toFixed(1));
+      });
       if (visibile) raf = requestAnimationFrame(disegna);
     }
 
     function muovi(cx: number, cy: number) {
       const r = sez!.getBoundingClientRect();
-      const ora = performance.now();
-      ultimoInput = ora;
-      aggiungi(cx - r.left, cy - r.top, ora);
+      ultimoInput = performance.now();
+      meta.x = cx - r.left;
+      meta.y = cy - r.top;
     }
 
     misura();
@@ -285,6 +203,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
     padding-block: 7rem 4rem;
   }
   .luna { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .buio { opacity: 0.1; }
 
   .griglia { position: relative; width: 100%; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2.5rem 1.5rem; align-items: center; }
   .testo { grid-column: 1 / -1; }
@@ -296,7 +215,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
 
   [data-blend] { color: var(--white); mix-blend-mode: difference; }
   .occhiello { margin: 0 0 1.5rem; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.18em; text-transform: uppercase; }
-  h1 { margin: 0; font-size: clamp(2.25rem, 5.2vw, 4.75rem); line-height: 1.02; letter-spacing: -0.03em; max-width: 16ch; }
+  h1 { margin: 0; font-size: clamp(2rem, 4.2vw, 3.9rem); line-height: 1.08; }
   .lead { margin: 1.75rem 0 0; max-width: 36rem; font-size: var(--fs-lead); line-height: 1.6; color: rgb(205 207 201); }
   .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 2.25rem 0 0; }
   .cta .btn { min-height: 48px; display: inline-flex; align-items: center; transition: transform 0.25s cubic-bezier(.2, .8, .2, 1), box-shadow 0.25s, background 0.2s; }

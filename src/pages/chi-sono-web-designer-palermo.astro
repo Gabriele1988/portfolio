@@ -84,6 +84,7 @@ const jsonLd = {
 
 <Base title={t.meta_titolo} description={t.meta_descrizione} image={t.hero_foto || undefined} overlayHeader titoloEsatto>
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  <link slot="head" rel="preload" as="image" href="/img/luna.webp" type="image/webp" fetchpriority="high" />
 
   <HeroLuna
     occhiello={t.hero_occhiello}
@@ -307,7 +308,7 @@ const jsonLd = {
   .g12 > * { grid-column: 1 / -1; }
 
   .occhiello { margin: 0 0 1rem; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-light); }
-  h2 { margin: 0; font-size: var(--fs-section); line-height: 1.08; letter-spacing: -0.02em; max-width: 22ch; }
+  h2 { margin: 0; font-size: var(--fs-section); line-height: 1.08; max-width: 22ch; }
   h3 { margin: 0 0 0.75rem; font-size: var(--fs-lg); line-height: 1.25; }
   p { margin: 0; }
   .testo { margin-top: 1.5rem; color: var(--text-soft); font-size: var(--fs-base); line-height: 1.75; max-width: 38rem; }
