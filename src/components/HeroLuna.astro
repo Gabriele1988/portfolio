@@ -83,7 +83,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       void main(){
         // La scia ondeggia come un liquido: si legge il fotogramma prima da un punto spostato dal rumore.
         vec2 n = vec2(noise(uv * 6.0 + tempo * 0.4), noise(uv * 6.0 + 7.3 - tempo * 0.4)) - 0.5;
-        float v = texture2D(prec, uv + n * 0.004).r * sbiadisci - 0.004;
+        float v = texture2D(prec, uv + n * 0.004).r * sbiadisci - 0.0015;
         vec2 px = uv * dim;
         float d = segmento(px, da, a);
         float m = clamp(1.0 - d / raggio, 0.0, 1.0);
@@ -107,7 +107,9 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
         // Fuori dall'immagine niente: con CLAMP_TO_EDGE il bordo si allungherebbe in strisce.
         vec4 c = texture2D(luna, lp) * step(0.0, lp.x) * step(lp.x, 1.0) * step(0.0, lp.y) * step(lp.y, 1.0);
         float bordo = (smoothstep(s - 0.02, s + 0.02, m) - smoothstep(s + 0.02, s + 0.12, m));
-        vec3 col = c.rgb + bordo * 0.18 * c.a;
+        // Dentro la scia la luna è più chiara: il testo in "difference" diventa scuro e ben leggibile.
+        vec3 chiara = c.a - (c.a - c.rgb) * 0.4;
+        vec3 col = mix(c.rgb, chiara, dentro) + bordo * 0.18 * c.a;
         gl_FragColor = vec4(col, c.a) * mix(buio, 1.0, dentro);
       }`;
 
@@ -231,7 +233,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       gl!.uniform2f(pScia.u.a, testa.x, H - testa.y);
       gl!.uniform1f(pScia.u.raggio, R);
       gl!.uniform1f(pScia.u.tempo, t);
-      gl!.uniform1f(pScia.u.sbiadisci, Math.pow(0.972, passi));
+      gl!.uniform1f(pScia.u.sbiadisci, Math.pow(0.989, passi));
       gl!.drawArrays(gl!.TRIANGLE_STRIP, 0, 4);
       scie = [scrivi, leggi];
 
@@ -314,7 +316,7 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
   [data-blend] { color: var(--white); mix-blend-mode: difference; }
   .occhiello { margin: 0 0 1.5rem; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.18em; text-transform: uppercase; }
   h1 { margin: 0; font-size: clamp(2rem, 4.2vw, 3.9rem); line-height: 1.08; }
-  .lead { margin: 1.75rem 0 0; max-width: 36rem; font-size: var(--fs-lead); line-height: 1.6; color: rgb(205 207 201); }
+  .lead { margin: 1.75rem 0 0; max-width: 36rem; font-size: var(--fs-lead); line-height: 1.6; }
   .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 2.25rem 0 0; }
   .cta .btn { min-height: 48px; display: inline-flex; align-items: center; transition: transform 0.25s cubic-bezier(.2, .8, .2, 1), box-shadow 0.25s, background 0.2s; }
   .cta .btn:hover { transform: translateY(-3px); box-shadow: 0 12px 28px -12px var(--accent); }
