@@ -20,6 +20,8 @@ export interface Progetto {
   slug: string;
   titolo: string;
   estratto: string;
+  /** Testo completo diviso in paragrafi, senza HTML (per i riquadri che si riempiono fino in fondo). */
+  paragrafi: string[];
   contenuto: string;
   data: string;
   cliente: string;
@@ -74,10 +76,26 @@ const decode = (s = '') =>
     .replace(/&#8221;|&rdquo;/g, '”')
     .replace(/&#8211;|&ndash;/g, '–')
     .replace(/&#8212;|&mdash;/g, '—')
+    .replace(/&#8230;|&hellip;/g, '…')
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&([aeiou])(grave|acute);/gi, (_, v, a) => (v + (a === 'grave' ? '\u0300' : '\u0301')).normalize('NFC'))
+    .replace(/&laquo;/g, '«')
+    .replace(/&raquo;/g, '»')
+    .replace(/&#0*(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
     .replace(/&#038;|&amp;/g, '&')
     .replace(/&nbsp;/g, ' ');
 
-const stripTags = (s = '') => decode(s.replace(/<[^>]*>/g, '')).trim();
+const stripTags = (s = '') => decode(s.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
+
+// L'estratto automatico di WordPress finisce con " […]": diventa i normali puntini.
+const pulisciEstratto = (s = '') => stripTags(s).replace(/\s*\[(…|\.\.\.)\]\s*$/, '…');
+
+// Paragrafi del testo del progetto, senza HTML: titoli e voci di elenco contano come paragrafi.
+const paragrafi = (html = '') =>
+  [...html.matchAll(/<(p|h[2-6]|li)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map((m) => stripTags(m[2])).filter(Boolean);
 
 function toList(v: unknown): string[] {
   if (Array.isArray(v)) return v.map(String).filter(Boolean);
@@ -107,7 +125,8 @@ function toProgetto(p: any): Progetto {
     id: p.id,
     slug: p.slug,
     titolo: decode(p.title?.rendered),
-    estratto: stripTags(p.excerpt?.rendered),
+    estratto: pulisciEstratto(p.excerpt?.rendered),
+    paragrafi: paragrafi(p.content?.rendered),
     contenuto: p.content?.rendered ?? '',
     data: p.date,
     cliente: f.cliente ?? '',

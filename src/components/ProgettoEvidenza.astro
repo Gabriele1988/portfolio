@@ -12,6 +12,9 @@ interface Props {
 }
 const { progetto: p, testi: t } = Astro.props;
 const online = p.stato === 'online';
+// Il testo riempie lo spazio lasciato libero dalla colonna di destra: si parte dal testo completo
+// e uno script lo taglia (con i puntini) dove finisce il riquadro. Senza testo si usa l'estratto.
+const testo = p.paragrafi.length ? p.paragrafi : p.estratto ? [p.estratto] : [];
 const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
 ---
 
@@ -26,7 +29,11 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
     </p>
     <h2><a href={`/progetti/${p.slug}/`}>{p.titolo}</a></h2>
     {p.sottotitolo && <p class="sottotitolo">{p.sottotitolo}</p>}
-    {p.estratto && <p class="estratto">{p.estratto}</p>}
+    {testo.length > 0 && (
+      <div class="estratto" data-riempi>
+        {testo.map((t) => <p>{t}</p>)}
+      </div>
+    )}
     {tag.length > 0 && (
       <ul class="tags">
         {tag.map((s) => <TagTecnologia nome={s} icona={p.tecnologie.length > 0} />)}
@@ -71,6 +78,44 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
   </div>
 </article>
 
+<script>
+  // Taglia il testo dove finisce il suo riquadro, all'ultima parola intera, e aggiunge "…".
+  function riempi(box: HTMLElement) {
+    const originali = (box.dataset.testo ??= JSON.stringify([...box.children].map((p) => p.textContent ?? '')));
+    const testi: string[] = JSON.parse(originali);
+    box.replaceChildren();
+    box.classList.add('pronto');
+    const entra = () => box.scrollHeight <= box.clientHeight + 1;
+    for (const t of testi) {
+      const p = document.createElement('p');
+      p.textContent = t;
+      box.append(p);
+      if (entra()) continue;
+      // Il paragrafo non entra tutto: ricerca della parola più lontana che ci sta ancora.
+      const parole = t.split(' ');
+      let min = 0, max = parole.length;
+      while (min < max) {
+        const m = Math.ceil((min + max) / 2);
+        p.textContent = parole.slice(0, m).join(' ').replace(/[\s,.;:–—-]+$/, '') + '…';
+        if (entra()) min = m; else max = m - 1;
+      }
+      if (min === 0) p.remove();
+      else p.textContent = parole.slice(0, min).join(' ').replace(/[\s,.;:–—-]+$/, '') + '…';
+      // Un titoletto rimasto in fondo senza il suo paragrafo si toglie.
+      const ultimo = box.lastElementChild;
+      if (min === 0 && ultimo && box.children.length > 1 && !/[.!?…:]$/.test(ultimo.textContent ?? '') && (ultimo.textContent ?? '').length < 90) ultimo.remove();
+      break;
+    }
+  }
+  document.querySelectorAll<HTMLElement>('[data-riempi]').forEach((box) => {
+    let ultima = -1;
+    new ResizeObserver(() => {
+      const misura = box.clientWidth * 10000 + box.clientHeight;
+      if (misura !== ultima) { ultima = misura; riempi(box); }
+    }).observe(box);
+  });
+</script>
+
 <style>
   .evidenza-box {
     display: grid;
@@ -105,7 +150,11 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
   h2 a { color: var(--text); text-decoration: none; }
   h2 a:hover { color: var(--accent-light); }
   .sottotitolo { color: var(--accent-light); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-  .estratto { color: var(--text-soft); line-height: 1.7; }
+  /* Su desktop il testo occupa lo spazio libero fino al piede (almeno 5 righe); su mobile al massimo 7 righe. */
+  .estratto { color: var(--text-soft); line-height: 1.7; display: flex; flex-direction: column; gap: 0.85em; overflow: hidden; max-height: calc(1.7em * 7); }
+  .estratto :global(p) { margin: 0; } /* i paragrafi vengono ricreati dallo script, senza lo scope di Astro */
+  .estratto:not(.pronto) { mask-image: linear-gradient(#000 70%, transparent); }
+  @media (min-width: 64rem) { .estratto { flex: 1 1 0; min-height: calc(1.7em * 5); max-height: none; } }
 
   .piede { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); margin-top: auto !important; font-size: var(--fs-sm); }
   .piede a { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); text-decoration: none; }
