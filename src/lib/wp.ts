@@ -29,6 +29,8 @@ export interface Progetto {
   sottotitolo: string;
   stato: 'online' | 'in_sviluppo';
   /** Elenco mostrato quando il progetto è quello in evidenza. */
+  /** Screenshot e foto mostrati in fondo alla pagina del progetto. */
+  galleria: Immagine[];
   funzionalita: string[];
   repository: string;
   anno: string;
@@ -139,6 +141,7 @@ function toProgetto(p: any): Progetto {
     ruolo: f.ruolo ?? '',
     tecnologie: toList(f.tecnologie),
     risultato: f.risultato ?? '',
+    galleria: Array.isArray(f.galleria) ? f.galleria.filter((g: any) => g?.src).map((g: any) => ({ src: g.src, width: g.width || undefined, height: g.height || undefined, alt: g.alt ?? '' })) : [],
     inEvidenza: Boolean(f.in_evidenza ?? f.inEvidenza),
     copertina: copertina(p),
     seo: {

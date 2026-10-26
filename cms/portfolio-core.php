@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.10.0
+ * Version:     1.11.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -74,9 +74,10 @@ function portfolio_campi() {
 		'url'         => array( 'label' => 'URL del progetto', 'type' => 'url' ),
 		'ruolo'       => array( 'label' => 'Ruolo', 'type' => 'text' ),
 		'tecnologie'  => array( 'label' => 'Tecnologie', 'type' => 'text', 'instructions' => 'Separate da virgola, es. Angular, Spring Boot, PostgreSQL' ),
-		'funzionalita' => array( 'label' => 'Funzionalità chiave', 'type' => 'textarea', 'instructions' => 'Una per riga. Si vedono quando il progetto è quello in evidenza nella pagina Progetti.' ),
+		'funzionalita' => array( 'label' => 'Funzionalità chiave', 'type' => 'textarea', 'instructions' => 'Una per riga. Si vedono nella scheda a destra della pagina del progetto e quando il progetto è quello in evidenza nella pagina Progetti.' ),
 		'repository'  => array( 'label' => 'Repository GitHub', 'type' => 'url', 'instructions' => 'Facoltativo, se il codice è pubblico.' ),
 		'risultato'   => array( 'label' => 'Risultato', 'type' => 'textarea', 'instructions' => 'Il risultato ottenuto, in una o due frasi (meglio se con numeri).' ),
+		'galleria'    => array( 'label' => 'Galleria', 'type' => 'gallery', 'instructions' => 'Screenshot o foto del progetto (pagine interne, versione mobile, dettagli). Si vedono in fondo alla pagina del progetto e si aprono a tutto schermo.' ),
 		'in_evidenza' => array( 'label' => 'In evidenza', 'type' => 'true_false', 'instructions' => 'Mostra in home page. Il più recente in evidenza apre anche la pagina Progetti.' ),
 	);
 }
@@ -98,6 +99,9 @@ add_action( 'acf/init', function () {
 			'choices'       => isset( $c['choices'] ) ? $c['choices'] : array(),
 			'default_value' => isset( $c['default_value'] ) ? $c['default_value'] : '',
 		);
+		if ( 'gallery' === $c['type'] ) {
+			$fields[ count( $fields ) - 1 ] += array( 'return_format' => 'id', 'preview_size' => 'medium', 'insert' => 'append', 'mime_types' => 'jpg, jpeg, png, webp' );
+		}
 	}
 	acf_add_local_field_group( array(
 		'key'      => 'group_portfolio_progetto',
@@ -142,6 +146,21 @@ add_action( 'rest_api_init', function () {
 					$v = array_values( array_filter( array_map( 'trim', preg_split( '/\r?\n/', (string) $v ) ) ) );
 				} elseif ( 'stato' === $name && '' === $v ) {
 					$v = 'online';
+				} elseif ( 'gallery' === $c['type'] ) {
+					// Originali con dimensioni e testo alternativo: Astro le scarica e le ottimizza.
+					$immagini = array();
+					foreach ( array_filter( array_map( 'intval', (array) $v ) ) as $id ) {
+						$img = wp_get_attachment_image_src( $id, 'full' );
+						if ( $img ) {
+							$immagini[] = array(
+								'src'    => $img[0],
+								'width'  => (int) $img[1],
+								'height' => (int) $img[2],
+								'alt'    => (string) get_post_meta( $id, '_wp_attachment_image_alt', true ),
+							);
+						}
+					}
+					$v = $immagini;
 				}
 				$out[ $name ] = $v;
 			}
@@ -577,6 +596,8 @@ function portfolio_testi_schema() {
 					'label_servizi'    => array( 'Etichetta Servizi', 'text', 'Servizi' ),
 					'label_online'     => array( 'Etichetta Online', 'text', 'Online' ),
 					'label_risultato'  => array( 'Titolo Risultato', 'text', 'Risultato' ),
+					'label_tecnologie' => array( 'Titolo Tecnologie', 'text', 'Tecnologie' ),
+					'galleria_titolo'  => array( 'Titolo della galleria', 'text', 'Galleria' ),
 					'cta_progetto'     => array( 'Pulsante finale', 'text', 'Hai un progetto simile? Richiedi un preventivo' ),
 				),
 				'SEO' => array(

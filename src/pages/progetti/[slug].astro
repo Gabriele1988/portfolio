@@ -21,6 +21,11 @@ const og = immagineSocial
   ? await getImage({ src: immagineSocial.src, width: 1200, height: 630, fit: 'cover', format: 'jpg' })
   : undefined;
 const contenuto = await ottimizzaImmaginiContenuto(p.contenuto, CMS_URL ?? '');
+// Versione grande di ogni immagine della galleria, aperta a tutto schermo al clic.
+const grandi = await Promise.all(
+  p.galleria.map((g) => getImage({ src: g.src, width: Math.min(g.width ?? 1920, 1920), height: g.width && g.height ? Math.round((Math.min(g.width, 1920) * g.height) / g.width) : undefined, inferSize: !g.width, format: 'webp' })),
+);
+const conLato = p.funzionalita.length > 0 || p.tecnologie.length > 0 || !!p.risultato;
 ---
 
 <Base title={p.seo.titolo || p.titolo} description={p.seo.descrizione || p.estratto} image={og?.src} noindex={p.seo.noindex}>
@@ -51,26 +56,97 @@ const contenuto = await ottimizzaImmaginiContenuto(p.contenuto, CMS_URL ?? '');
       />
     )}
 
-    {p.tecnologie.length > 0 && (
-      <ul class="tags" aria-label="Tecnologie">
-        {p.tecnologie.map((t) => <TagTecnologia nome={t} />)}
-      </ul>
+    <div class:list={['corpo', { 'con-lato': conLato }]}>
+      <div class="prose" set:html={contenuto} />
+
+      {conLato && (
+        <aside class="lato" aria-label="Scheda del progetto">
+          <div class="scheda-lato">
+            {p.funzionalita.length > 0 && (
+              <section>
+                <h2>{t.funzionalita_titolo}</h2>
+                <ul class="funzioni">{p.funzionalita.map((f) => <li>{f}</li>)}</ul>
+              </section>
+            )}
+            {p.tecnologie.length > 0 && (
+              <section>
+                <h2>{t.label_tecnologie}</h2>
+                <ul class="tags">{p.tecnologie.map((x) => <TagTecnologia nome={x} />)}</ul>
+              </section>
+            )}
+            {p.risultato && (
+              <section class="risultato">
+                <h2>{t.label_risultato}</h2>
+                <p>{p.risultato}</p>
+              </section>
+            )}
+            <p class="azioni">
+              <a class="btn" href="/contatti/">{t.cta_progetto}</a>
+              {p.url && p.stato === 'online' && <a class="visita" href={p.url} rel="noopener" target="_blank">{t.visita} ↗</a>}
+            </p>
+          </div>
+        </aside>
+      )}
+    </div>
+
+    {p.galleria.length > 0 && (
+      <section class="galleria" aria-labelledby="titolo-galleria">
+        <h2 id="titolo-galleria">{t.galleria_titolo}</h2>
+        <ul data-galleria>
+          {p.galleria.map((g, i) => (
+            <li>
+              <a href={grandi[i].src} data-indice={i} aria-label={`Apri immagine ${i + 1} di ${p.galleria.length}`}>
+                <Image src={g.src} alt={g.alt || `${p.titolo}, immagine ${i + 1}`} width={g.width ?? 1200} height={g.height ?? 800} widths={[480, 800, 1200]} sizes="(min-width: 64rem) 33vw, (min-width: 40rem) 50vw, 100vw" format="webp" />
+              </a>
+            </li>
+          ))}
+        </ul>
+        <dialog class="lightbox" data-lightbox aria-label={t.galleria_titolo}>
+          <img alt="" />
+          <button class="chiudi" type="button" data-chiudi aria-label="Chiudi">✕</button>
+          {p.galleria.length > 1 && <button class="nav prec" type="button" data-passo="-1" aria-label="Immagine precedente">‹</button>}
+          {p.galleria.length > 1 && <button class="nav succ" type="button" data-passo="1" aria-label="Immagine successiva">›</button>}
+        </dialog>
+      </section>
     )}
 
-    <div class="prose" set:html={contenuto} />
-
-    {p.risultato && (
-      <aside class="risultato">
-        <h2>{t.label_risultato}</h2>
-        <p>{p.risultato}</p>
-      </aside>
+    {!conLato && (
+      <p class="cta">
+        <a class="btn" href="/contatti/">{t.cta_progetto}</a>
+      </p>
     )}
-
-    <p class="cta">
-      <a class="btn" href="/contatti/">{t.cta_progetto}</a>
-    </p>
   </article>
 </Base>
+
+<script>
+  // Galleria: il clic apre l'immagine grande; frecce della tastiera, swipe ed Esc per muoversi e chiudere.
+  const lista = document.querySelector<HTMLElement>('[data-galleria]');
+  const box = document.querySelector<HTMLDialogElement>('[data-lightbox]');
+  if (lista && box) {
+    const link = [...lista.querySelectorAll<HTMLAnchorElement>('a[data-indice]')];
+    const img = box.querySelector('img')!;
+    let attuale = 0;
+    const mostra = (i: number) => {
+      attuale = (i + link.length) % link.length;
+      img.src = link[attuale].href;
+      img.alt = link[attuale].querySelector('img')?.alt ?? '';
+    };
+    link.forEach((a, i) => a.addEventListener('click', (e) => { e.preventDefault(); mostra(i); box.showModal(); }));
+    box.querySelectorAll<HTMLButtonElement>('[data-passo]').forEach((b) => b.addEventListener('click', () => mostra(attuale + Number(b.dataset.passo))));
+    box.querySelector('[data-chiudi]')?.addEventListener('click', () => box.close());
+    box.addEventListener('click', (e) => { if (e.target === box) box.close(); });
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') mostra(attuale + 1);
+      if (e.key === 'ArrowLeft') mostra(attuale - 1);
+    });
+    let x0 = 0;
+    box.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    box.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 50 && link.length > 1) mostra(attuale + (dx < 0 ? 1 : -1));
+    });
+  }
+</script>
 
 <style>
   .lead { font-size: var(--fs-lg); max-width: 44rem; }
@@ -78,8 +154,40 @@ const contenuto = await ottimizzaImmaginiContenuto(p.contenuto, CMS_URL ?? '');
   dt { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
   dd { margin: 0; font-weight: 600; }
   .cover { width: 100%; border-radius: var(--radius); margin: 2rem 0; }
-  .tags { margin-bottom: 2rem; }
-  .risultato { margin-top: 3rem; padding: 1.5rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); max-width: 44rem; }
-  .risultato h2 { margin-top: 0; font-size: var(--fs-lg); }
   .cta { margin-top: 3rem; }
+
+  /* Testo a sinistra, scheda del progetto a destra (resta visibile scorrendo). */
+  .corpo { display: grid; gap: 2.5rem; align-items: start; }
+  @media (min-width: 64rem) { .corpo.con-lato { grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem); gap: 4rem; } }
+  .lato { position: sticky; top: 6rem; }
+  .scheda-lato { display: grid; gap: 1.75rem; padding: 1.75rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); }
+  .scheda-lato section { display: grid; gap: 0.85rem; }
+  .scheda-lato h2 { margin: 0; font-family: var(--font); font-size: var(--fs-2xs); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .funzioni { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.7rem; font-size: var(--fs-sm); }
+  .funzioni li { display: flex; gap: 0.7rem; align-items: flex-start; }
+  .funzioni li::before { content: ''; flex-shrink: 0; margin-top: 0.45rem; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--accent-gradient); }
+  .risultato { padding: 1rem 1.1rem; border-radius: calc(var(--radius) * 0.6); background: var(--accent-soft); border: 1px solid var(--accent-border); }
+  .risultato p { margin: 0; font-size: var(--fs-sm); line-height: 1.6; }
+  .azioni { display: grid; gap: 0.75rem; margin: 0; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center; }
+  .azioni .btn { font-size: var(--fs-sm); }
+  .visita { font-size: var(--fs-sm); color: var(--muted); }
+  .visita:hover { color: var(--text); }
+
+  .galleria { margin-top: 4rem; }
+  .galleria h2 { font-size: var(--fs-h2); margin: 0 0 1.5rem; }
+  .galleria ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); align-items: start; }
+  .galleria a { display: block; border-radius: calc(var(--radius) * 0.75); overflow: hidden; border: 1px solid var(--border); cursor: zoom-in; }
+  .galleria a img { display: block; width: 100%; height: auto; transition: transform 0.5s ease; }
+  .galleria a:hover img { transform: scale(1.03); }
+
+  .lightbox { max-width: 100vw; max-height: 100vh; width: 100vw; height: 100vh; margin: 0; padding: 0; border: 0; background: rgb(0 0 0 / 0.92); }
+  .lightbox[open] { display: grid; place-items: center; }
+  .lightbox::backdrop { background: transparent; }
+  .lightbox img { max-width: min(92vw, 1920px); max-height: 88vh; width: auto; height: auto; border-radius: 8px; }
+  .lightbox button { position: absolute; display: grid; place-items: center; width: 3rem; height: 3rem; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 50%; background: rgb(255 255 255 / 0.08); color: var(--white); font-size: 1.5rem; line-height: 1; cursor: pointer; }
+  .lightbox button:hover { background: rgb(255 255 255 / 0.18); }
+  .chiudi { top: 1rem; right: 1rem; font-size: 1.1rem !important; }
+  .nav { top: 50%; translate: 0 -50%; }
+  .prec { left: 1rem; }
+  .succ { right: 1rem; }
 </style>

@@ -70,6 +70,8 @@ export const TESTI_DEFAULT = {
     label_servizi: 'Servizi',
     label_online: 'Online',
     label_risultato: 'Risultato',
+    label_tecnologie: 'Tecnologie',
+    galleria_titolo: 'Galleria',
     cta_progetto: 'Hai un progetto simile? Richiedi un preventivo',
     meta_titolo: 'Progetti',
     meta_descrizione: 'Una selezione di lavori: il problema, la soluzione e il risultato.',
