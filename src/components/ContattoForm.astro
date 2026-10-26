@@ -226,7 +226,7 @@ const gruppi = [
     padding: 1.05rem 1.5rem;
     border: 0;
     border-radius: 999px;
-    background: var(--accent-btn);
+    background: var(--accent-btn) var(--accent-gradient);
     color: var(--accent-text);
     font-family: var(--font-display);
     font-weight: 700;
@@ -236,7 +236,7 @@ const gruppi = [
     cursor: pointer;
     transition: background-color 0.2s;
   }
-  .invia:hover { background: var(--accent); }
+  .invia:hover { background: var(--accent-btn) linear-gradient(135deg, rgb(114 18 255), rgb(229 0 255)); }
   .invia:disabled { opacity: 0.6; cursor: wait; }
   .esito { margin: 0; text-align: center; font-size: var(--fs-sm); }
   .esito:empty { display: none; }

@@ -10,10 +10,12 @@
   --muted: rgb(138 140 135);
   --border: rgb(30 30 30);
   --white: rgb(255 255 255);
-  --accent: rgb(11 135 147); /* ottanio #0b8793 */
-  --accent-light: rgb(26 163 174); /* hover, stelle luminose */
-  --accent-glow: rgb(110 215 222); /* punta delle comete */
-  --accent-btn: rgb(0 115 126); /* pulsanti, contrasto AA con testo bianco */
+  /* Colori del simbolo del logo: viola #5000f4 → #7212ff e fucsia #a900ce → #e500ff */
+  --accent: rgb(148 87 255); /* viola del logo schiarito, leggibile come testo sul fondo scuro (AA) */
+  --accent-light: rgb(229 0 255); /* fucsia #e500ff: hover, stelle luminose */
+  --accent-glow: rgb(240 138 255); /* punta delle comete */
+  --accent-btn: rgb(97 9 250); /* viola #6109fa: pulsanti, contrasto AA con testo bianco */
+  --accent-gradient: linear-gradient(135deg, rgb(80 0 244), rgb(169 0 206)); /* come il simbolo */
   --accent-text: var(--white);
   /* Varianti trasparenti, ricavate dai colori sopra */
   --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
@@ -78,7 +80,7 @@ h2 { font-size: var(--fs-h2); }
   display: inline-block;
   padding: 0.75rem 1.25rem;
   border-radius: 999px;
-  background: var(--accent-btn);
+  background: var(--accent-btn) var(--accent-gradient);
   color: var(--accent-text);
   font-weight: 600;
   text-decoration: none;
@@ -86,7 +88,7 @@ h2 { font-size: var(--fs-h2); }
   cursor: pointer;
   font: inherit;
 }
-.btn:hover { background: var(--accent); }
+.btn:hover { background: var(--accent-btn) linear-gradient(135deg, rgb(114 18 255), rgb(229 0 255)); }
 .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
 .grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); }
 .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0; list-style: none; }
