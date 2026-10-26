@@ -72,7 +72,7 @@ const titoloPagina = pagina > 1 ? `${t.meta_titolo} · ${pagina}` : t.meta_titol
   .sep { border: 0; height: 1px; margin: 0 0 4rem; background: linear-gradient(90deg, transparent, var(--accent-border), transparent); }
   .titolo-altri { font-size: var(--fs-section); text-align: center; margin: 0 0 3rem; }
 
-  /* Due colonne: le card sono quadrate (vedi ProgettoCard) */
+  /* Due colonne: le card di una riga hanno la stessa altezza e immagini uguali (vedi ProgettoCard) */
   .griglia { display: grid; gap: 1.5rem; }
   @media (min-width: 48rem) { .griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (min-width: 80rem) { .griglia { gap: 2rem; } }

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.12.0
+ * Version:     1.13.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -79,7 +79,7 @@ function portfolio_campi() {
 		'repository'  => array( 'label' => 'Repository GitHub', 'type' => 'url', 'instructions' => 'Facoltativo, se il codice è pubblico.' ),
 		'risultato'   => array( 'label' => 'Risultato', 'type' => 'textarea', 'instructions' => 'Il risultato ottenuto, in una o due frasi (meglio se con numeri).' ),
 		'galleria'    => array( 'label' => 'Galleria', 'type' => 'gallery', 'instructions' => 'Screenshot o foto del progetto (pagine interne, versione mobile, dettagli). Si vedono in fondo alla pagina del progetto e si aprono a tutto schermo.' ),
-		'in_evidenza' => array( 'label' => 'In evidenza', 'type' => 'true_false', 'instructions' => 'Mostra in home page. Il più recente in evidenza apre anche la pagina Progetti.' ),
+		'in_evidenza' => array( 'label' => 'In evidenza', 'type' => 'true_false', 'instructions' => 'Mostra in home page. Il primo in evidenza (nell\'ordine della lista Progetti) apre anche la pagina Progetti.' ),
 	);
 }
 
@@ -1545,4 +1545,113 @@ add_filter( 'image_editor_output_format', function ( $formati ) {
 add_filter( 'intermediate_image_sizes_advanced', function ( $formati ) {
 	unset( $formati['medium_large'], $formati['1536x1536'], $formati['2048x2048'] );
 	return $formati;
+} );
+
+/* -------------------------------------------------------------------------
+ * Ordine dei progetti con il trascinamento
+ *
+ * In Progetti → Tutti i progetti si trascinano le righe per decidere l'ordine sul sito
+ * (salvato in "Ordine" / menu_order, 1 = primo). Un progetto nuovo ha ordine 0, quindi
+ * compare per primo finché non lo si sposta.
+ * ---------------------------------------------------------------------- */
+
+function portfolio_lista_progetti() {
+	global $pagenow;
+	return is_admin() && 'edit.php' === $pagenow && isset( $_GET['post_type'] ) && 'progetti' === $_GET['post_type']; // phpcs:ignore WordPress.Security.NonceVerification
+}
+
+// La lista in bacheca segue lo stesso ordine del sito (se non si è scelto di ordinare per un'altra colonna).
+add_action( 'pre_get_posts', function ( $q ) {
+	if ( ! portfolio_lista_progetti() || ! $q->is_main_query() || $q->get( 'orderby' ) ) {
+		return;
+	}
+	$q->set( 'orderby', array( 'menu_order' => 'ASC', 'date' => 'DESC' ) );
+} );
+
+// La prima volta l'ordine parte da quello attuale per data (dal più recente).
+add_action( 'load-edit.php', function () {
+	if ( ! portfolio_lista_progetti() || ! current_user_can( 'edit_others_posts' ) ) {
+		return;
+	}
+	global $wpdb;
+	$gia_ordinati = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'progetti' AND menu_order <> 0" );
+	if ( $gia_ordinati ) {
+		return;
+	}
+	$ids = get_posts( array( 'post_type' => 'progetti', 'post_status' => 'any', 'numberposts' => -1, 'orderby' => 'date', 'order' => 'DESC', 'fields' => 'ids' ) );
+	foreach ( $ids as $i => $id ) {
+		$wpdb->update( $wpdb->posts, array( 'menu_order' => $i + 1 ), array( 'ID' => $id ) );
+		clean_post_cache( $id );
+	}
+} );
+
+// Colonna con la maniglia per trascinare.
+add_filter( 'manage_progetti_posts_columns', function ( $colonne ) {
+	return array_slice( $colonne, 0, 1, true ) + array( 'portfolio_ordine' => '<span class="screen-reader-text">Ordine</span>' ) + array_slice( $colonne, 1, null, true );
+} );
+add_action( 'manage_progetti_posts_custom_column', function ( $colonna, $post_id ) {
+	if ( 'portfolio_ordine' === $colonna ) {
+		echo '<span class="portfolio-maniglia dashicons dashicons-menu" title="Trascina per cambiare l\'ordine" aria-hidden="true"></span>';
+	}
+}, 10, 2 );
+
+add_action( 'admin_enqueue_scripts', function () {
+	if ( ! portfolio_lista_progetti() || ! current_user_can( 'edit_others_posts' ) ) {
+		return;
+	}
+	// Con un ordinamento diverso (per titolo, data…) o una ricerca il trascinamento non avrebbe senso.
+	$attivo = empty( $_GET['orderby'] ) && empty( $_GET['s'] ); // phpcs:ignore WordPress.Security.NonceVerification
+	$pagina = max( 1, (int) ( isset( $_GET['paged'] ) ? $_GET['paged'] : 1 ) ); // phpcs:ignore WordPress.Security.NonceVerification
+	$per    = (int) get_user_option( 'edit_progetti_per_page' );
+	$per    = $per > 0 ? $per : 20;
+
+	wp_enqueue_script( 'jquery-ui-sortable' );
+	wp_add_inline_style( 'common', '
+		.column-portfolio_ordine { width: 2.2em; }
+		.portfolio-maniglia { color: #8c8f94; cursor: grab; }
+		.portfolio-ordinabile #the-list tr:hover .portfolio-maniglia { color: #2271b1; }
+		.portfolio-ordinabile #the-list tr.ui-sortable-helper { display: table; background: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+		.portfolio-ordinabile #the-list tr.ui-sortable-placeholder { visibility: visible !important; background: #f0f6fc; outline: 2px dashed #72aee6; }
+		.portfolio-ordine-avviso { margin: 8px 0 0; }
+	' );
+	wp_add_inline_script( 'jquery-ui-sortable', 'jQuery(function ($) {
+		var attivo = ' . ( $attivo ? 'true' : 'false' ) . ', inizio = ' . ( ( $pagina - 1 ) * $per ) . ';
+		var avviso = $("<p class=\"portfolio-ordine-avviso description\"></p>").insertAfter(".wp-header-end");
+		if (!attivo) { avviso.text("Per cambiare l\u2019ordine trascinando, togli la ricerca o l\u2019ordinamento per colonna."); $(".portfolio-maniglia").hide(); return; }
+		avviso.text("Trascina le righe dalla maniglia \u2630 per scegliere l\u2019ordine dei progetti sul sito. Il sito si aggiorna da solo.");
+		$("body").addClass("portfolio-ordinabile");
+		$("#the-list").sortable({
+			handle: ".portfolio-maniglia",
+			axis: "y",
+			items: "> tr",
+			placeholder: "ui-sortable-placeholder",
+			helper: function (e, tr) { tr.children().each(function () { $(this).width($(this).width()); }); return tr; },
+			update: function () {
+				var ids = $("#the-list > tr").map(function () { return this.id.replace("post-", ""); }).get();
+				avviso.text("Salvataggio dell\u2019ordine\u2026");
+				$.post(ajaxurl, { action: "portfolio_ordina", nonce: "' . wp_create_nonce( 'portfolio_ordina' ) . '", inizio: inizio, ids: ids })
+					.done(function (r) { avviso.text(r && r.success ? "Ordine salvato. Il sito si aggiorna tra qualche minuto." : "Non sono riuscito a salvare l\u2019ordine: ricarica la pagina e riprova."); })
+					.fail(function () { avviso.text("Non sono riuscito a salvare l\u2019ordine: ricarica la pagina e riprova."); });
+			}
+		});
+	});' );
+} );
+
+add_action( 'wp_ajax_portfolio_ordina', function () {
+	check_ajax_referer( 'portfolio_ordina', 'nonce' );
+	if ( ! current_user_can( 'edit_others_posts' ) ) {
+		wp_send_json_error( null, 403 );
+	}
+	global $wpdb;
+	$inizio = max( 0, (int) ( isset( $_POST['inizio'] ) ? $_POST['inizio'] : 0 ) );
+	$ids    = array_map( 'intval', (array) ( isset( $_POST['ids'] ) ? wp_unslash( $_POST['ids'] ) : array() ) );
+	foreach ( array_values( array_filter( $ids ) ) as $i => $id ) {
+		if ( 'progetti' !== get_post_type( $id ) ) {
+			continue;
+		}
+		$wpdb->update( $wpdb->posts, array( 'menu_order' => $inizio + $i + 1 ), array( 'ID' => $id ) );
+		clean_post_cache( $id );
+	}
+	portfolio_rebuild_later();
+	wp_send_json_success();
 } );

@@ -1,6 +1,6 @@
 ---
-// Card quadrata di un progetto: stato, immagine, titolo, sottotitolo, descrizione, tecnologie e link.
-// Tutta la card porta al dettaglio; "Visita il sito" e GitHub restano link separati.
+// Card di un progetto: stato, immagine (sempre 16:10), titolo, sottotitolo, descrizione, tecnologie e link.
+// Tutta la card porta al dettaglio, che ha anche il suo pulsante; "Visita il sito" e GitHub restano link separati.
 import { Image } from 'astro:assets';
 import Icona from './Icona.astro';
 import TagTecnologia from './TagTecnologia.astro';
@@ -49,16 +49,15 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
     </ul>
   )}
 
-  {(p.url || p.repository) && (
-    <p class="piede">
-      {p.url && online && (
-        <a href={p.url} target="_blank" rel="noopener"><Icona nome="external" size={14} />{t.visita}</a>
-      )}
-      {p.repository && (
-        <a class="gh" href={p.repository} target="_blank" rel="noopener" aria-label={`GitHub: ${p.titolo}`}><Icona nome="github" size={18} /></a>
-      )}
-    </p>
-  )}
+  <p class="piede">
+    <a class="dettagli" href={`/progetti/${p.slug}/`} tabindex="-1">{t.dettagli}<Icona nome="arrowRight" size={14} /></a>
+    {p.url && online && (
+      <a href={p.url} target="_blank" rel="noopener"><Icona nome="external" size={14} />{t.visita}</a>
+    )}
+    {p.repository && (
+      <a class="gh" href={p.repository} target="_blank" rel="noopener" aria-label={`GitHub: ${p.titolo}`}><Icona nome="github" size={18} /></a>
+    )}
+  </p>
 </article>
 
 <style>
@@ -68,8 +67,8 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
     flex-direction: column;
     gap: 0.75rem;
     width: 100%;
+    height: 100%;
     min-width: 0;
-    aspect-ratio: 1;
     padding: clamp(1.25rem, 2.5vw, 2rem);
     background: var(--surface);
     border: 1px solid var(--border);
@@ -95,8 +94,8 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
   .stato.online { color: var(--accent-light); background: var(--accent-soft); border-color: var(--accent-border); }
   .punto { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: currentColor; }
 
-  /* L'immagine prende lo spazio che resta: così la card resta quadrata. */
-  .media { position: relative; flex: 1 1 0; min-height: 9rem; border-radius: calc(var(--radius) * 0.6); overflow: hidden; background: var(--bg); border: 1px solid var(--border); }
+  /* Immagine sempre della stessa misura in tutte le card. */
+  .media { position: relative; flex: none; aspect-ratio: 16 / 10; border-radius: calc(var(--radius) * 0.6); overflow: hidden; background: var(--bg); border: 1px solid var(--border); }
   .media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 0.6s ease; }
   .card:hover .media img { transform: scale(1.03); }
   .vuoto { height: 100%; display: grid; place-content: center; justify-items: center; gap: 0.5rem; color: var(--muted); font-size: var(--fs-sm); }
@@ -110,8 +109,11 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
   .sottotitolo { color: var(--accent-light); font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
   .estratto { color: var(--text-soft); font-size: var(--fs-sm); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
-  .piede { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: var(--fs-sm); }
+  /* Il piede resta sempre in fondo, così le card di una riga si allineano. */
+  .piede { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.5rem; margin-top: auto !important; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: var(--fs-sm); }
   .piede a { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); text-decoration: none; }
   .piede a:hover { color: var(--accent-light); }
+  .piede .dettagli { color: var(--accent-light); font-weight: 600; }
+  .piede .dettagli:hover { color: var(--text); }
   .gh { margin-left: auto; }
 </style>

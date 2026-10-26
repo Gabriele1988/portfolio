@@ -70,7 +70,7 @@ body {
 }
 img { max-width: 100%; height: auto; display: block; }
 a { color: var(--accent); }
-h1, h2, h3 { font-family: var(--font-display); line-height: 1.1; letter-spacing: 0.07em; font-weight: 700; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 0.8em; letter-spacing: .02em; font-weight: 700; }
 h1 { font-size: var(--fs-h1); margin: 0 0 1rem; }
 h2 { font-size: var(--fs-h2); }
 .wrap { max-width: var(--max); margin: 0 auto; padding-inline: var(--pad); }

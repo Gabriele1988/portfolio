@@ -170,8 +170,12 @@ export function getProgetti(): Promise<Progetto[]> {
     });
     return cache;
   }
+  // Ordine deciso trascinando i progetti in WordPress (menu_order, 0 = nuovo e quindi primo);
+  // a parità di ordine, il più recente prima. sort() è stabile, quindi la data resta come criterio secondario.
   cache ??= getAll('progetti?_embed=wp:featuredmedia,wp:term&orderby=date&order=desc').then((items) =>
-    items.map(toProgetto),
+    items
+      .sort((a, b) => (Number(a.menu_order) || 0) - (Number(b.menu_order) || 0))
+      .map(toProgetto),
   );
   return cache;
 }
@@ -179,7 +183,7 @@ export function getProgetti(): Promise<Progetto[]> {
 /** Card per pagina nella pagina Progetti. */
 export const PER_PAGINA = 6;
 
-/** Pagina Progetti: il più recente "in evidenza" (o il più recente in assoluto) e tutti gli altri. */
+/** Pagina Progetti: il primo "in evidenza" nell'ordine scelto (o il primo in assoluto) e tutti gli altri. */
 export async function getProgettiPerPagina(): Promise<{ evidenza?: Progetto; altri: Progetto[] }> {
   const tutti = await getProgetti();
   const evidenza = tutti.find((p) => p.inEvidenza) ?? tutti[0];
