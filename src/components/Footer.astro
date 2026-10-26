@@ -1,6 +1,7 @@
 ---
 // Footer: logo e descrizione con i social, navigazione, contatti e dati legali.
 // Tutti i testi e i link arrivano da "Testi del sito → Generale".
+import Logo from './Logo.astro';
 import Icona from './Icona.astro';
 import Social from './Social.astro';
 import { getTesti } from '../lib/testi';
@@ -21,7 +22,7 @@ const voci = [
   <div class="wrap">
     <div class="colonne">
       <div class="marca">
-        <a class="logo" href="/">{g.nome}</a>
+        <a class="logo" href="/"><Logo id="logo-footer" titolo={g.nome} /></a>
         {g.footer_descrizione && <p class="descrizione">{righe(g.footer_descrizione).map((r, i) => <>{i > 0 && <br />}{r}</>)}</p>}
         <Social g={g} />
       </div>
@@ -61,7 +62,8 @@ const voci = [
   @media (min-width: 64rem) { .colonne { grid-template-columns: 2fr 1fr 1fr; } .marca { grid-column: auto; } }
 
   .marca { display: grid; gap: 1.75rem; align-content: start; }
-  .logo { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-h3); color: var(--accent); text-decoration: none; line-height: 1; }
+  .logo { display: inline-block; color: var(--text); line-height: 0; }
+  .logo :global(.logo-svg) { display: block; height: 3.25rem; width: auto; max-width: 100%; }
   .descrizione { color: var(--muted); font-size: var(--fs-base); line-height: 1.7; }
 
   .titolo { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 2rem !important; }

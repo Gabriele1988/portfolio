@@ -1,4 +1,5 @@
 ---
+import Logo from './Logo.astro';
 import { getTesti } from '../lib/testi';
 
 const g = (await getTesti()).generale;
@@ -18,7 +19,7 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
 <!-- Barra sempre visibile: sopra la hero è trasparente, scorrendo prende lo sfondo sfocato. -->
 <div class:list={['barra', { overlay }]} data-barra>
 <header class="wrap" data-header>
-  <a class="logo" href="/">{g.nome}</a>
+  <a class="logo" href="/"><Logo id="logo-header" titolo={g.nome} /></a>
 
   <!-- Desktop -->
   <nav class="desktop" aria-label="Principale">
@@ -112,7 +113,9 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
   .barra.scrollato::before { opacity: 1; }
   header { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.25rem; transition: padding 0.3s ease; }
   .scrollato header { padding-block: 0.75rem; }
-  .logo { position: relative; z-index: 31; font-family: var(--font-display); font-weight: 700; color: var(--text); text-decoration: none; font-size: var(--fs-lg); }
+  .logo { position: relative; z-index: 31; display: block; color: var(--text); line-height: 0; }
+  .logo :global(.logo-svg) { display: block; height: 2.25rem; width: auto; }
+  @media (min-width: 48rem) { .logo :global(.logo-svg) { height: 2.75rem; } }
   .desktop { display: flex; align-items: center; gap: 1.5rem; }
   .desktop a:not(.btn) { color: var(--muted); text-decoration: none; }
   .desktop a:not(.btn):hover, .desktop a[aria-current='page'] { color: var(--text); }
