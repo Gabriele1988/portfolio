@@ -5,6 +5,8 @@ import Base from '../../layouts/Base.astro';
 import TagTecnologia from '../../components/TagTecnologia.astro';
 import { getProgetti, type Progetto } from '../../lib/wp';
 import { getTesti } from '../../lib/testi';
+import { ottimizzaImmaginiContenuto } from '../../lib/immaginiContenuto';
+import { CMS_URL } from 'astro:env/client';
 
 export const getStaticPaths = (async () => {
   const progetti = await getProgetti();
@@ -18,6 +20,7 @@ const immagineSocial = p.seo.immagine ?? p.copertina;
 const og = immagineSocial
   ? await getImage({ src: immagineSocial.src, width: 1200, height: 630, fit: 'cover', format: 'jpg' })
   : undefined;
+const contenuto = await ottimizzaImmaginiContenuto(p.contenuto, CMS_URL ?? '');
 ---
 
 <Base title={p.seo.titolo || p.titolo} description={p.seo.descrizione || p.estratto} image={og?.src} noindex={p.seo.noindex}>
@@ -54,7 +57,7 @@ const og = immagineSocial
       </ul>
     )}
 
-    <div class="prose" set:html={p.contenuto} />
+    <div class="prose" set:html={contenuto} />
 
     {p.risultato && (
       <aside class="risultato">

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.9.0
+ * Version:     1.10.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -1490,4 +1490,37 @@ add_action( 'wp_dashboard_setup', function () {
 		echo portfolio_stats_tabella_html( 'Provenienza', array_slice( $d['sorgenti'], 0, 5 ), 'Sorgente' ); // phpcs:ignore
 		printf( '<p><a href="%s">Tutte le statistiche →</a></p>', esc_url( admin_url( 'admin.php?page=portfolio-statistiche' ) ) );
 	} );
+} );
+
+/* -------------------------------------------------------------------------
+ * Immagini più leggere già al caricamento
+ *
+ * Il sito Astro ottimizza comunque ogni immagine in build (WebP in più larghezze),
+ * ma partire da file più piccoli rende la build più veloce e occupa meno spazio sul server.
+ * ---------------------------------------------------------------------- */
+
+// Le foto più grandi di 2400px vengono ridotte (WordPress di serie si ferma a 2560px).
+add_filter( 'big_image_size_threshold', function () {
+	return 2400;
+} );
+
+// Qualità JPEG/WebP delle versioni create da WordPress: 82 è indistinguibile a occhio e molto più leggera.
+add_filter( 'wp_editor_set_quality', function () {
+	return 82;
+} );
+
+// JPEG e PNG vengono salvati in WebP, se il server lo supporta (altrimenti restano nel formato originale).
+add_filter( 'image_editor_output_format', function ( $formati ) {
+	if ( ! wp_image_editor_supports( array( 'mime_type' => 'image/webp' ) ) ) {
+		return $formati;
+	}
+	$formati['image/jpeg'] = 'image/webp';
+	$formati['image/png']  = 'image/webp';
+	return $formati;
+} );
+
+// Il sito non usa le versioni intermedie più grandi: niente file inutili per ogni caricamento.
+add_filter( 'intermediate_image_sizes_advanced', function ( $formati ) {
+	unset( $formati['medium_large'], $formati['1536x1536'], $formati['2048x2048'] );
+	return $formati;
 } );
