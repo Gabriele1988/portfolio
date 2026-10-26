@@ -2,6 +2,7 @@
 import type { GetStaticPaths } from 'astro';
 import { Image, getImage } from 'astro:assets';
 import Base from '../../layouts/Base.astro';
+import TagTecnologia from '../../components/TagTecnologia.astro';
 import { getProgetti, type Progetto } from '../../lib/wp';
 import { getTesti } from '../../lib/testi';
 
@@ -49,7 +50,7 @@ const og = immagineSocial
 
     {p.tecnologie.length > 0 && (
       <ul class="tags" aria-label="Tecnologie">
-        {p.tecnologie.map((t) => <li>{t}</li>)}
+        {p.tecnologie.map((t) => <TagTecnologia nome={t} />)}
       </ul>
     )}
 

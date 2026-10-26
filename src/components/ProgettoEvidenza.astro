@@ -2,6 +2,7 @@
 // Progetto in evidenza in cima alla pagina Progetti: testo a sinistra, funzionalità e immagine a destra.
 import { Image } from 'astro:assets';
 import Icona from './Icona.astro';
+import TagTecnologia from './TagTecnologia.astro';
 import type { Progetto } from '../lib/wp';
 import type { Testi } from '../lib/testi';
 
@@ -28,7 +29,7 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
     {p.estratto && <p class="estratto">{p.estratto}</p>}
     {tag.length > 0 && (
       <ul class="tags">
-        {tag.map((s) => <li>{s}</li>)}
+        {tag.map((s) => <TagTecnologia nome={s} icona={p.tecnologie.length > 0} />)}
       </ul>
     )}
     <p class="piede">

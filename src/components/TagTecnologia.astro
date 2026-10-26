@@ -1,0 +1,26 @@
+---
+// Nome di una tecnologia con il suo logo davanti (monocolore, prende il colore del testo).
+// Se il logo non esiste si vede un'icona generica di codice.
+import Icona from './Icona.astro';
+import { logoTecnologia } from '../lib/tecnologie';
+
+interface Props {
+  nome: string;
+  /** false per le voci che non sono tecnologie (es. i servizi): solo il nome. */
+  icona?: boolean;
+}
+const { nome, icona = true } = Astro.props;
+const logo = icona ? logoTecnologia(nome) : undefined;
+---
+
+<li class="tecnologia">
+  {logo ? (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d={logo.path} /></svg>
+  ) : icona && <Icona nome="code" size={14} />}
+  {nome}
+</li>
+
+<style>
+  .tecnologia { display: inline-flex; align-items: center; gap: 0.45em; }
+  .tecnologia :global(svg) { flex: none; opacity: 0.85; }
+</style>
