@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.11.0
+ * Version:     1.12.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -64,6 +64,7 @@ function portfolio_campi() {
 	return array(
 		'cliente'     => array( 'label' => 'Cliente', 'type' => 'text' ),
 		'sottotitolo' => array( 'label' => 'Sottotitolo', 'type' => 'text', 'instructions' => 'Riga in evidenza sotto il titolo, es. Azienda agricola — Gaiole in Chianti' ),
+		'introduzione' => array( 'label' => 'Introduzione', 'type' => 'textarea', 'instructions' => 'Il testo sotto il titolo nella pagina del progetto (2-4 frasi). Vuoto = estratto.' ),
 		'stato'       => array(
 			'label'         => 'Stato',
 			'type'          => 'select',

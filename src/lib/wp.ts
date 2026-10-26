@@ -20,6 +20,8 @@ export interface Progetto {
   slug: string;
   titolo: string;
   estratto: string;
+  /** Testo sotto il titolo nella pagina del progetto (campo Introduzione), se diverso dall'estratto. */
+  introduzione: string;
   /** Testo completo diviso in paragrafi, senza HTML (per i riquadri che si riempiono fino in fondo). */
   paragrafi: string[];
   contenuto: string;
@@ -128,6 +130,7 @@ function toProgetto(p: any): Progetto {
     slug: p.slug,
     titolo: decode(p.title?.rendered),
     estratto: pulisciEstratto(p.excerpt?.rendered),
+    introduzione: String(f.introduzione ?? '').trim(),
     paragrafi: paragrafi(p.content?.rendered),
     contenuto: p.content?.rendered ?? '',
     data: p.date,

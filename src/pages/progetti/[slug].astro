@@ -28,19 +28,19 @@ const grandi = await Promise.all(
 const conLato = p.funzionalita.length > 0 || p.tecnologie.length > 0 || !!p.risultato;
 ---
 
-<Base title={p.seo.titolo || p.titolo} description={p.seo.descrizione || p.estratto} image={og?.src} noindex={p.seo.noindex}>
+<Base title={p.seo.titolo || p.titolo} description={p.seo.descrizione || p.introduzione || p.estratto} image={og?.src} noindex={p.seo.noindex}>
   <article class="wrap section">
     <div class="intro">
     <div>
       <p><a href="/progetti/">{t.torna}</a></p>
       <h1>{p.titolo}</h1>
-      {p.estratto && <p class="lead muted">{p.estratto}</p>}
+      {(p.introduzione || p.estratto) && <p class="lead muted">{p.introduzione || p.estratto}</p>}
     </div>
 
     <dl class="scheda">
       {p.cliente && <div><dt>{t.label_cliente}</dt><dd>{p.cliente}</dd></div>}
       {p.anno && <div><dt>{t.label_anno}</dt><dd>{p.anno}</dd></div>}
-      {p.ruolo && <div><dt>{t.label_ruolo}</dt><dd>{p.ruolo}</dd></div>}
+      {p.ruolo && <div class:list={[{ lungo: p.ruolo.length > 24 }]}><dt>{t.label_ruolo}</dt><dd>{p.ruolo}</dd></div>}
       {p.servizi.length > 0 && <div><dt>{t.label_servizi}</dt><dd>{p.servizi.map((s) => s.nome).join(', ')}</dd></div>}
       {p.url && <div><dt>{t.label_online}</dt><dd><a href={p.url} rel="noopener" target="_blank">{t.visita}</a></dd></div>}
     </dl>
@@ -159,10 +159,14 @@ const conLato = p.funzionalita.length > 0 || p.tecnologie.length > 0 || !!p.risu
   /* Intestazione: testo a sinistra, dati del progetto a destra (stessa colonna della scheda laterale). */
   .intro { display: grid; gap: 2rem; align-items: end; }
   .scheda { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: 1.25rem 1.5rem; margin: 0; padding: 1.5rem 1.75rem; border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 80%, transparent); border: 1px solid var(--border); backdrop-filter: blur(6px); }
-  .scheda > div { display: grid; gap: 0.3rem; }
+  .scheda > div { display: grid; gap: 0.3rem; align-content: start; }
+  .scheda dd { line-height: 1.4; }
+  .scheda dd a { white-space: nowrap; }
+  /* Il riquadro dei dati prende tutto lo spazio a destra del testo: i dati si dispongono in più colonne. */
   @media (min-width: 64rem) {
-    .intro { grid-template-columns: minmax(0, 1fr) minmax(20rem, 28rem); gap: 4rem; }
-    .scheda { grid-template-columns: 1fr 1fr; }
+    .intro { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 4rem; }
+    .scheda { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); padding: 1.75rem 2rem; align-self: end; }
+    .scheda .lungo { grid-column: span 2; } /* un ruolo lungo non va a capo su cinque righe */
   }
   dt { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
   dd { margin: 0; font-weight: 600; }
