@@ -6,7 +6,7 @@
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
- *   define( 'PORTFOLIO_SITE_URL', 'https://visonuovomdb.com' );        // sito Astro pubblico
+ *   define( 'PORTFOLIO_SITE_URL', 'https://gabrielevilardo.it' );       // sito Astro pubblico
  *   define( 'PORTFOLIO_GITHUB_REPO', 'Gabriele1988/portfolio' );        // owner/repo
  *   define( 'PORTFOLIO_GITHUB_TOKEN', 'github_pat_...' );               // fine-grained token, solo questo repo, "Contents: Read and write"
  *   define( 'PORTFOLIO_CONTACT_EMAIL', 'tu@esempio.it' );               // facoltativo, altrimenti l'email admin

@@ -17,10 +17,10 @@ Il dominio non è scritto da nessuna parte nel codice: arriva da variabili d'amb
 
 ## Variabili
 
-| Variabile            | Esempio (dominio temporaneo)     | A cosa serve                                                  |
+| Variabile            | Valore                           | A cosa serve                                                  |
 | -------------------- | -------------------------------- | ------------------------------------------------------------- |
-| `SITE_URL`           | `https://visonuovomdb.com`       | URL pubblico del sito: canonical, sitemap, Open Graph         |
-| `CMS_URL`            | `https://cms.visonuovomdb.com`   | WordPress: lettura dei progetti e invio del form contatti     |
+| `SITE_URL`           | `https://gabrielevilardo.it`     | URL pubblico del sito: canonical, sitemap, Open Graph         |
+| `CMS_URL`            | `https://cms.gabrielevilardo.it` | WordPress: lettura dei progetti e invio del form contatti     |
 | `NOINDEX`            | `true`                           | `true` = robots.txt blocca tutto + meta noindex. In produzione `false` |
 | `TURNSTILE_SITE_KEY` | *(vuoto)*                        | Facoltativo, anti-spam Cloudflare Turnstile sul form          |
 
@@ -100,12 +100,36 @@ confrontala con questa: la parte nuova è l'endpoint `portfolio/v1/contatto` e l
 5. Pubblica un progetto: parte la build e dopo un paio di minuti il sito è aggiornato.
    Il pulsante **Ripubblica sito** nella barra di WordPress fa la stessa cosa a mano.
 
-## Passaggio al dominio definitivo
+## Passaggio al dominio definitivo (gabrielevilardo.it)
 
-1. WordPress: WP Toolkit → *Clone* sul nuovo `cms.<dominio>`, poi aggiorna `PORTFOLIO_SITE_URL` in `wp-config.php`.
-2. GitHub: cambia `SITE_URL`, `CMS_URL` e metti `NOINDEX=false`.
-3. Plesk: collega Git al nuovo dominio (stesso repository, branch `deploy`) e attiva Let's Encrypt.
-4. Rilancia la build.
+Il codice non cambia: cambiano solo le impostazioni. In ordine:
+
+1. **WordPress** su `cms.gabrielevilardo.it`
+   - Carica `cms/portfolio-core.php` (ultima versione) in `wp-content/mu-plugins/`.
+   - In `wp-config.php`:
+     ```php
+     define( 'PORTFOLIO_SITE_URL', 'https://gabrielevilardo.it' );
+     define( 'PORTFOLIO_GITHUB_REPO', 'Gabriele1988/portfolio' );
+     define( 'PORTFOLIO_GITHUB_TOKEN', 'github_pat_...' );   // stesso token di prima o uno nuovo
+     ```
+   - *Impostazioni → Generali*: indirizzo WordPress e indirizzo sito = `https://cms.gabrielevilardo.it`.
+   - Se il WordPress è una copia di quello vecchio, sostituisci nel database `cms.visonuovomdb.com`
+     con `cms.gabrielevilardo.it` (WP Toolkit → *Cerca e sostituisci*, o il plugin Better Search Replace):
+     così anche le immagini dentro i testi dei progetti puntano al nuovo CMS.
+   - Controllo: `https://cms.gabrielevilardo.it/wp-json/portfolio/v1/testi` deve mostrare del JSON.
+2. **GitHub** → *Settings → Secrets and variables → Actions → Variables*:
+   `SITE_URL=https://gabrielevilardo.it`, `CMS_URL=https://cms.gabrielevilardo.it`,
+   `NOINDEX=false` (quando vuoi che Google indicizzi il sito).
+3. **Plesk** sul dominio `gabrielevilardo.it`
+   - *Git* → stesso repository, branch `deploy`, deploy automatico, percorso `httpdocs`.
+   - Copia il nuovo *Webhook URL* e aggiungilo su GitHub in *Settings → Webhooks*
+     (quello del vecchio dominio si può togliere quando il vecchio sito non serve più).
+   - Let's Encrypt per `gabrielevilardo.it`, `www.gabrielevilardo.it` e `cms.gabrielevilardo.it`;
+     in *Hosting* scegli come dominio preferito quello senza `www`.
+4. **Prima build**: GitHub → *Actions* → *Build e deploy* → *Run workflow*.
+5. **Vecchio dominio**: su `visonuovomdb.com` imposta un redirect 301 verso `https://gabrielevilardo.it`
+   (Plesk → *Hosting* → inoltro permanente), così i link già condivisi continuano a funzionare.
+6. Se usi Cloudflare Turnstile per il form, aggiungi `gabrielevilardo.it` ai domini del widget.
 
 ## Immagini
 
