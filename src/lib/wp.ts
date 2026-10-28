@@ -29,7 +29,8 @@ export interface Progetto {
   cliente: string;
   /** Riga colorata sotto il titolo nelle card. */
   sottotitolo: string;
-  stato: 'online' | 'in_sviluppo';
+  /** offline = sito fatto ma non più pubblicato dal cliente: niente link "Visita il sito". */
+  stato: 'online' | 'in_sviluppo' | 'offline';
   /** Elenco mostrato quando il progetto è quello in evidenza. */
   /** Screenshot e foto mostrati in fondo alla pagina del progetto. */
   galleria: Immagine[];
@@ -136,7 +137,7 @@ function toProgetto(p: any): Progetto {
     data: p.date,
     cliente: f.cliente ?? '',
     sottotitolo: f.sottotitolo ?? '',
-    stato: f.stato === 'in_sviluppo' ? 'in_sviluppo' : 'online',
+    stato: f.stato === 'in_sviluppo' || f.stato === 'offline' ? f.stato : 'online',
     funzionalita: Array.isArray(f.funzionalita) ? f.funzionalita.map(String).filter(Boolean) : String(f.funzionalita ?? '').split('\n').map((s) => s.trim()).filter(Boolean),
     repository: f.repository ?? '',
     anno: String(f.anno ?? ''),

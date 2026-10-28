@@ -60,6 +60,7 @@ export const TESTI_DEFAULT = {
     successiva: 'Successiva',
     stato_online: 'Online',
     stato_sviluppo: 'In sviluppo',
+    stato_offline: 'Offline',
     presto: 'Presto online',
     visita: 'Visita il sito',
     dettagli: 'Scopri il progetto',

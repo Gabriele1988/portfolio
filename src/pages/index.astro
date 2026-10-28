@@ -18,7 +18,7 @@ const h = testi.home;
   <section id="lavori" class="wrap section">
     <h2>{h.progetti_titolo}</h2>
     {progetti.length > 0 ? (
-      <div class="grid">
+      <div class="progetti-home">
         {progetti.map((p) => <ProgettoCard progetto={p} testi={testi.progetti} />)}
       </div>
     ) : (
@@ -26,3 +26,12 @@ const h = testi.home;
     )}
   </section>
 </Base>
+
+<style>
+  /* I progetti in evidenza riempiono sempre tutta la riga: 3 colonne su desktop, 2 su tablet
+     (l'ultimo, se resta da solo, va al centro), 1 su telefono. */
+  .progetti-home { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; }
+  .progetti-home > :global(*) { flex: 0 1 100%; }
+  @media (min-width: 40rem) { .progetti-home > :global(*) { flex-basis: calc((100% - 1.5rem) / 2); } }
+  @media (min-width: 64rem) { .progetti-home > :global(*) { flex-basis: calc((100% - 3rem) / 3); } }
+</style>

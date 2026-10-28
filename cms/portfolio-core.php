@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.13.0
+ * Version:     1.14.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -68,7 +68,7 @@ function portfolio_campi() {
 		'stato'       => array(
 			'label'         => 'Stato',
 			'type'          => 'select',
-			'choices'       => array( 'online' => 'Online', 'in_sviluppo' => 'In sviluppo' ),
+			'choices'       => array( 'online' => 'Online', 'in_sviluppo' => 'In sviluppo', 'offline' => 'Offline (sito realizzato ma non più online)' ),
 			'default_value' => 'online',
 		),
 		'anno'        => array( 'label' => 'Anno', 'type' => 'number' ),
@@ -585,6 +585,7 @@ function portfolio_testi_schema() {
 				'Card' => array(
 					'stato_online'   => array( 'Stato online', 'text', 'Online' ),
 					'stato_sviluppo' => array( 'Stato in sviluppo', 'text', 'In sviluppo' ),
+					'stato_offline'  => array( 'Stato offline', 'text', 'Offline' ),
 					'presto'         => array( 'Testo senza immagine', 'text', 'Presto online' ),
 					'visita'         => array( 'Link al sito', 'text', 'Visita il sito' ),
 					'dettagli'       => array( 'Link al progetto', 'text', 'Scopri il progetto' ),
@@ -1585,15 +1586,46 @@ add_action( 'load-edit.php', function () {
 	}
 } );
 
-// Colonna con la maniglia per trascinare.
+// Colonna con la maniglia per trascinare e colonna con la stella "In evidenza" (si clicca per cambiarla).
 add_filter( 'manage_progetti_posts_columns', function ( $colonne ) {
-	return array_slice( $colonne, 0, 1, true ) + array( 'portfolio_ordine' => '<span class="screen-reader-text">Ordine</span>' ) + array_slice( $colonne, 1, null, true );
+	$colonne = array_slice( $colonne, 0, 1, true ) + array( 'portfolio_ordine' => '<span class="screen-reader-text">Ordine</span>' ) + array_slice( $colonne, 1, null, true );
+	$pos     = array_search( 'title', array_keys( $colonne ), true );
+	$pos     = false === $pos ? count( $colonne ) : $pos + 1;
+	return array_slice( $colonne, 0, $pos, true ) + array( 'portfolio_evidenza' => 'In evidenza' ) + array_slice( $colonne, $pos, null, true );
 } );
 add_action( 'manage_progetti_posts_custom_column', function ( $colonna, $post_id ) {
 	if ( 'portfolio_ordine' === $colonna ) {
 		echo '<span class="portfolio-maniglia dashicons dashicons-menu" title="Trascina per cambiare l\'ordine" aria-hidden="true"></span>';
+	} elseif ( 'portfolio_evidenza' === $colonna ) {
+		$si = (bool) get_post_meta( $post_id, 'in_evidenza', true );
+		printf(
+			'<button type="button" class="portfolio-stella%s" data-id="%d" aria-pressed="%s" title="%s"><span class="dashicons dashicons-star-%s" aria-hidden="true"></span><span class="screen-reader-text">In evidenza</span></button>',
+			$si ? ' attiva' : '',
+			(int) $post_id,
+			$si ? 'true' : 'false',
+			esc_attr( $si ? 'In evidenza: clicca per toglierlo' : 'Clicca per metterlo in evidenza' ),
+			$si ? 'filled' : 'empty'
+		);
 	}
 }, 10, 2 );
+
+add_action( 'wp_ajax_portfolio_evidenza', function () {
+	check_ajax_referer( 'portfolio_evidenza', 'nonce' );
+	$id = (int) ( isset( $_POST['id'] ) ? $_POST['id'] : 0 );
+	if ( 'progetti' !== get_post_type( $id ) || ! current_user_can( 'edit_post', $id ) ) {
+		wp_send_json_error( null, 403 );
+	}
+	$si = ! empty( $_POST['valore'] ) && '0' !== $_POST['valore'];
+	if ( function_exists( 'update_field' ) ) {
+		update_field( 'field_portfolio_in_evidenza', $si ? 1 : 0, $id ); // così ACF/SCF resta allineato
+	} else {
+		update_post_meta( $id, 'in_evidenza', $si ? 1 : 0 );
+	}
+	if ( 'publish' === get_post_status( $id ) ) {
+		portfolio_rebuild_later();
+	}
+	wp_send_json_success( array( 'valore' => $si ) );
+} );
 
 add_action( 'admin_enqueue_scripts', function () {
 	if ( ! portfolio_lista_progetti() || ! current_user_can( 'edit_others_posts' ) ) {
@@ -1606,8 +1638,26 @@ add_action( 'admin_enqueue_scripts', function () {
 	$per    = $per > 0 ? $per : 20;
 
 	wp_enqueue_script( 'jquery-ui-sortable' );
+	// Stella "In evidenza": funziona sempre, anche con ricerca o altri ordinamenti.
+	wp_add_inline_script( 'jquery-ui-sortable', 'jQuery(function ($) {
+		$("#the-list").on("click", ".portfolio-stella", function () {
+			var b = $(this), nuovo = !b.hasClass("attiva");
+			b.prop("disabled", true);
+			$.post(ajaxurl, { action: "portfolio_evidenza", nonce: "' . wp_create_nonce( 'portfolio_evidenza' ) . '", id: b.data("id"), valore: nuovo ? 1 : 0 })
+				.done(function (r) {
+					if (!r || !r.success) { return; }
+					b.toggleClass("attiva", nuovo).attr("aria-pressed", nuovo).attr("title", nuovo ? "In evidenza: clicca per toglierlo" : "Clicca per metterlo in evidenza");
+					b.find(".dashicons").toggleClass("dashicons-star-filled", nuovo).toggleClass("dashicons-star-empty", !nuovo);
+				})
+				.always(function () { b.prop("disabled", false); });
+		});
+	});' );
 	wp_add_inline_style( 'common', '
 		.column-portfolio_ordine { width: 2.2em; }
+		.column-portfolio_evidenza { width: 7em; text-align: center !important; }
+		.portfolio-stella { background: none; border: 0; padding: 2px; cursor: pointer; color: #8c8f94; }
+		.portfolio-stella:hover, .portfolio-stella:focus { color: #2271b1; }
+		.portfolio-stella.attiva { color: #dba617; }
 		.portfolio-maniglia { color: #8c8f94; cursor: grab; }
 		.portfolio-ordinabile #the-list tr:hover .portfolio-maniglia { color: #2271b1; }
 		.portfolio-ordinabile #the-list tr.ui-sortable-helper { display: table; background: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.15); }

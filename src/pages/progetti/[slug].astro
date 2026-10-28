@@ -42,7 +42,7 @@ const conLato = p.funzionalita.length > 0 || p.tecnologie.length > 0 || !!p.risu
       {p.anno && <div><dt>{t.label_anno}</dt><dd>{p.anno}</dd></div>}
       {p.ruolo && <div class:list={[{ lungo: p.ruolo.length > 24 }]}><dt>{t.label_ruolo}</dt><dd>{p.ruolo}</dd></div>}
       {p.servizi.length > 0 && <div><dt>{t.label_servizi}</dt><dd>{p.servizi.map((s) => s.nome).join(', ')}</dd></div>}
-      {p.url && <div><dt>{t.label_online}</dt><dd><a href={p.url} rel="noopener" target="_blank">{t.visita}</a></dd></div>}
+      {p.url && p.stato === 'online' && <div><dt>{t.label_online}</dt><dd><a href={p.url} rel="noopener" target="_blank">{t.visita}</a></dd></div>}
     </dl>
     </div>
 

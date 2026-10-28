@@ -12,6 +12,7 @@ interface Props {
 }
 const { progetto: p, testi: t } = Astro.props;
 const online = p.stato === 'online';
+const etichettaStato = { online: t.stato_online, in_sviluppo: t.stato_sviluppo, offline: t.stato_offline }[p.stato];
 // Il testo riempie lo spazio lasciato libero dalla colonna di destra: si parte dal testo completo
 // e uno script lo taglia (con i puntini) dove finisce il riquadro. Senza testo si usa l'estratto.
 const testo = p.paragrafi.length ? p.paragrafi : p.estratto ? [p.estratto] : [];
@@ -21,9 +22,9 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
 <article class="evidenza-box">
   <div class="testo">
     <p class="badge">
-      <span class:list={['stato', { online }]}>
-        {online ? <span class="punto" /> : <Icona nome="clock" size={12} />}
-        {online ? t.stato_online : t.stato_sviluppo}
+      <span class:list={['stato', p.stato]}>
+        {online ? <span class="punto" /> : <Icona nome={p.stato === 'offline' ? 'wifiOff' : 'clock'} size={12} />}
+        {etichettaStato}
       </span>
       <span class="etichetta">{t.etichetta_evidenza}</span>
     </p>
@@ -72,7 +73,7 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
           fetchpriority="high"
         />
       ) : (
-        <span class="vuoto"><Icona nome="clock" size={22} />{t.presto}</span>
+        <span class="vuoto"><Icona nome={p.stato === 'offline' ? 'wifiOff' : 'clock'} size={22} />{p.stato === 'offline' ? t.stato_offline : t.presto}</span>
       )}
     </a>
   </div>
@@ -143,6 +144,7 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
     color: var(--muted);
   }
   .stato.online { color: var(--accent-light); background: var(--accent-soft); border-color: var(--accent-border); }
+  .stato.offline { color: var(--muted); border-style: dashed; }
   .punto { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: currentColor; }
   .etichetta, .titoletto { font-size: var(--fs-2xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 
