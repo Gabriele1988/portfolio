@@ -113,7 +113,7 @@ export const SEZIONI_DEFAULT: Sezione[] = [
     etichetta: 'Contatti',
     titolo: 'Hai un progetto in mente? Parliamone davanti a un caffè a Palermo (o in videochiamata).',
     testo: 'Che tu abbia bisogno di creare un nuovo sito web da zero, fare il restyling della tua piattaforma attuale o risolvere problemi tecnici su WordPress, sono qui per aiutarti.',
-    pulsante: 'Scrivimi ora per un preventivo gratuito',
+    pulsante: 'Richiedi un preventivo',
     url: '/contatti/',
   },
 ];

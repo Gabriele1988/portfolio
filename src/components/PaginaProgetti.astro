@@ -65,12 +65,13 @@ const titoloPagina = pagina > 1 ? `${t.meta_titolo} · ${pagina}` : t.meta_titol
 
 <style>
   .testa { text-align: center; max-width: 52rem; margin: 2rem auto 4rem; }
+  .prima { padding-top: 4rem; } /* lo spazio in alto resta com'era, cambia solo quello tra le sezioni */
   @media (max-width: 39.99rem) { .prima { padding-top: 20px; } .testa { margin-top: 0; } } /* su telefono il titolo sta subito sotto l'header */
   h1 { font-size: var(--fs-page); margin: 0 0 1.25rem; }
   .intro { color: var(--muted); font-size: var(--fs-lead); margin: 0 auto; max-width: 36rem; }
 
   .altri { padding-top: 0; }
-  .sep { border: 0; height: 1px; margin: 0 0 4rem; background: linear-gradient(90deg, transparent, var(--accent-border), transparent); }
+  .sep { border: 0; height: 1px; margin: 0 0 var(--spazio-sezione); background: linear-gradient(90deg, transparent, var(--accent-border), transparent); }
   .titolo-altri { font-size: var(--fs-section); text-align: center; margin: 0 0 3rem; }
 
   /* Due colonne: le card di una riga hanno la stessa altezza e immagini uguali (vedi ProgettoCard) */

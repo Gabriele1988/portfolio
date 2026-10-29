@@ -303,8 +303,7 @@ const jsonLd = {
   [data-appari] { opacity: 0; transform: translateY(2rem); transition: opacity 0.8s ease, transform 0.9s cubic-bezier(.2, .8, .2, 1); }
   [data-appari].visibile { opacity: 1; transform: none; }
 
-  section { padding-block: clamp(4rem, 9vw, 7.5rem); }
-  @media (max-width: 39.99rem) { section { padding-block: clamp(0.5rem, 9vw, 7.5rem); } }
+  section { padding-block: var(--spazio-sezione); }
   .g12 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2.5rem 1.5rem; }
   .g12 > * { grid-column: 1 / -1; }
 

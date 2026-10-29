@@ -38,6 +38,8 @@
   --fs-menu: clamp(2rem, 9vw, 3rem); /* voci del menu mobile */
   --fs-page: clamp(2.75rem, 7vw, 5.5rem); /* titolo delle pagine interne */
   --fs-hero: clamp(2.75rem, 8vw, 6.5rem);
+  /* Spazio sopra e sotto ogni sezione, uguale in tutte le pagine (come in Chi sono) */
+  --spazio-sezione: clamp(4rem, 9vw, 7.5rem);
 
   --radius: 16px;
   --max: 1900px;
@@ -93,7 +95,10 @@ h2 { font-size: var(--fs-h2); }
 .grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); }
 .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0; list-style: none; }
 .tags li { font-size: var(--fs-xs); padding: 0.15rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
-.section { padding-block: 4rem; }
+.section { padding-block: var(--spazio-sezione); }
+.section > :first-child { margin-top: 0; } /* nessun margine in più oltre al padding della sezione */
+.section > :last-child { margin-bottom: 0; }
+@media (max-width: 39.99rem) { :root { --spazio-sezione: clamp(0.5rem, 9vw, 7.5rem); } }
 .prose { max-width: 44rem; }
 .prose img { border-radius: var(--radius); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
