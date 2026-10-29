@@ -25,11 +25,14 @@ const contenuto = await ottimizzaImmaginiContenuto(p.contenuto, CMS_URL ?? '');
 const grandi = await Promise.all(
   p.galleria.map((g) => getImage({ src: g.src, width: Math.min(g.width ?? 1920, 1920), height: g.width && g.height ? Math.round((Math.min(g.width, 1920) * g.height) / g.width) : undefined, inferSize: !g.width, format: 'webp' })),
 );
+// Domanda sopra il pulsante finale. Se nel CMS il pulsante contiene ancora anche la domanda (testo vecchio), la si toglie dal pulsante.
+const ctaTitolo = t.cta_progetto_titolo.trim();
+const ctaPulsante = ctaTitolo && t.cta_progetto.startsWith(ctaTitolo) ? t.cta_progetto.slice(ctaTitolo.length).trim() || t.cta_progetto : t.cta_progetto;
 const conLato = p.funzionalita.length > 0 || p.tecnologie.length > 0 || !!p.risultato;
 ---
 
 <Base title={p.seo.titolo || p.titolo} description={p.seo.descrizione || p.introduzione || p.estratto} image={og?.src} noindex={p.seo.noindex}>
-  <article class="wrap section">
+  <article class="wrap section progetto">
     <p class="torna"><a href="/progetti/">{t.torna}</a></p>
     <div class="intro">
     <div class="titolo">
@@ -107,19 +110,22 @@ const conLato = p.funzionalita.length > 0 || p.tecnologie.length > 0 || !!p.risu
                 <p>{p.risultato}</p>
               </section>
             )}
-            <p class="azioni">
-              <a class="btn" href="/contatti/">{t.cta_progetto}</a>
-              {p.url && p.stato === 'online' && <a class="visita" href={p.url} rel="noopener" target="_blank">{t.visita} ↗</a>}
-            </p>
+            <div class="azioni">
+              {ctaTitolo && <p class="cta-titolo">{ctaTitolo}</p>}
+              <a class="btn" href="/contatti/">{ctaPulsante}</a>
+              {p.url && p.stato === 'online' && <a class="btn btn-ghost visita" href={p.url} rel="noopener" target="_blank">{t.visita} ↗</a>}
+            </div>
           </div>
         </aside>
       )}
     </div>
 
     {!conLato && (
-      <p class="cta">
-        <a class="btn" href="/contatti/">{t.cta_progetto}</a>
-      </p>
+      <div class="cta">
+        {ctaTitolo && <p class="cta-titolo">{ctaTitolo}</p>}
+        <a class="btn" href="/contatti/">{ctaPulsante}</a>
+        {p.url && p.stato === 'online' && <a class="btn btn-ghost visita" href={p.url} rel="noopener" target="_blank">{t.visita} ↗</a>}
+      </div>
     )}
   </article>
 </Base>
@@ -175,7 +181,10 @@ const conLato = p.funzionalita.length > 0 || p.tecnologie.length > 0 || !!p.risu
   dt { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
   dd { margin: 0; font-weight: 600; }
   .cover { width: 100%; height: auto; border-radius: var(--radius); margin: 2.5rem 0; }
-  .cta { margin-top: 3rem; }
+  .cta { margin-top: 3rem; display: grid; gap: 0.75rem; justify-items: start; }
+  .cta-titolo { margin: 0; font-family: var(--font-display); font-size: var(--fs-lg); line-height: 1.2; }
+  .azioni .cta-titolo { font-size: var(--fs-base, 1rem); }
+  @media (max-width: 39.99rem) { .progetto { padding-top: 0; } .torna { margin-top: 0; margin-bottom: 30px; } }
 
   /* Testo a sinistra, scheda del progetto a destra (resta visibile scorrendo). */
   .corpo { display: grid; gap: 2.5rem; align-items: start; }
@@ -194,8 +203,9 @@ const conLato = p.funzionalita.length > 0 || p.tecnologie.length > 0 || !!p.risu
   .risultato p { margin: 0; font-size: var(--fs-sm); line-height: 1.6; }
   .azioni { display: grid; gap: 0.75rem; margin: 0; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center; }
   .azioni .btn { font-size: var(--fs-sm); }
-  .visita { font-size: var(--fs-sm); color: var(--muted); }
-  .visita:hover { color: var(--text); }
+  /* "Visita il sito" è un secondo pulsante, con il bordo nel colore del logo */
+  .visita { font-size: var(--fs-sm); border-color: var(--accent-border); background: var(--accent-soft); }
+  .visita:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
 
   .galleria { margin-top: 4rem; }
   .galleria h2 { font-size: var(--fs-h2); margin: 0 0 1.5rem; }

@@ -22,7 +22,7 @@ const qr = g.link_recensione
 ---
 
 <Base title={t.meta_titolo} description={t.meta_descrizione}>
-  <section class="wrap section">
+  <section class="wrap section prima">
     <header class="testa">
       <h1>
         <span class="evidenza">{t.titolo_evidenza}</span>
@@ -95,6 +95,7 @@ const qr = g.link_recensione
 
 <style>
   .testa { text-align: center; margin: 3rem auto 6rem; }
+  @media (max-width: 39.99rem) { .prima { padding-top: 20px; } .testa { margin-top: 0; } } /* su telefono il titolo sta subito sotto l'header */
   h1 { font-size: clamp(3.25rem, 11vw, 9.5rem); margin: 0 0 2rem; }
   h1 span { display: block; }
   .intro { color: var(--text-soft); font-size: var(--fs-lead); margin: 0; }
