@@ -1,10 +1,12 @@
 ---
 import { existsSync } from 'node:fs';
-import '@fontsource-variable/space-grotesk';
-import '@fontsource-variable/fira-code';
 import '../styles/global.css';
-// File del font del testo, precaricato nell'head insieme a Clash Display: meno spostamenti al caricamento (CLS).
+// Font self-hosted dichiarati qui (non con il CSS di Fontsource) per usare font-display: optional:
+// se un font non è pronto al primo disegno resta quello di riserva per quella visita, e la pagina non salta (CLS).
 import spaceGroteskUrl from '@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2?url';
+import spaceGroteskExtUrl from '@fontsource-variable/space-grotesk/files/space-grotesk-latin-ext-wght-normal.woff2?url';
+import firaCodeUrl from '@fontsource-variable/fira-code/files/fira-code-latin-wght-normal.woff2?url';
+import firaCodeExtUrl from '@fontsource-variable/fira-code/files/fira-code-latin-ext-wght-normal.woff2?url';
 import { NOINDEX } from 'astro:env/client';
 import { sito } from '../site.config';
 import { getTesti } from '../lib/testi';
@@ -27,6 +29,16 @@ interface Props {
 // Clash Display (Fontshare, gratuito) non è su npm: se i file sono in public/fonts/ li usiamo per i titoli.
 // font-display: optional + preload: i titoli non cambiano font dopo essere apparsi, così la pagina non salta (CLS).
 const clash = ['Semibold', 'Bold'].filter((w) => existsSync(`public/fonts/ClashDisplay-${w}.woff2`));
+const LATIN = 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
+const LATIN_EXT = 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF';
+const fontCss = [
+  ['Space Grotesk Variable', spaceGroteskUrl, LATIN],
+  ['Space Grotesk Variable', spaceGroteskExtUrl, LATIN_EXT],
+  ['Fira Code Variable', firaCodeUrl, LATIN],
+  ['Fira Code Variable', firaCodeExtUrl, LATIN_EXT],
+]
+  .map(([nome, url, range]) => `@font-face{font-family:'${nome}';font-style:normal;font-display:optional;font-weight:300 700;src:url('${url}') format('woff2-variations');unicode-range:${range}}`)
+  .join('');
 const clashCss = clash
   .map((w) => `@font-face{font-family:'Clash Display';src:url('/fonts/ClashDisplay-${w}.woff2') format('woff2');font-weight:${w === 'Bold' ? 700 : 600};font-display:optional}`)
   .join('');
@@ -49,7 +61,7 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     {NOINDEX || noindex ? <meta name="robots" content={NOINDEX ? 'noindex, nofollow' : 'noindex, follow'} /> : <link rel="canonical" href={canonical} />}
     {clash.includes('Bold') && <link rel="preload" href="/fonts/ClashDisplay-Bold.woff2" as="font" type="font/woff2" crossorigin />}
     <link rel="preload" href={spaceGroteskUrl} as="font" type="font/woff2" crossorigin />
-    {clashCss && <style set:html={clashCss} />}
+    <style set:html={fontCss + clashCss} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={fullTitle} />
