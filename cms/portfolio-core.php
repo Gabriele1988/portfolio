@@ -732,11 +732,11 @@ function portfolio_testi_schema() {
 			'menu'   => 'Privacy',
 			'gruppi' => array(
 				'Contenuto' => array(
-					'titolo'    => array( 'Titolo', 'text', 'Privacy e cookie' ),
-					'contenuto' => array( 'Testo', 'wysiwyg', '', 'Lasciando vuoto si vede la bozza provvisoria.' ),
+					'titolo'    => array( 'Titolo', 'text', 'Privacy Policy' ),
+					'contenuto' => array( 'Testo (non più usato)', 'wysiwyg', '', 'Il testo della Privacy Policy e della Cookie Policy ora è scritto nel sito: questo campo viene ignorato.' ),
 				),
 				'SEO' => array(
-					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Privacy e cookie' ),
+					'meta_titolo'      => array( 'Titolo della pagina', 'text', 'Privacy Policy' ),
 					'meta_descrizione' => array( 'Descrizione', 'textarea', 'Informativa sul trattamento dei dati personali.' ),
 				),
 			),

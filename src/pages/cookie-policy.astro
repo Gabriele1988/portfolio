@@ -4,7 +4,8 @@
 // - Cloudflare Turnstile, solo nella pagina Contatti (protezione del modulo dallo spam).
 // Font, immagini e script sono serviti dal sito stesso: nessun altro servizio esterno.
 // Se si aggiunge un servizio esterno (mappe, video, analytics…) va descritto qui.
-import Base from '../layouts/Base.astro';
+import PaginaLegale from '../components/PaginaLegale.astro';
+import IconaStrumento from '../components/IconaStrumento.astro';
 import { getTesti } from '../lib/testi';
 
 const g = (await getTesti()).generale;
@@ -18,18 +19,6 @@ const indice = [
   { id: 'strumenti', titolo: 'Come questo sito utilizza gli strumenti di tracciamento' },
   { id: 'preferenze', titolo: 'Come gestire le preferenze' },
   { id: 'definizioni', titolo: 'Definizioni e riferimenti legali' },
-  { id: 'diritti', titolo: 'I tuoi diritti' },
-];
-
-// Richieste per esercitare i diritti: email già pronta con oggetto e testo.
-const firma = 'Cordiali saluti,\n[Nome e cognome]';
-const mail = (oggetto: string, testo: string) =>
-  `mailto:${g.email}?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(`Mi chiamo [Nome] [Cognome] e ${testo}\n\n${firma}`)}`;
-const diritti = [
-  { testo: 'Chiedimi di conoscere e accedere alle informazioni che ti riguardano', href: mail('Diritto di accesso', 'vorrei accedere ai dati personali che mi riguardano in vostro possesso: [elenca le informazioni che desideri].') },
-  { testo: 'Chiedimi di correggere le informazioni che ti riguardano', href: mail('Diritto di rettifica', 'ho individuato alcune inesattezze nei miei dati personali: [descrivi le inesattezze]. Vi chiedo di correggerle.') },
-  { testo: 'Chiedimi di cancellare le informazioni che ti riguardano (diritto all’oblio)', href: mail('Diritto all’oblio', 'vorrei chiedere la cancellazione dei seguenti dati personali che mi riguardano: [elenca le informazioni].') },
-  { testo: 'Chiedimi di trasferire i tuoi dati a un altro servizio', href: mail('Diritto alla portabilità dei dati', 'vorrei ricevere una copia dei dati personali che mi riguardano in un formato strutturato, di uso comune e leggibile da dispositivo automatico.') },
 ];
 
 const browser = [
@@ -42,261 +31,210 @@ const browser = [
 ];
 ---
 
-<Base title="Cookie Policy" description={`Quali cookie e strumenti di tracciamento usa ${dominio}, a cosa servono e come gestire le tue preferenze.`}>
-  <section class="wrap section prima">
-    <header class="testa">
-      <h1>Cookie <span class="evidenza">Policy</span></h1>
-      <p class="intro">
-        Benvenuto nella cookie policy di {dominio}. Qui trovi quali cookie e tecnologie di tracciamento uso, come li uso e
-        quali sono i tuoi diritti.
-      </p>
-      <p class="data">Ultima modifica: {aggiornata}</p>
-    </header>
-
-    <div class="corpo">
-      <nav class="sommario" aria-label="Sommario">
-        <p class="titoletto">Sommario</p>
-        <ol>
-          {indice.map((v) => <li><a href={`#${v.id}`}>{v.titolo}</a></li>)}
-        </ol>
-      </nav>
-
-      <div class="testo">
-        <section id="introduzione">
-          <h2>Introduzione</h2>
-          <p>
-            Questo documento contiene informazioni sulle tecnologie che permettono a questo sito di raggiungere gli scopi
-            descritti di seguito. Tali tecnologie permettono al Titolare di raccogliere e salvare informazioni (per esempio
-            tramite i Cookie) o di utilizzare risorse (per esempio eseguendo uno script) sul dispositivo dell’Utente quando
-            quest’ultimo interagisce con questo sito.
-          </p>
-          <p>
-            Per semplicità, in questo documento tali tecnologie sono definite “Strumenti di Tracciamento”, salvo vi sia ragione
-            di differenziare. Il termine Cookie indica in modo specifico solo quel particolare tipo di Strumento di Tracciamento.
-          </p>
-          <p class="nota">
-            <strong>In breve:</strong> questo sito non usa cookie di profilazione né cookie pubblicitari, e le statistiche
-            delle visite funzionano senza cookie. Per questo non ti viene chiesto alcun consenso all’apertura del sito.
-          </p>
-          <p>
-            Questo sito utilizza Strumenti di Tracciamento gestiti direttamente dal Titolare (“di prima parte”) e uno
-            Strumento di Tracciamento che abilita un servizio fornito da terzi (“di terza parte”). Durata e scadenza degli
-            Strumenti di Tracciamento possono variare a seconda di quanto impostato dal Titolare o dal fornitore terzo.
-            Informazioni più dettagliate sono disponibili nella privacy policy del fornitore terzo (tramite i link indicati)
-            o contattando il Titolare.
-          </p>
-        </section>
-
-        <section id="titolare">
-          <h2>Titolare del trattamento dei dati</h2>
-          <p>{titolare}{g.indirizzo && <> – {g.indirizzo}, Italia</>}</p>
-          {g.email && <p>Indirizzo email del Titolare: <a href={`mailto:${g.email}`}>{g.email}</a></p>}
-        </section>
-
-        <section id="strumenti">
-          <h2>Come questo sito utilizza gli strumenti di tracciamento</h2>
-
-          <h3>Necessari</h3>
-          <p>
-            Questo sito utilizza Strumenti di Tracciamento strettamente necessari a garantire il funzionamento del servizio.
-            Non richiedono il consenso dell’Utente.
-          </p>
-
-          <article class="strumento">
-            <header>
-              <h4>Cloudflare Turnstile</h4>
-              <p class="tipo">Terza parte · solo nella pagina Contatti</p>
-            </header>
-            <dl>
-              <div><dt>Azienda</dt><dd>Cloudflare, Inc.</dd></div>
-              <div><dt>Luogo del trattamento</dt><dd>Stati Uniti (aderente al Data Privacy Framework UE-USA)</dd></div>
-              <div><dt>Finalità</dt><dd>Protezione del modulo contatti dallo spam e dai bot</dd></div>
-            </dl>
-            <p>
-              Turnstile è un servizio di Cloudflare, Inc. che verifica che il modulo contatti sia compilato da una persona e
-              non da un programma automatico. Viene caricato solo nella pagina Contatti, non usa cookie di profilazione e non
-              mostra annunci.
-            </p>
-            <p class="titoletto">Dati personali trattati</p>
-            <ul>
-              <li>Dati di utilizzo (tra cui indirizzo IP)</li>
-              <li>Caratteristiche del browser e del dispositivo</li>
-              <li>Segnali di interazione con la pagina</li>
-            </ul>
-            <p class="link">
-              <a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener">Informativa privacy di Turnstile</a>
-              <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Privacy policy di Cloudflare</a>
-            </p>
-          </article>
-
-          <h3>Misurazione</h3>
-          <p>
-            Questo sito misura il traffico per capire quali pagine vengono visitate e migliorare il servizio, con uno strumento
-            gestito direttamente dal Titolare e senza cookie.
-          </p>
-
-          <article class="strumento">
-            <header>
-              <h4>Statistiche delle visite (senza cookie)</h4>
-              <p class="tipo">Prima parte · su tutte le pagine</p>
-            </header>
-            <dl>
-              <div><dt>Gestito da</dt><dd>{titolare}, sul proprio server</dd></div>
-              <div><dt>Cookie</dt><dd>Nessuno</dd></div>
-              <div><dt>Conservazione</dt><dd>13 mesi, poi i dati vengono eliminati</dd></div>
-            </dl>
-            <p>
-              A ogni pagina visitata il sito registra in forma aggregata la pagina vista, il sito di provenienza, il tipo di
-              dispositivo (computer, tablet o telefono) e il browser. L’indirizzo IP non viene salvato: per contare i
-              visitatori unici si usa un codice anonimo che cambia ogni giorno e non permette di riconoscerti nei giorni
-              successivi. I dati non vengono condivisi con terzi. Se il tuo browser ha attiva l’opzione “Do Not Track”, la
-              visita non viene registrata.
-            </p>
-            <p class="titoletto">Dati trattati</p>
-            <ul>
-              <li>Pagina visitata e sito di provenienza</li>
-              <li>Tipo di dispositivo e browser</li>
-              <li>Numero di visite e di visitatori</li>
-            </ul>
-          </article>
-
-          <h3>Altri contenuti</h3>
-          <p>
-            Font, immagini e script sono serviti direttamente da questo sito, senza richieste a servizi esterni. I link verso
-            WhatsApp, Calendly, Google o i social portano a siti di terzi solo se li apri: da quel momento valgono le loro
-            privacy e cookie policy.
-          </p>
-        </section>
-
-        <section id="preferenze">
-          <h2>Come gestire le preferenze</h2>
-          <p>
-            Poiché questo sito non usa Strumenti di Tracciamento che richiedono il consenso, non c’è un pannello delle
-            preferenze da gestire. Per gli Strumenti di Tracciamento di terza parte puoi gestire le tue preferenze tramite gli
-            strumenti descritti nella privacy policy del fornitore o contattandolo direttamente.
-          </p>
-
-          <h3>Come controllare o eliminare i cookie dalle impostazioni del dispositivo</h3>
-          <p>Puoi usare le impostazioni del tuo browser per:</p>
-          <ul>
-            <li>vedere quali cookie o tecnologie simili sono stati impostati sul dispositivo;</li>
-            <li>bloccare cookie o tecnologie simili;</li>
-            <li>cancellare cookie o tecnologie simili dal browser.</li>
-          </ul>
-          <p>Ecco come gestire i cookie nei browser più diffusi:</p>
-          <ul class="browser">
-            {browser.map((b) => <li><a href={b.url} target="_blank" rel="noopener">{b.nome}</a></li>)}
-          </ul>
-
-          <h3>Conseguenze del rifiuto degli strumenti di tracciamento</h3>
-          <p>
-            Sei libero di bloccare gli Strumenti di Tracciamento. Se blocchi Cloudflare Turnstile, però, il modulo contatti
-            non potrà essere inviato: in quel caso puoi scrivermi direttamente{g.email && <> a <a href={`mailto:${g.email}`}>{g.email}</a></>}.
-          </p>
-        </section>
-
-        <section id="definizioni">
-          <h2>Definizioni e riferimenti legali</h2>
-          <dl class="definizioni">
-            <dt>Dati Personali (o Dati)</dt>
-            <dd>Qualunque informazione che, direttamente o indirettamente, anche in collegamento con altre informazioni, renda identificata o identificabile una persona fisica.</dd>
-            <dt>Dati di Utilizzo</dt>
-            <dd>
-              Le informazioni raccolte automaticamente attraverso questo sito (anche da servizi di terze parti integrati), tra
-              cui: indirizzi IP, indirizzi delle pagine richieste, orario della richiesta, caratteristiche del browser e del
-              sistema operativo, paese di provenienza e dettagli sulla navigazione all’interno del sito.
-            </dd>
-            <dt>Utente</dt>
-            <dd>L’individuo che utilizza questo sito che, salvo ove diversamente specificato, coincide con l’Interessato.</dd>
-            <dt>Interessato</dt>
-            <dd>La persona fisica cui si riferiscono i Dati Personali.</dd>
-            <dt>Responsabile del Trattamento (o Responsabile)</dt>
-            <dd>La persona fisica o giuridica, la pubblica amministrazione o qualsiasi altro ente che tratta dati personali per conto del Titolare.</dd>
-            <dt>Titolare del Trattamento (o Titolare)</dt>
-            <dd>
-              La persona fisica o giuridica, l’autorità pubblica, il servizio o altro organismo che determina le finalità e i
-              mezzi del trattamento di dati personali, comprese le misure di sicurezza. Salvo quanto diversamente specificato,
-              è il titolare di questo sito.
-            </dd>
-            <dt>Questo sito</dt>
-            <dd>Lo strumento hardware o software mediante il quale sono raccolti e trattati i Dati Personali degli Utenti.</dd>
-            <dt>Unione Europea (o UE)</dt>
-            <dd>Ogni riferimento all’Unione Europea si intende esteso a tutti gli stati membri dell’Unione Europea e dello Spazio Economico Europeo.</dd>
-            <dt>Cookie</dt>
-            <dd>Strumenti di Tracciamento che consistono in piccole porzioni di dati conservate all’interno del browser dell’Utente.</dd>
-            <dt>Strumento di Tracciamento</dt>
-            <dd>Qualsiasi tecnologia (per esempio Cookie, identificativi univoci, web beacon, script integrati, e-tag e fingerprinting) che consenta di tracciare gli Utenti, per esempio raccogliendo o salvando informazioni sul dispositivo dell’Utente.</dd>
-            <dt>Riferimenti legali</dt>
-            <dd>
-              Questa informativa è redatta ai sensi del Regolamento (UE) 2016/679 (GDPR), della Direttiva 2002/58/CE e delle
-              Linee guida del Garante per la protezione dei dati personali sui cookie. Ove non diversamente specificato,
-              riguarda esclusivamente questo sito. Per il trattamento dei dati inviati con il modulo contatti vedi la
-              <a href="/privacy/">Privacy Policy</a>.
-            </dd>
-          </dl>
-        </section>
-
-        {g.email && (
-          <section id="diritti" class="diritti">
-            <h2>I tuoi diritti</h2>
-            <p>Per esercitarli basta un’email: i link qui sotto la preparano già con oggetto e testo.</p>
-            <ul>
-              {diritti.map((d) => <li><a href={d.href}>{d.testo}</a></li>)}
-            </ul>
-            <p>
-              Se qualcosa non va, scrivimi: farò il possibile per risolvere. Hai comunque il diritto di proporre reclamo al
-              <a href="https://www.garanteprivacy.it/" target="_blank" rel="noopener">Garante per la protezione dei dati personali</a>.
-            </p>
-            <p><a class="btn" href={`mailto:${g.email}`}>Contattami</a></p>
-          </section>
-        )}
-      </div>
-    </div>
+<PaginaLegale
+  title="Cookie Policy"
+  description={`Quali cookie e strumenti di tracciamento usa ${dominio}, a cosa servono e come gestire le tue preferenze.`}
+  titolo={['Cookie', 'Policy']}
+  intro={`Benvenuto nella cookie policy di ${dominio}. Qui trovi quali cookie e tecnologie di tracciamento uso, come li uso e quali sono i tuoi diritti.`}
+  aggiornata={aggiornata}
+  indice={indice}
+>
+  <section id="introduzione">
+    <h2>Introduzione</h2>
+    <p>
+      Questo documento contiene informazioni sulle tecnologie che permettono a questo sito di raggiungere gli scopi
+      descritti di seguito. Tali tecnologie permettono al Titolare di raccogliere e salvare informazioni (per esempio
+      tramite i Cookie) o di utilizzare risorse (per esempio eseguendo uno script) sul dispositivo dell’Utente quando
+      quest’ultimo interagisce con questo sito.
+    </p>
+    <p>
+      Per semplicità, in questo documento tali tecnologie sono definite “Strumenti di Tracciamento”, salvo vi sia ragione
+      di differenziare. Il termine Cookie indica in modo specifico solo quel particolare tipo di Strumento di Tracciamento.
+    </p>
+    <p class="nota">
+      <strong>In breve:</strong> questo sito non usa cookie di profilazione né cookie pubblicitari, e le statistiche
+      delle visite funzionano senza cookie. Il banner che vedi alla prima visita ti informa e ti permette di
+      disattivare le statistiche.
+    </p>
+    <p>
+      Questo sito utilizza Strumenti di Tracciamento gestiti direttamente dal Titolare (“di prima parte”) e uno
+      Strumento di Tracciamento che abilita un servizio fornito da terzi (“di terza parte”). Durata e scadenza degli
+      Strumenti di Tracciamento possono variare a seconda di quanto impostato dal Titolare o dal fornitore terzo.
+      Informazioni più dettagliate sono disponibili nella privacy policy del fornitore terzo (tramite i link indicati)
+      o contattando il Titolare.
+    </p>
   </section>
-</Base>
 
-<style>
-  .testa { text-align: center; max-width: 52rem; margin: 2rem auto 4rem; }
-  .prima { padding-top: 4rem; }
-  @media (max-width: 39.99rem) { .prima { padding-top: 20px; } .testa { margin-top: 0; } }
-  h1 { font-size: clamp(2.75rem, 9vw, 7rem); margin: 0 0 2rem; }
-  .intro { color: var(--text-soft); font-size: var(--fs-lead); margin: 0 auto; max-width: 40rem; }
-  .data { margin: 1.25rem 0 0; color: var(--muted); font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.1em; text-transform: uppercase; }
+  <section id="titolare">
+    <h2>Titolare del trattamento dei dati</h2>
+    <p>{titolare}{g.indirizzo && <> – {g.indirizzo}, Italia</>}</p>
+    {g.email && <p>Indirizzo email del Titolare: <a href={`mailto:${g.email}`}>{g.email}</a></p>}
+  </section>
 
-  /* Sommario a sinistra (resta visibile scorrendo), testo a destra */
-  .corpo { display: grid; gap: 2.5rem; max-width: 72rem; margin-inline: auto; align-items: start; }
-  @media (min-width: 64rem) { .corpo { grid-template-columns: 17rem minmax(0, 1fr); gap: 4rem; } .sommario { position: sticky; top: 6rem; } }
-  .sommario { padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-  .sommario ol { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.6rem; font-size: var(--fs-sm); }
-  .sommario a { color: var(--text-soft); text-decoration: none; }
-  .sommario a:hover { color: var(--accent); }
-  .titoletto { margin: 0 0 0.85rem; font-size: var(--fs-2xs); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  <section id="strumenti">
+    <h2>Come questo sito utilizza gli strumenti di tracciamento</h2>
 
-  .testo { max-width: 46rem; color: var(--text-soft); line-height: 1.7; }
-  .testo section { scroll-margin-top: 6rem; }
-  .testo section + section { margin-top: 3.5rem; padding-top: 3.5rem; border-top: 1px solid var(--border); }
-  h2 { font-size: var(--fs-h2); line-height: 1.15; color: var(--text); margin: 0 0 1.25rem; }
-  h3 { font-size: var(--fs-lg); line-height: 1.2; color: var(--text); margin: 2.25rem 0 0.75rem; }
-  .testo p { margin: 0 0 1rem; }
-  .testo ul { margin: 0 0 1rem; padding-left: 1.25rem; display: grid; gap: 0.35rem; }
-  .testo a:not(.btn) { color: var(--accent); }
-  .nota { padding: 1rem 1.25rem; border-radius: calc(var(--radius) * 0.6); background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--text); }
+    <h3>Necessari</h3>
+    <p>
+      Questo sito utilizza Strumenti di Tracciamento strettamente necessari a garantire il funzionamento del servizio.
+      Non richiedono il consenso dell’Utente.
+    </p>
 
-  .strumento { margin: 1.25rem 0 0; padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-  .strumento header { margin-bottom: 1.25rem; }
-  h4 { margin: 0; font-family: var(--font-display); font-size: var(--fs-lg); color: var(--text); letter-spacing: 0.02em; }
-  .tipo { margin: 0.4rem 0 0 !important; font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent); }
-  .strumento dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem 1.5rem; margin: 0 0 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
-  .strumento dt { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-  .strumento dd { margin: 0.25rem 0 0; color: var(--text); font-weight: 600; font-size: var(--fs-sm); line-height: 1.4; }
-  .strumento .link { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin: 0; font-size: var(--fs-sm); }
-  .browser { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+    <article class="strumento">
+      <header>
+        <IconaStrumento marchio="Cloudflare" />
+        <div>
+          <h4>Cloudflare Turnstile</h4>
+          <p class="tipo">Terza parte · solo nella pagina Contatti</p>
+        </div>
+      </header>
+      <dl>
+        <div><dt>Azienda</dt><dd>Cloudflare, Inc.</dd></div>
+        <div><dt>Luogo del trattamento</dt><dd>Stati Uniti (aderente al Data Privacy Framework UE-USA)</dd></div>
+        <div><dt>Finalità</dt><dd>Protezione del modulo contatti dallo spam e dai bot</dd></div>
+      </dl>
+      <p>
+        Turnstile è un servizio di Cloudflare, Inc. che verifica che il modulo contatti sia compilato da una persona e
+        non da un programma automatico. Viene caricato solo nella pagina Contatti, non usa cookie di profilazione e non
+        mostra annunci.
+      </p>
+      <p class="titoletto">Dati personali trattati</p>
+      <ul>
+        <li>Dati di utilizzo (tra cui indirizzo IP)</li>
+        <li>Caratteristiche del browser e del dispositivo</li>
+        <li>Segnali di interazione con la pagina</li>
+      </ul>
+      <p class="link">
+        <a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener">Informativa privacy di Turnstile</a>
+        <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Privacy policy di Cloudflare</a>
+      </p>
+    </article>
 
-  .definizioni dt { margin-top: 1.25rem; color: var(--text); font-weight: 600; }
-  .definizioni dt:first-child { margin-top: 0; }
-  .definizioni dd { margin: 0.35rem 0 0; }
+    <article class="strumento">
+      <header>
+        <IconaStrumento icona="settings" />
+        <div>
+          <h4>Preferenze sui cookie</h4>
+          <p class="tipo">Prima parte · archiviazione locale del browser</p>
+        </div>
+      </header>
+      <dl>
+        <div><dt>Nome</dt><dd>gv-consenso (localStorage)</dd></div>
+        <div><dt>Durata</dt><dd>6 mesi, poi la scelta viene chiesta di nuovo</dd></div>
+      </dl>
+      <p>Ricorda la scelta fatta nel banner dei cookie, così non te la chiedo a ogni pagina. Resta solo nel tuo browser.</p>
+    </article>
 
-  .diritti ul { list-style: none; padding: 0; gap: 0.6rem; }
-  .diritti li a { display: block; padding: 0.9rem 1.1rem; border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.6); background: var(--surface); text-decoration: none; transition: border-color 0.2s; }
-  .diritti li a:hover { border-color: var(--accent-border); }
-</style>
+    <h3>Misurazione</h3>
+    <p>
+      Questo sito misura il traffico per capire quali pagine vengono visitate e migliorare il servizio, con uno strumento
+      gestito direttamente dal Titolare e senza cookie.
+    </p>
+
+    <article class="strumento">
+      <header>
+        <IconaStrumento icona="chart" />
+        <div>
+          <h4>Statistiche delle visite (senza cookie)</h4>
+          <p class="tipo">Prima parte · su tutte le pagine</p>
+        </div>
+      </header>
+      <dl>
+        <div><dt>Gestito da</dt><dd>{titolare}, sul proprio server</dd></div>
+        <div><dt>Cookie</dt><dd>Nessuno</dd></div>
+        <div><dt>Conservazione</dt><dd>13 mesi, poi i dati vengono eliminati</dd></div>
+      </dl>
+      <p>
+        A ogni pagina visitata il sito registra in forma aggregata la pagina vista, il sito di provenienza, il tipo di
+        dispositivo (computer, tablet o telefono) e il browser. L’indirizzo IP non viene salvato: per contare i
+        visitatori unici si usa un codice anonimo che cambia ogni giorno e non permette di riconoscerti nei giorni
+        successivi. I dati non vengono condivisi con terzi. Puoi disattivarle in qualsiasi momento dalle
+        <a href="#preferenze" data-preferenze-cookie>preferenze sui cookie</a>; se il tuo browser ha attiva l’opzione
+        “Do Not Track”, la visita non viene comunque registrata.
+      </p>
+      <p class="titoletto">Dati trattati</p>
+      <ul>
+        <li>Pagina visitata e sito di provenienza</li>
+        <li>Tipo di dispositivo e browser</li>
+        <li>Numero di visite e di visitatori</li>
+      </ul>
+    </article>
+
+    <h3>Altri contenuti</h3>
+    <p>
+      Font, immagini e script sono serviti direttamente da questo sito, senza richieste a servizi esterni. I link verso
+      WhatsApp, Calendly, Google o i social portano a siti di terzi solo se li apri: da quel momento valgono le loro
+      privacy e cookie policy.
+    </p>
+  </section>
+
+  <section id="preferenze">
+    <h2>Come gestire le preferenze</h2>
+    <p>
+      Alla prima visita un banner ti informa sugli strumenti usati. Dal pannello delle preferenze puoi attivare o
+      disattivare le statistiche anonime quando vuoi; gli strumenti necessari restano sempre attivi. Per gli Strumenti di
+      Tracciamento di terza parte puoi gestire le tue preferenze anche tramite gli strumenti descritti nella privacy
+      policy del fornitore o contattandolo direttamente.
+    </p>
+    <p><button type="button" class="btn" data-preferenze-cookie>Gestisci le preferenze</button></p>
+
+    <h3>Come controllare o eliminare i cookie dalle impostazioni del dispositivo</h3>
+    <p>Puoi usare le impostazioni del tuo browser per:</p>
+    <ul>
+      <li>vedere quali cookie o tecnologie simili sono stati impostati sul dispositivo;</li>
+      <li>bloccare cookie o tecnologie simili;</li>
+      <li>cancellare cookie o tecnologie simili dal browser.</li>
+    </ul>
+    <p>Ecco come gestire i cookie nei browser più diffusi:</p>
+    <ul class="colonne">
+      {browser.map((b) => <li><a href={b.url} target="_blank" rel="noopener">{b.nome}</a></li>)}
+    </ul>
+
+    <h3>Conseguenze del rifiuto degli strumenti di tracciamento</h3>
+    <p>
+      Sei libero di bloccare gli Strumenti di Tracciamento. Se blocchi Cloudflare Turnstile, però, il modulo contatti
+      non potrà essere inviato: in quel caso puoi scrivermi direttamente{g.email && <> a <a href={`mailto:${g.email}`}>{g.email}</a></>}.
+    </p>
+  </section>
+
+  <section id="definizioni">
+    <h2>Definizioni e riferimenti legali</h2>
+    <dl class="definizioni">
+      <dt>Dati Personali (o Dati)</dt>
+      <dd>Qualunque informazione che, direttamente o indirettamente, anche in collegamento con altre informazioni, renda identificata o identificabile una persona fisica.</dd>
+      <dt>Dati di Utilizzo</dt>
+      <dd>
+        Le informazioni raccolte automaticamente attraverso questo sito (anche da servizi di terze parti integrati), tra
+        cui: indirizzi IP, indirizzi delle pagine richieste, orario della richiesta, caratteristiche del browser e del
+        sistema operativo, paese di provenienza e dettagli sulla navigazione all’interno del sito.
+      </dd>
+      <dt>Utente</dt>
+      <dd>L’individuo che utilizza questo sito che, salvo ove diversamente specificato, coincide con l’Interessato.</dd>
+      <dt>Interessato</dt>
+      <dd>La persona fisica cui si riferiscono i Dati Personali.</dd>
+      <dt>Responsabile del Trattamento (o Responsabile)</dt>
+      <dd>La persona fisica o giuridica, la pubblica amministrazione o qualsiasi altro ente che tratta dati personali per conto del Titolare.</dd>
+      <dt>Titolare del Trattamento (o Titolare)</dt>
+      <dd>
+        La persona fisica o giuridica, l’autorità pubblica, il servizio o altro organismo che determina le finalità e i
+        mezzi del trattamento di dati personali, comprese le misure di sicurezza. Salvo quanto diversamente specificato,
+        è il titolare di questo sito.
+      </dd>
+      <dt>Questo sito</dt>
+      <dd>Lo strumento hardware o software mediante il quale sono raccolti e trattati i Dati Personali degli Utenti.</dd>
+      <dt>Unione Europea (o UE)</dt>
+      <dd>Ogni riferimento all’Unione Europea si intende esteso a tutti gli stati membri dell’Unione Europea e dello Spazio Economico Europeo.</dd>
+      <dt>Cookie</dt>
+      <dd>Strumenti di Tracciamento che consistono in piccole porzioni di dati conservate all’interno del browser dell’Utente.</dd>
+      <dt>Strumento di Tracciamento</dt>
+      <dd>Qualsiasi tecnologia (per esempio Cookie, identificativi univoci, web beacon, script integrati, e-tag e fingerprinting) che consenta di tracciare gli Utenti, per esempio raccogliendo o salvando informazioni sul dispositivo dell’Utente.</dd>
+      <dt>Riferimenti legali</dt>
+      <dd>
+        Questa informativa è redatta ai sensi del Regolamento (UE) 2016/679 (GDPR), della Direttiva 2002/58/CE e delle
+        Linee guida del Garante per la protezione dei dati personali sui cookie. Ove non diversamente specificato,
+        riguarda esclusivamente questo sito. Per il trattamento dei dati inviati con il modulo contatti vedi la
+        <a href="/privacy/">Privacy Policy</a>.
+      </dd>
+    </dl>
+  </section>
+</PaginaLegale>

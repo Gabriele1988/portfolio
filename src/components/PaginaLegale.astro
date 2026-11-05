@@ -1,0 +1,114 @@
+---
+// Struttura comune di Privacy Policy e Cookie Policy: intestazione, sommario laterale (resta visibile scorrendo),
+// testo e, in fondo, i link email già pronti per esercitare i diritti. Il testo arriva dallo slot.
+import Base from '../layouts/Base.astro';
+import { getTesti } from '../lib/testi';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Titolo in due parti: la seconda è colorata. */
+  titolo: [string, string];
+  intro: string;
+  aggiornata: string;
+  indice: { id: string; titolo: string }[];
+}
+const { title, description, titolo, intro, aggiornata, indice } = Astro.props;
+const g = (await getTesti()).generale;
+
+const firma = 'Cordiali saluti,\n[Nome e cognome]';
+const mail = (oggetto: string, testo: string) =>
+  `mailto:${g.email}?subject=${encodeURIComponent(oggetto)}&body=${encodeURIComponent(`Mi chiamo [Nome] [Cognome] e ${testo}\n\n${firma}`)}`;
+const diritti = [
+  { testo: 'Chiedimi di conoscere e accedere alle informazioni che ti riguardano', href: mail('Diritto di accesso', 'vorrei accedere ai dati personali che mi riguardano in vostro possesso: [elenca le informazioni che desideri].') },
+  { testo: 'Chiedimi di correggere le informazioni che ti riguardano', href: mail('Diritto di rettifica', 'ho individuato alcune inesattezze nei miei dati personali: [descrivi le inesattezze]. Vi chiedo di correggerle.') },
+  { testo: 'Chiedimi di cancellare le informazioni che ti riguardano (diritto all’oblio)', href: mail('Diritto all’oblio', 'vorrei chiedere la cancellazione dei seguenti dati personali che mi riguardano: [elenca le informazioni].') },
+  { testo: 'Chiedimi di trasferire i tuoi dati a un altro servizio', href: mail('Diritto alla portabilità dei dati', 'vorrei ricevere una copia dei dati personali che mi riguardano in un formato strutturato, di uso comune e leggibile da dispositivo automatico.') },
+];
+const voci = g.email ? [...indice, { id: 'diritti', titolo: 'I tuoi diritti' }] : indice;
+---
+
+<Base title={title} description={description}>
+  <section class="wrap section prima">
+    <header class="testa">
+      <h1>{titolo[0]} <span class="evidenza">{titolo[1]}</span></h1>
+      <p class="intro">{intro}</p>
+      <p class="data">Ultima modifica: {aggiornata}</p>
+    </header>
+
+    <div class="corpo">
+      <nav class="sommario" aria-label="Sommario">
+        <p class="titoletto">Sommario</p>
+        <ol>
+          {voci.map((v) => <li><a href={`#${v.id}`}>{v.titolo}</a></li>)}
+        </ol>
+      </nav>
+
+      <div class="testo">
+        <slot />
+
+        {g.email && (
+          <section id="diritti" class="diritti">
+            <h2>I tuoi diritti</h2>
+            <p>Per esercitarli basta un’email: i link qui sotto la preparano già con oggetto e testo.</p>
+            <ul>
+              {diritti.map((d) => <li><a href={d.href}>{d.testo}</a></li>)}
+            </ul>
+            <p>
+              Se qualcosa non va, scrivimi: farò il possibile per risolvere. Hai comunque il diritto di proporre reclamo al
+              <a href="https://www.garanteprivacy.it/" target="_blank" rel="noopener">Garante per la protezione dei dati personali</a>.
+            </p>
+            <p><a class="btn" href={`mailto:${g.email}`}>Contattami</a></p>
+          </section>
+        )}
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .testa { text-align: center; max-width: 52rem; margin: 2rem auto 4rem; }
+  .prima { padding-top: 4rem; }
+  @media (max-width: 39.99rem) { .prima { padding-top: 20px; } .testa { margin-top: 0; } }
+  h1 { font-size: clamp(2.75rem, 9vw, 7rem); margin: 0 0 2rem; }
+  .intro { color: var(--text-soft); font-size: var(--fs-lead); margin: 0 auto; max-width: 40rem; }
+  .data { margin: 1.25rem 0 0; color: var(--muted); font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .corpo { display: grid; gap: 2.5rem; align-items: start; }
+  @media (min-width: 64rem) { .corpo { grid-template-columns: 18rem minmax(0, 1fr); gap: 4rem; } .sommario { position: sticky; top: 6rem; } }
+  .sommario { padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .sommario ol { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.6rem; font-size: var(--fs-sm); }
+  .sommario a { color: var(--text-soft); text-decoration: none; }
+  .sommario a:hover { color: var(--accent); }
+  .titoletto, .testo :global(.titoletto) { margin: 0 0 0.85rem; font-size: var(--fs-2xs); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+  /* Testo dallo slot: gli stili valgono per i contenuti delle due pagine */
+  .testo { color: var(--text-soft); line-height: 1.7; }
+  .testo :global(section) { scroll-margin-top: 6rem; }
+  .testo :global(section + section) { margin-top: 3.5rem; padding-top: 3.5rem; border-top: 1px solid var(--border); }
+  .testo :global(h2) { font-size: var(--fs-h2); line-height: 1.15; color: var(--text); margin: 0 0 1.25rem; }
+  .testo :global(h3) { font-size: var(--fs-lg); line-height: 1.2; color: var(--text); margin: 2.25rem 0 0.75rem; }
+  .testo :global(p) { margin: 0 0 1rem; }
+  .testo :global(ul) { margin: 0 0 1rem; padding-left: 1.25rem; display: grid; gap: 0.35rem; }
+  .testo :global(a:not(.btn)) { color: var(--accent); }
+  .testo :global(.nota) { padding: 1rem 1.25rem; border-radius: calc(var(--radius) * 0.6); background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--text); }
+
+  .testo :global(.strumento) { margin: 1.25rem 0 0; padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .testo :global(.strumento header) { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+  .testo :global(h4) { margin: 0; font-family: var(--font-display); font-size: var(--fs-lg); line-height: 1.2; color: var(--text); letter-spacing: 0.02em; }
+  .testo :global(.tipo) { margin: 0.4rem 0 0; font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent); }
+  .testo :global(.strumento dl) { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem 1.5rem; margin: 0 0 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+  .testo :global(.strumento dt) { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .testo :global(.strumento dd) { margin: 0.25rem 0 0; color: var(--text); font-weight: 600; font-size: var(--fs-sm); line-height: 1.4; }
+  .testo :global(.strumento > :last-child) { margin-bottom: 0; }
+  .testo :global(.link) { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: var(--fs-sm); }
+  .testo :global(.colonne) { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+
+  .testo :global(.definizioni dt) { margin-top: 1.25rem; color: var(--text); font-weight: 600; }
+  .testo :global(.definizioni dt:first-child) { margin-top: 0; }
+  .testo :global(.definizioni dd) { margin: 0.35rem 0 0; }
+
+  .diritti ul { list-style: none; padding: 0; gap: 0.6rem; }
+  .diritti li a { display: block; padding: 0.9rem 1.1rem; border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.6); background: var(--surface); text-decoration: none; transition: border-color 0.2s; }
+  .diritti li a:hover { border-color: var(--accent-border); }
+</style>

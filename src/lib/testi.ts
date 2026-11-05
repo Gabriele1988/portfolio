@@ -165,9 +165,9 @@ export const TESTI_DEFAULT = {
     meta_descrizione: 'Raccontami il tuo progetto: rispondo entro un giorno lavorativo.',
   },
   privacy: {
-    titolo: 'Privacy e cookie',
+    titolo: 'Privacy Policy',
     contenuto: '',
-    meta_titolo: 'Privacy e cookie',
+    meta_titolo: 'Privacy Policy',
     meta_descrizione: 'Informativa sul trattamento dei dati personali.',
   },
   notfound: {

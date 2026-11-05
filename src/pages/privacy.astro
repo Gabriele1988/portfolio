@@ -1,24 +1,409 @@
 ---
-import Base from '../layouts/Base.astro';
+// Privacy Policy. Descrive solo i trattamenti che il sito fa davvero:
+// - modulo contatti: i dati arrivano via email al Titolare e non vengono salvati nel database di WordPress;
+//   l'IP serve solo al limite di 5 invii all'ora (impronta temporanea di 1 ora);
+// - Cloudflare Turnstile sul modulo contatti;
+// - statistiche interne senza cookie (vedi portfolio-core.php e cookie-policy.astro);
+// - WordPress self-hosted (sottodominio cms) e hosting del sito.
+// Se si aggiunge un servizio esterno va descritto qui e nella Cookie Policy.
+import PaginaLegale from '../components/PaginaLegale.astro';
+import IconaStrumento from '../components/IconaStrumento.astro';
 import { getTesti } from '../lib/testi';
 
 const { generale: g, privacy: t } = await getTesti();
+const dominio = new URL(Astro.site ?? 'https://gabrielevilardo.it').hostname;
+const titolare = g.nome_completo || g.nome;
+const aggiornata = '5 novembre 2026';
+// La casella del Titolare è su Outlook.com (Microsoft) se l'indirizzo è hotmail/outlook/live.
+const microsoft = /@(hotmail|outlook|live|msn)\./i.test(g.email);
+
+const indice = [
+  { id: 'riepilogo', titolo: 'Riepilogo' },
+  { id: 'titolare', titolo: 'Titolare del trattamento dei dati' },
+  { id: 'tipologie', titolo: 'Tipologie di dati raccolti' },
+  { id: 'modalita', titolo: 'Modalità e luogo del trattamento' },
+  { id: 'finalita', titolo: 'Finalità del trattamento' },
+  { id: 'dettagli', titolo: 'Dettagli sul trattamento dei dati personali' },
+  { id: 'ulteriori', titolo: 'Hosting, email e log tecnici' },
+  { id: 'cookie', titolo: 'Cookie Policy' },
+  { id: 'ue', titolo: 'Informazioni per gli utenti nell’Unione Europea' },
+  { id: 'altro', titolo: 'Ulteriori informazioni sul trattamento' },
+  { id: 'definizioni', titolo: 'Definizioni e riferimenti legali' },
+];
+
+const datiAutomatici = ['Dati di utilizzo', 'Informazioni sul dispositivo e sul browser', 'Numero di visite e di visitatori (anonimo)'];
+const datiForniti = ['Nome e cognome', 'Email', 'Numero di telefono (facoltativo)', 'Azienda (facoltativo)', 'Contenuto del messaggio e risposte alle domande del modulo'];
+const finalita = ['Contattare l’Utente', 'Creazione e gestione di questo sito', 'Statistica', 'Protezione da spam e bot'];
 ---
 
-<Base title={t.meta_titolo} description={t.meta_descrizione}>
-  <section class="wrap section prose">
-    <h1>{t.titolo}</h1>
-    {t.contenuto ? (
-      <Fragment set:html={t.contenuto} />
-    ) : (
-      <>
-        <p><strong>Bozza da completare</strong> (ad esempio con Complianz o iubenda) prima della pubblicazione sul dominio definitivo.</p>
-        <p>Titolare del trattamento: {g.nome}, {g.citta}.{g.email && <> Contatto: <a href={`mailto:${g.email}`}>{g.email}</a>.</>}</p>
-        <p>
-          Questo sito non usa cookie di profilazione né font o servizi esterni di tracciamento. I dati inviati con il modulo
-          contatti servono solo a rispondere alla richiesta.
-        </p>
-      </>
-    )}
+<PaginaLegale
+  title={t.meta_titolo || 'Privacy Policy'}
+  description={t.meta_descrizione || 'Informativa sul trattamento dei dati personali.'}
+  titolo={['Privacy', 'Policy']}
+  intro={`Benvenuto nella privacy policy di ${dominio}. Qui trovi quali dati raccolgo, perché li raccolgo e quali sono i tuoi diritti.`}
+  aggiornata={aggiornata}
+  indice={indice}
+>
+  <section id="riepilogo">
+    <h2>Riepilogo</h2>
+    <div class="riepilogo">
+      <article class="strumento">
+        <header>
+          <IconaStrumento icona="globe" />
+          <div>
+            <h4>Dati raccolti automaticamente</h4>
+            <p class="tipo">Quando visiti {dominio}</p>
+          </div>
+        </header>
+        <ul>{datiAutomatici.map((d) => <li>{d}</li>)}</ul>
+        <p class="titoletto">Come li uso</p>
+        <ul>
+          <li>Creazione e gestione di questo sito</li>
+          <li>Statistica (senza cookie)</li>
+          <li>Protezione da spam e bot</li>
+        </ul>
+      </article>
+      <article class="strumento">
+        <header>
+          <IconaStrumento icona="send" />
+          <div>
+            <h4>Dati che mi fornisci</h4>
+            <p class="tipo">Quando compili il modulo contatti</p>
+          </div>
+        </header>
+        <ul>{datiForniti.map((d) => <li>{d}</li>)}</ul>
+        <p class="titoletto">Come li uso</p>
+        <ul>
+          <li>Rispondere alla tua richiesta</li>
+          <li>Protezione da spam e bot</li>
+        </ul>
+      </article>
+    </div>
+    <p class="nota">
+      <strong>In breve:</strong> nessuna profilazione, nessuna pubblicità, nessuna vendita di dati. Le statistiche
+      funzionano senza cookie e i messaggi del modulo contatti non vengono salvati sul sito.
+    </p>
   </section>
-</Base>
+
+  <section id="titolare">
+    <h2>Titolare del trattamento dei dati</h2>
+    <p>{titolare}{g.indirizzo && <> – {g.indirizzo}, Italia</>}</p>
+    {g.email && <p>Indirizzo email del Titolare: <a href={`mailto:${g.email}`}>{g.email}</a></p>}
+  </section>
+
+  <section id="tipologie">
+    <h2>Tipologie di dati raccolti</h2>
+    <p>Fra i Dati Personali raccolti da questo sito, in modo autonomo o tramite terze parti, ci sono:</p>
+    <ul class="colonne">
+      <li>nome e cognome</li>
+      <li>email</li>
+      <li>numero di telefono</li>
+      <li>azienda</li>
+      <li>dati comunicati nel messaggio</li>
+      <li>risposte alle domande del modulo</li>
+      <li>dati di utilizzo</li>
+      <li>informazioni sul dispositivo</li>
+      <li>numero di visite e visitatori</li>
+    </ul>
+    <p>
+      Dettagli completi su ciascuna tipologia di dati sono forniti nelle sezioni dedicate di questa privacy policy o nei
+      testi informativi mostrati prima della raccolta.
+    </p>
+    <p>
+      I Dati Personali possono essere forniti liberamente dall’Utente o, nel caso dei Dati di Utilizzo, raccolti
+      automaticamente durante l’uso del sito. Nel modulo contatti nome, email e messaggio sono obbligatori: senza di essi
+      non è possibile rispondere alla richiesta. Gli altri campi sono facoltativi (il telefono diventa necessario solo se
+      chiedi di essere ricontattato per telefono o WhatsApp).
+    </p>
+    <p>
+      L’uso di Cookie o di altri Strumenti di Tracciamento da parte di questo sito è descritto nella
+      <a href="/cookie-policy/">Cookie Policy</a>. L’Utente si assume la responsabilità dei Dati Personali di terzi
+      eventualmente comunicati tramite questo sito.
+    </p>
+  </section>
+
+  <section id="modalita">
+    <h2>Modalità e luogo del trattamento</h2>
+    <h3>Modalità di trattamento</h3>
+    <p>
+      Il Titolare adotta le opportune misure di sicurezza volte a impedire l’accesso, la divulgazione, la modifica o la
+      distruzione non autorizzate dei Dati Personali. Il trattamento viene effettuato con strumenti informatici e
+      telematici, con logiche strettamente legate alle finalità indicate. Oltre al Titolare, possono avere accesso ai dati
+      i fornitori di servizi tecnici indicati in questo documento (hosting, email, protezione antispam), nominati se
+      necessario Responsabili del Trattamento. L’elenco aggiornato dei Responsabili può essere richiesto al Titolare.
+    </p>
+    <h3>Luogo</h3>
+    <p>
+      I Dati sono trattati presso la sede del Titolare e in ogni altro luogo in cui si trovano le parti coinvolte nel
+      trattamento. Alcuni fornitori (Cloudflare{microsoft && ', Microsoft'}) possono trattare i dati anche fuori
+      dall’Unione Europea, negli Stati Uniti, sulla base del Data Privacy Framework UE-USA o delle clausole contrattuali
+      standard approvate dalla Commissione Europea.
+    </p>
+    <h3>Periodo di conservazione</h3>
+    <p>
+      I Dati Personali sono conservati per il tempo necessario alla finalità per cui sono stati raccolti, come indicato
+      nelle sezioni seguenti, e potrebbero essere conservati più a lungo per obblighi di legge.
+    </p>
+  </section>
+
+  <section id="finalita">
+    <h2>Finalità del trattamento</h2>
+    <p>
+      I Dati dell’Utente sono raccolti per rispondere alle sue richieste, adempiere agli obblighi di legge, tutelare i
+      diritti del Titolare, individuare eventuali attività dolose o fraudolente e per le seguenti finalità:
+    </p>
+    <ul>{finalita.map((f) => <li>{f}</li>)}</ul>
+  </section>
+
+  <section id="dettagli">
+    <h2>Dettagli sul trattamento dei dati personali</h2>
+
+    <h3>Contattare l’Utente</h3>
+    <article class="strumento">
+      <header>
+        <IconaStrumento icona="mail" />
+        <div>
+          <h4>Modulo di contatto</h4>
+          <p class="tipo">Prima parte · pagina Contatti</p>
+        </div>
+      </header>
+      <dl>
+        <div><dt>Base giuridica</dt><dd>Misure precontrattuali richieste dall’Utente</dd></div>
+        <div><dt>Conservazione sul sito</dt><dd>Nessuna: il messaggio viene inoltrato via email</dd></div>
+      </dl>
+      <p>
+        Compilando il modulo di contatto l’Utente autorizza il Titolare a usare questi dati per rispondere alla richiesta
+        (preventivi e qualsiasi altra domanda). Il messaggio viene inviato via email al Titolare e non viene salvato nel
+        sito. L’indirizzo IP viene usato solo per limitare gli invii ripetuti (massimo 5 all’ora) tramite un codice
+        temporaneo che scade dopo un’ora.
+      </p>
+      <p class="titoletto">Dati personali trattati</p>
+      <ul>{datiForniti.map((d) => <li>{d}</li>)}</ul>
+    </article>
+
+    <h3>Creazione e gestione di questo sito</h3>
+    <article class="strumento">
+      <header>
+        <IconaStrumento marchio="WordPress" />
+        <div>
+          <h4>WordPress (self-hosted)</h4>
+          <p class="tipo">Prima parte · gestione dei contenuti</p>
+        </div>
+      </header>
+      <p>
+        I contenuti del sito sono gestiti dal Titolare con WordPress, installato su un proprio spazio di hosting. Il sito
+        pubblicato è composto da pagine statiche; WordPress riceve solo l’invio del modulo contatti e i dati anonimi delle
+        statistiche.
+      </p>
+      <p class="titoletto">Dati personali trattati</p>
+      <ul>
+        <li>Dati comunicati durante l’utilizzo del servizio</li>
+        <li>Dati di utilizzo</li>
+        <li>Informazioni sul dispositivo</li>
+      </ul>
+    </article>
+
+    <h3>Protezione da spam e bot</h3>
+    <p>
+      Questo servizio analizza il traffico del modulo contatti allo scopo di filtrare messaggi indesiderati e proteggerlo
+      da programmi automatici.
+    </p>
+    <article class="strumento">
+      <header>
+        <IconaStrumento marchio="Cloudflare" />
+        <div>
+          <h4>Cloudflare Turnstile</h4>
+          <p class="tipo">Terza parte · solo nella pagina Contatti</p>
+        </div>
+      </header>
+      <dl>
+        <div><dt>Azienda</dt><dd>Cloudflare, Inc.</dd></div>
+        <div><dt>Luogo del trattamento</dt><dd>Stati Uniti (Data Privacy Framework UE-USA)</dd></div>
+        <div><dt>Base giuridica</dt><dd>Legittimo interesse alla sicurezza del sito</dd></div>
+      </dl>
+      <p class="titoletto">Dati personali trattati</p>
+      <ul>
+        <li>Dati di utilizzo (tra cui indirizzo IP)</li>
+        <li>Caratteristiche del browser e del dispositivo</li>
+        <li>Segnali di interazione con la pagina</li>
+      </ul>
+      <p class="link">
+        <a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener">Informativa privacy di Turnstile</a>
+        <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Privacy policy di Cloudflare</a>
+      </p>
+    </article>
+
+    <h3>Statistica</h3>
+    <article class="strumento">
+      <header>
+        <IconaStrumento icona="chart" />
+        <div>
+          <h4>Statistiche delle visite (senza cookie)</h4>
+          <p class="tipo">Prima parte · su tutte le pagine</p>
+        </div>
+      </header>
+      <dl>
+        <div><dt>Base giuridica</dt><dd>Legittimo interesse a migliorare il sito</dd></div>
+        <div><dt>Conservazione</dt><dd>13 mesi</dd></div>
+      </dl>
+      <p>
+        Il sito registra in forma aggregata la pagina vista, il sito di provenienza, il tipo di dispositivo e il browser.
+        L’indirizzo IP non viene salvato: per contare i visitatori unici si usa un codice anonimo che cambia ogni giorno.
+        I dati non vengono condivisi con terzi. Puoi disattivare le statistiche dalle
+        <a href="/cookie-policy/#preferenze" data-preferenze-cookie>preferenze sui cookie</a>.
+      </p>
+    </article>
+  </section>
+
+  <section id="ulteriori">
+    <h2>Hosting, email e log tecnici</h2>
+    <article class="strumento">
+      <header>
+        <IconaStrumento icona="server" />
+        <div>
+          <h4>Hosting del sito e log tecnici</h4>
+          <p class="tipo">Fornitore di hosting del Titolare</p>
+        </div>
+      </header>
+      <p>
+      Il sito {dominio} e WordPress sono ospitati presso il fornitore di hosting del Titolare. Durante l’accesso alle
+      pagine l’infrastruttura può trattare indirizzo IP, data e ora della richiesta, pagine richieste, informazioni sul
+      browser e sul dispositivo e log tecnici necessari all’erogazione del sito, alla sicurezza, alla prevenzione degli
+      abusi e alla diagnosi di malfunzionamenti. I tempi di conservazione dei log dipendono dalle impostazioni del
+      fornitore.
+    </p>
+    </article>
+    <article class="strumento">
+      <header>
+        <IconaStrumento icona="mail" />
+        <div>
+          <h4>Gestione della posta elettronica</h4>
+          <p class="tipo">{microsoft ? 'Microsoft Outlook.com' : 'Servizio email del Titolare'}</p>
+        </div>
+      </header>
+      <p>
+      Le comunicazioni inviate a {g.email || 'l’indirizzo del Titolare'}, comprese quelle generate dal modulo contatti, sono
+      gestite tramite {microsoft ? <>il servizio Outlook.com di Microsoft (<a href="https://privacy.microsoft.com/it-it/privacystatement" target="_blank" rel="noopener">privacy policy</a>)</> : 'il servizio email del Titolare'}.
+      Per ricevere, consegnare e conservare i messaggi possono essere trattati nome del mittente, indirizzo email,
+      eventuale numero di telefono e altri dati inclusi nel testo, insieme a data e ora e alle intestazioni tecniche
+      necessarie al recapito e alla sicurezza. Le informazioni servono a rispondere alle richieste e a gestire i rapporti
+      professionali, e sono conservate per il tempo necessario alla comunicazione e agli eventuali obblighi di legge.
+    </p>
+    </article>
+  </section>
+
+  <section id="cookie">
+    <h2>Cookie Policy</h2>
+    <p>
+      Questo sito utilizza solo Strumenti di Tracciamento tecnici e statistiche anonime senza cookie. Per saperne di più
+      consulta la <a href="/cookie-policy/">Cookie Policy</a>.
+    </p>
+  </section>
+
+  <section id="ue">
+    <h2>Informazioni per gli utenti nell’Unione Europea</h2>
+    <h3>Base giuridica del trattamento</h3>
+    <p>Il Titolare tratta Dati Personali relativi all’Utente quando sussiste una delle seguenti condizioni:</p>
+    <ul>
+      <li>l’Utente ha prestato il consenso per una o più finalità specifiche;</li>
+      <li>il trattamento è necessario all’esecuzione di un contratto con l’Utente o di misure precontrattuali;</li>
+      <li>il trattamento è necessario per adempiere un obbligo legale al quale è soggetto il Titolare;</li>
+      <li>il trattamento è necessario per il perseguimento del legittimo interesse del Titolare o di terzi.</li>
+    </ul>
+    <p>È sempre possibile chiedere al Titolare di chiarire la base giuridica concreta di ciascun trattamento.</p>
+
+    <h3>Tempo di conservazione</h3>
+    <ul>
+      <li>I dati raccolti per l’esecuzione di un contratto o di misure precontrattuali sono conservati fino alla conclusione del rapporto e per gli eventuali obblighi di legge successivi.</li>
+      <li>I dati raccolti per il legittimo interesse del Titolare sono conservati fino al soddisfacimento di tale interesse.</li>
+      <li>Quando il trattamento si basa sul consenso, i dati possono essere conservati fino alla revoca del consenso.</li>
+    </ul>
+    <p>
+      Al termine del periodo di conservazione i Dati Personali vengono cancellati: da quel momento i diritti di accesso,
+      cancellazione, rettifica e portabilità non possono più essere esercitati.
+    </p>
+
+    <h3>Diritti dell’Utente (GDPR)</h3>
+    <p>Nei limiti previsti dalla legge, l’Utente ha il diritto di:</p>
+    <ul>
+      <li><strong>revocare il consenso</strong> in ogni momento;</li>
+      <li><strong>opporsi al trattamento</strong> dei propri dati quando avviene su una base giuridica diversa dal consenso;</li>
+      <li><strong>accedere ai propri dati</strong> e riceverne una copia;</li>
+      <li><strong>verificare e chiedere la rettifica</strong> dei propri dati;</li>
+      <li><strong>ottenere la limitazione del trattamento</strong>;</li>
+      <li><strong>ottenere la cancellazione</strong> dei propri dati;</li>
+      <li><strong>ricevere i propri dati o farli trasferire</strong> ad altro titolare (portabilità);</li>
+      <li><strong>proporre reclamo</strong> all’autorità di controllo (in Italia il Garante per la protezione dei dati personali) o agire in sede giudiziale.</li>
+    </ul>
+    <h3>Dettagli sul diritto di opposizione</h3>
+    <p>
+      Quando i Dati Personali sono trattati per un interesse legittimo del Titolare, l’Utente può opporsi al trattamento
+      per motivi connessi alla sua situazione particolare. Questo sito non tratta dati per finalità di marketing diretto.
+    </p>
+    <h3>Come esercitare i diritti</h3>
+    <p>
+      Le richieste possono essere inviate al Titolare ai recapiti indicati in questo documento. La richiesta è gratuita e
+      il Titolare risponde il prima possibile, in ogni caso entro un mese.
+    </p>
+  </section>
+
+  <section id="altro">
+    <h2>Ulteriori informazioni sul trattamento</h2>
+    <h3>Difesa in giudizio</h3>
+    <p>
+      I Dati Personali possono essere utilizzati dal Titolare in giudizio o nelle fasi preparatorie alla sua eventuale
+      instaurazione per la difesa da abusi nell’utilizzo del sito. Il Titolare potrebbe essere obbligato a rivelare i Dati
+      per ordine delle autorità pubbliche.
+    </p>
+    <h3>Log di sistema e manutenzione</h3>
+    <p>
+      Per necessità legate al funzionamento e alla manutenzione, il sito e i servizi terzi che utilizza possono raccogliere
+      log di sistema, cioè file che registrano le interazioni e che possono contenere anche Dati Personali, come
+      l’indirizzo IP.
+    </p>
+    <h3>Informazioni non contenute in questa policy</h3>
+    <p>Ulteriori informazioni sul trattamento dei Dati Personali possono essere richieste in qualsiasi momento al Titolare.</p>
+    <h3>Modifiche a questa privacy policy</h3>
+    <p>
+      Il Titolare può modificare questa privacy policy in qualunque momento, dandone notizia su questa pagina. Ti invito a
+      consultarla periodicamente, facendo riferimento alla data di ultima modifica indicata in alto. Se le modifiche
+      riguardano trattamenti basati sul consenso, il Titolare raccoglierà di nuovo il consenso, se necessario.
+    </p>
+  </section>
+
+  <section id="definizioni">
+    <h2>Definizioni e riferimenti legali</h2>
+    <dl class="definizioni">
+      <dt>Dati Personali (o Dati)</dt>
+      <dd>Qualunque informazione che, direttamente o indirettamente, anche in collegamento con altre informazioni, renda identificata o identificabile una persona fisica.</dd>
+      <dt>Dati di Utilizzo</dt>
+      <dd>
+        Le informazioni raccolte automaticamente attraverso questo sito (anche da servizi di terze parti integrati), tra
+        cui: indirizzi IP, indirizzi delle pagine richieste, orario della richiesta, caratteristiche del browser e del
+        sistema operativo, paese di provenienza e dettagli sulla navigazione all’interno del sito.
+      </dd>
+      <dt>Utente</dt>
+      <dd>L’individuo che utilizza questo sito che, salvo ove diversamente specificato, coincide con l’Interessato.</dd>
+      <dt>Interessato</dt>
+      <dd>La persona fisica cui si riferiscono i Dati Personali.</dd>
+      <dt>Responsabile del Trattamento (o Responsabile)</dt>
+      <dd>La persona fisica o giuridica, la pubblica amministrazione o qualsiasi altro ente che tratta dati personali per conto del Titolare.</dd>
+      <dt>Titolare del Trattamento (o Titolare)</dt>
+      <dd>La persona fisica o giuridica che determina le finalità e i mezzi del trattamento di dati personali, comprese le misure di sicurezza. Salvo quanto diversamente specificato, è il titolare di questo sito.</dd>
+      <dt>Questo sito</dt>
+      <dd>Lo strumento hardware o software mediante il quale sono raccolti e trattati i Dati Personali degli Utenti.</dd>
+      <dt>Unione Europea (o UE)</dt>
+      <dd>Ogni riferimento all’Unione Europea si intende esteso a tutti gli stati membri dell’Unione Europea e dello Spazio Economico Europeo.</dd>
+      <dt>Cookie e Strumenti di Tracciamento</dt>
+      <dd>Vedi le definizioni nella <a href="/cookie-policy/#definizioni">Cookie Policy</a>.</dd>
+      <dt>Riferimenti legali</dt>
+      <dd>Questa informativa è redatta ai sensi degli articoli 13 e 14 del Regolamento (UE) 2016/679 (GDPR). Ove non diversamente specificato, riguarda esclusivamente questo sito.</dd>
+    </dl>
+  </section>
+</PaginaLegale>
+
+<style>
+  .riepilogo { display: grid; gap: 1.25rem; margin-bottom: 1.25rem; }
+  @media (min-width: 48rem) { .riepilogo { grid-template-columns: 1fr 1fr; } }
+  .riepilogo > :global(.strumento.strumento) { margin: 0; }
+</style>

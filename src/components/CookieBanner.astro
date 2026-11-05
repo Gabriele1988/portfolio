@@ -1,0 +1,116 @@
+---
+// Banner dei cookie fatto in casa (nessun servizio esterno). Il sito usa solo strumenti tecnici e statistiche
+// anonime senza cookie: il banner lo spiega e permette di disattivare le statistiche.
+// La scelta resta nel browser (localStorage "gv-consenso") e viene richiesta di nuovo dopo 6 mesi.
+// Qualsiasi elemento con data-preferenze-cookie riapre il pannello (es. nella Cookie Policy).
+---
+
+<aside class="banner" data-cookie hidden aria-labelledby="cookie-titolo">
+  <div class="riquadro">
+    <p id="cookie-titolo" class="titolo">Cookie e privacy</p>
+    <p class="testo">
+      Questo sito usa solo cookie tecnici e statistiche anonime senza cookie, per capire quali pagine vengono visitate.
+      Nessuna profilazione e nessuna pubblicità. <a href="/cookie-policy/">Cookie Policy</a>
+    </p>
+
+    <div class="preferenze" data-pannello hidden>
+      <label class="voce">
+        <span>
+          <strong>Necessari</strong>
+          <small>Servono al funzionamento del sito e del modulo contatti. Sempre attivi.</small>
+        </span>
+        <input type="checkbox" checked disabled />
+      </label>
+      <label class="voce">
+        <span>
+          <strong>Statistiche anonime</strong>
+          <small>Contano le visite senza cookie e senza salvare l’indirizzo IP.</small>
+        </span>
+        <input type="checkbox" data-stat checked />
+      </label>
+    </div>
+
+    <div class="azioni">
+      <button type="button" class="btn btn-ghost" data-apri>Preferenze</button>
+      <button type="button" class="btn btn-ghost" data-salva hidden>Salva le scelte</button>
+      <button type="button" class="btn" data-ok>Ho capito</button>
+    </div>
+  </div>
+</aside>
+
+<script>
+  const CHIAVE = 'gv-consenso';
+  const SEI_MESI = 182 * 24 * 60 * 60 * 1000;
+  const banner = document.querySelector<HTMLElement>('[data-cookie]')!;
+  const pannello = banner.querySelector<HTMLElement>('[data-pannello]')!;
+  const stat = banner.querySelector<HTMLInputElement>('[data-stat]')!;
+  const apri = banner.querySelector<HTMLElement>('[data-apri]')!;
+  const salva = banner.querySelector<HTMLElement>('[data-salva]')!;
+
+  const leggi = (): { stat: boolean; data: number } | null => {
+    try {
+      const v = JSON.parse(localStorage.getItem(CHIAVE) ?? 'null');
+      return v && Date.now() - v.data < SEI_MESI ? v : null;
+    } catch {
+      return null;
+    }
+  };
+  const scrivi = (consenso: boolean) => {
+    try {
+      localStorage.setItem(CHIAVE, JSON.stringify({ stat: consenso, data: Date.now() }));
+    } catch {}
+    banner.hidden = true;
+  };
+  const mostra = (conPreferenze: boolean) => {
+    stat.checked = leggi()?.stat ?? true;
+    pannello.hidden = !conPreferenze;
+    apri.hidden = conPreferenze;
+    salva.hidden = !conPreferenze;
+    banner.hidden = false;
+  };
+
+  if (!leggi()) mostra(false);
+  apri.addEventListener('click', () => mostra(true));
+  salva.addEventListener('click', () => scrivi(stat.checked));
+  banner.querySelector('[data-ok]')!.addEventListener('click', () => scrivi(pannello.hidden ? true : stat.checked));
+  document.addEventListener('click', (e) => {
+    if ((e.target as Element).closest?.('[data-preferenze-cookie]')) {
+      e.preventDefault();
+      mostra(true);
+    }
+  });
+</script>
+
+<style>
+  /* Fisso in basso: non sposta il contenuto della pagina (nessun CLS) */
+  .banner { position: fixed; z-index: 60; inset: auto 0 0; padding: 0 var(--pad) max(1rem, env(safe-area-inset-bottom)); pointer-events: none; }
+  .banner[hidden] { display: none; }
+  .riquadro {
+    pointer-events: auto;
+    max-width: 34rem;
+    margin-left: auto;
+    padding: 1.25rem 1.4rem;
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.8);
+    display: grid;
+    gap: 0.9rem;
+    font-size: var(--fs-sm);
+  }
+  .titolo { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-lg); letter-spacing: 0.02em; color: var(--text); }
+  .testo { margin: 0; color: var(--text-soft); line-height: 1.6; }
+  .testo a { color: var(--accent); }
+  .preferenze { display: grid; gap: 0.6rem; }
+  .preferenze[hidden] { display: none; }
+  .voce { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.6); cursor: pointer; }
+  .voce span { display: grid; gap: 0.15rem; }
+  .voce strong { color: var(--text); font-weight: 600; }
+  .voce small { color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+  .voce input { width: 1.15rem; height: 1.15rem; accent-color: var(--accent); flex-shrink: 0; }
+  .azioni { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.6rem; }
+  .azioni .btn { padding: 0.65rem 1.2rem; font-size: var(--fs-sm); }
+  .azioni [hidden] { display: none; }
+  @media (max-width: 39.99rem) { .azioni .btn { flex: 1 1 auto; justify-content: center; } }
+</style>

@@ -1,0 +1,22 @@
+---
+// Icona nel riquadro di un servizio (Privacy e Cookie Policy): logo del marchio se esiste, altrimenti icona generica.
+import Icona from './Icona.astro';
+import { logoTecnologia } from '../lib/tecnologie';
+
+interface Props {
+  /** Icona generica (src/lib/icone.ts) */
+  icona?: string;
+  /** Nome del marchio (src/lib/tecnologie.ts), ha la precedenza */
+  marchio?: string;
+}
+const { icona = 'layers', marchio } = Astro.props;
+const logo = marchio ? logoTecnologia(marchio) : undefined;
+---
+
+<span class="ico" aria-hidden="true">
+  {logo ? <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d={logo.path} /></svg> : <Icona nome={icona} size={22} />}
+</span>
+
+<style>
+  .ico { display: grid; place-items: center; flex: none; width: 3rem; height: 3rem; border-radius: 0.75rem; background: var(--accent-soft); color: var(--accent); }
+</style>
