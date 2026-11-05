@@ -14,12 +14,12 @@ Contatti: info@gabrielevilardo.it · 340 4800981. Per un preventivo: https://gab
 
 ## Servizi
 
-- Sviluppo Web: Siti custom costruiti per caricare in un attimo e convertire. Niente page builder pesanti: codice pulito, accessibile e facile da mantenere.
-- Applicazioni web: Dal database all’interfaccia: applicazioni con Java, Spring Boot, Angular e PostgreSQL, pensate per crescere insieme al tuo lavoro.
-- WordPress: Oltre dieci anni di WordPress: temi custom, siti classici o headless collegati a frontend moderni, per unire facilità di gestione e prestazioni.
-- E-Commerce: Negozi online pensati per vendere davvero, con pagamenti sicuri e una gestione dei prodotti semplice.
-- SEO & Performance: Ottimizzazione tecnica per posizionarti su Google e offrire un sito rapido anche su hosting condiviso.
-- Consulenza Digitale: Non sempre serve un sito nuovo: ti aiuto a capire cosa non funziona e dove conviene investire.
+- [Sviluppo Web](https://gabrielevilardo.it/servizi/sviluppo-web/): Siti custom costruiti per caricare in un attimo e convertire. Niente page builder pesanti: codice pulito, accessibile e facile da mantenere.
+- [Applicazioni web](https://gabrielevilardo.it/servizi/applicazioni-web/): Dal database all’interfaccia: applicazioni con Java, Spring Boot, Angular e PostgreSQL, pensate per crescere insieme al tuo lavoro.
+- [WordPress](https://gabrielevilardo.it/servizi/wordpress/): Oltre dieci anni di WordPress: temi custom, siti classici o headless collegati a frontend moderni, per unire facilità di gestione e prestazioni.
+- [E-Commerce](https://gabrielevilardo.it/servizi/e-commerce/): Negozi online pensati per vendere davvero, con pagamenti sicuri e una gestione dei prodotti semplice.
+- [SEO & Performance](https://gabrielevilardo.it/servizi/seo-performance/): Ottimizzazione tecnica per posizionarti su Google e offrire un sito rapido anche su hosting condiviso.
+- [Consulenza Digitale](https://gabrielevilardo.it/servizi/consulenza-digitale/): Non sempre serve un sito nuovo: ti aiuto a capire cosa non funziona e dove conviene investire.
 
 ## Progetti
 
