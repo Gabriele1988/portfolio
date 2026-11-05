@@ -1,0 +1,50 @@
+# Gabriele Vilardo
+
+> Sviluppatore web full-stack a Palermo. Siti WordPress veloci e applicazioni web con Java, Spring Boot, Angular e PostgreSQL. Lavoro da Palermo, con clienti in tutta Italia.
+
+Contatti: gvilardo@hotmail.com · 340 4800981. Per un preventivo: https://gabrielevilardo.it/contatti/
+
+## Pagine
+
+- [Home](https://gabrielevilardo.it/): presentazione, servizi e progetti in evidenza
+- [Servizi](https://gabrielevilardo.it/servizi/): Siti web, applicazioni su misura e WordPress: i problemi che risolvo e come lavoro, passo dopo passo.
+- [Progetti](https://gabrielevilardo.it/progetti/): Una selezione di lavori: il problema, la soluzione e il risultato.
+- [Chi sono](https://gabrielevilardo.it/chi-sono-web-designer-palermo/): Cerchi un Web Designer a Palermo? Sono Gabriele Vilardo: +10 anni di esperienza in siti WordPress, Elementor, codice custom e sviluppo Full-Stack. Scopri di più.
+- [Contatti](https://gabrielevilardo.it/contatti/): modulo di contatto, email, telefono e WhatsApp
+
+## Servizi
+
+- Sviluppo Web: Siti custom costruiti per caricare in un attimo e convertire. Niente page builder pesanti: codice pulito, accessibile e facile da mantenere.
+- Applicazioni web: Dal database all’interfaccia: applicazioni con Java, Spring Boot, Angular e PostgreSQL, pensate per crescere insieme al tuo lavoro.
+- WordPress: Oltre dieci anni di WordPress: temi custom, siti classici o headless collegati a frontend moderni, per unire facilità di gestione e prestazioni.
+- E-Commerce: Negozi online pensati per vendere davvero, con pagamenti sicuri e una gestione dei prodotti semplice.
+- SEO & Performance: Ottimizzazione tecnica per posizionarti su Google e offrire un sito rapido anche su hosting condiviso.
+- Consulenza Digitale: Non sempre serve un sito nuovo: ti aiuto a capire cosa non funziona e dove conviene investire.
+
+## Progetti
+
+- [Sfoghiny — E-commerce & Brand Design](https://gabrielevilardo.it/progetti/sfoghiny/): Progettazione e sviluppo di un e-commerce su Shopify caratterizzato da un'identità visiva unica, grazie alla creazione di template grafici custom, asset visivi coordinati e una forte ottimizzazione dell'esperienza d'acquisto
+- [Master Academy Italia — Piattaforma E-Learning](https://gabrielevilardo.it/progetti/master-academy-italia/): Sviluppo completo di una piattaforma e-learning scalabile su base WordPress, progettata per unire una user experience fluida nella vendita dei corsi tramite WooCommerce a una gestione didattica avanzata e personalizzata con Tutor LMS e template custom
+- [LADUCA Suites — Piattaforma di Prenotazioni e Gestione OTA](https://gabrielevilardo.it/progetti/laduca-suites-piattaforma-di-prenotazioni-e-gestione-ota/): Progettazione grafica e sviluppo end-to-end per LADUCA Suites, integrando template custom con Elementor, un sistema di prenotazioni e pagamenti tramite WooCommerce e la sincronizzazione in tempo reale con le principali OTA e Channel Manager come Booking e Airbnb
+- [Fortezzza — Piattaforma Web e Soluzioni Creative](https://gabrielevilardo.it/progetti/fortezzza-piattaforma-web-e-soluzioni-creative/): Sviluppo e implementazione tecnica per Fortezzza a partire da un prototipo grafico ricevuto, integrando layout custom con Elementor, archivi dinamici tramite Custom Post Type e Custom Field, animazioni con Slider Revolution e un modulo per la prenotazione appuntamenti online
+- [Dealmed — E-commerce Medicale e Brand Identity B2B](https://gabrielevilardo.it/progetti/dealmed-e-commerce-medicale-e-brand-identity-b2b/): Progettazione grafica del logo e sviluppo end-to-end della piattaforma e-commerce per Dealmed su base WordPress, Elementor e WooCommerce, integrando il controllo delle registrazioni tramite amministratore, cataloghi riservati e listini prezzi per ruolo
+- [Istituto Calasanzio Sanluri — Piattaforma Web Scolastica](https://gabrielevilardo.it/progetti/istituto-calasanzio-sanluri-piattaforma-web-scolastica/): Progettazione e sviluppo end-to-end del portale web per l'Istituto Calasanzio di Sanluri, curando personalmente il prototipo grafico, l'implementazione con Elementor e la strutturazione avanzata di Custom Post Type e Custom Field per la gestione dinamica dei contenuti scolastici
+- [Camaleonte Scuola di Inglese — Piattaforma Web Formativa](https://gabrielevilardo.it/progetti/camaleonte-scuola-di-inglese-piattaforma-web-formativa/): Progettazione e sviluppo end-to-end del portale web per Camaleonte Scuola di Inglese, curando personalmente il prototipo grafico, la customizzazione con Elementor e la strutturazione dei percorsi formativi dedicati alle certificazioni linguistiche
+- [Ecol Sea Srl — Restyling e Piattaforma Web per Servizi Ambientali](https://gabrielevilardo.it/progetti/ecol-sea-srl-restyling-e-piattaforma-web-per-servizi-ambientali/): Restyling totale del sito web per Ecol Sea Srl su base WordPress ed Elementor, integrando un design completamente rinnovato e la strutturazione avanzata dei contenuti tramite Custom Post Type
+- [La Braciera — Sviluppo Web e Gestione Ristorazione](https://gabrielevilardo.it/progetti/la-braciera-sviluppo-web-e-gestione-ristorazione/): Sviluppo e implementazione tecnica per La Braciera a partire da un prototipo grafico ricevuto, integrando layout custom con Elementor, archivi dinamici tramite Custom Post Type e la gestione dei contenuti con Advanced Custom Fields
+- [Tivitti — Piattaforma Web Aziendale](https://gabrielevilardo.it/progetti/tivitti-piattaforma-web-aziendale/): Sviluppo e implementazione tecnica di una piattaforma web aziendale per Tivitti, partendo da prototipi grafici definiti. Il progetto ha visto l'utilizzo di WordPress e Elementor Pro per la creazione di layout custom e Advanced Custom Fields (ACF) per la gestione strutturata e dinamica dei contenuti
+- [Punto di Vista Palermo — E-commerce Ottica](https://gabrielevilardo.it/progetti/punto-di-vista-palermo/): Configurazione e sviluppo end-to-end di un e-commerce di ottica basato su PrestaShop, focalizzato sulla strutturazione del catalogo digitale, l'organizzazione strategica dei prodotti e la creazione di un'esperienza d'acquisto digitale fluida per i clienti
+- [Vizidare — Piattaforma Web e Soluzioni Digitali](https://gabrielevilardo.it/progetti/vizidare-piattaforma-web-e-soluzioni-digitali/): Progettazione e sviluppo per Vizidare a partire da un prototipo grafico ricevuto, integrando template custom con Elementor, animazioni interattive tramite Lottie Files e un sistema dinamico di recensioni Google in tempo reale
+- [Sicilia Food Marketing — Piattaforma di Marketing Territoriale](https://gabrielevilardo.it/progetti/sicilia-food-marketing-piattaforma-di-marketing-territoriale/): Sviluppo e implementazione di una piattaforma web vetrina per Sicilia Food Marketing, mirata alla promozione delle eccellenze agroalimentari siciliane. Il progetto si distingue per l'uso strategico di Slider Revolution, integrato in un template custom su base WordPress/Elementor per ottenere animazioni d'impatto ed effetti hover interattivi
+- [Palermore — Portale Turistico e Valorizzazione Territoriale](https://gabrielevilardo.it/progetti/palermore-portale-turistico-e-valorizzazione-territoriale/): Sviluppo e implementazione tecnica per Palermore a partire da un template grafico fornito dal cliente, integrando layout custom con Elementor, archivi dinamici tramite Custom Post Type e gestione avanzata dei dati con Custom Field
+- [La Fisioterapia Palermo — Studio Fisioterapico e Riabilitazione](https://gabrielevilardo.it/progetti/la-fisioterapia-palermo-studio-fisioterapico-e-riabilitazione/): Sviluppo e implementazione tecnica per La Fisioterapia Palermo a partire da un template grafico fornito dal cliente, integrando layout custom con Elementor, archivi dinamici tramite Custom Post Type e un modulo di prenotazione online degli appuntamenti basato sulle disponibilità
+- [Gruppo Securpol — Sicurezza e Vigilanza Privata](https://gabrielevilardo.it/progetti/gruppo-securpol-sicurezza-e-vigilanza-privata/): Sviluppo del portale web istituzionale per Gruppo Securpol su base WordPress ed Elementor, progettato per presentare i servizi di vigilanza privata, sicurezza e controllo accessi con un'impronta professionale e istituzionale
+
+## Domande frequenti
+
+- Quanto costa un sito web? Dipende da pagine, funzioni e contenuti. Dopo la prima call ti mando un preventivo chiaro, senza costi nascosti.
+- Quanto tempo ci vuole? Un sito vetrina richiede in media 3–5 settimane. Per un’applicazione su misura dipende dalla complessità: i tempi sono sempre scritti nella proposta.
+- Lavori solo con attività di Palermo? No, lavoro con clienti in tutta Italia. Call, documenti condivisi e anteprime online rendono la distanza un non-problema.
+- Posso aggiornare il sito da solo dopo la consegna? Sì. Con WordPress gestisci testi, immagini e pagine in autonomia, e ti mostro come farlo.
+- Cosa succede dopo il lancio? Puoi scegliere un piano di manutenzione con aggiornamenti, backup e monitoraggio, oppure chiamarmi solo quando serve.
+- Fai anche SEO? La SEO tecnica è inclusa in ogni sito: struttura, velocità, dati strutturati e sitemap. Per la SEO sui contenuti possiamo concordare un percorso dedicato.
