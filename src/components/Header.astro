@@ -1,8 +1,13 @@
 ---
 import Logo from './Logo.astro';
 import { getTesti } from '../lib/testi';
+import { getPagineServizi } from '../lib/pagineServizi';
+import { icone } from '../lib/icone';
 
-const g = (await getTesti()).generale;
+const [testi, pagine] = await Promise.all([getTesti(), getPagineServizi()]);
+const g = testi.generale;
+// Sottomenu di "Servizi": una voce per ogni pagina servizio.
+const sotto = pagine.map((p) => ({ href: `/servizi/${p.slug}/`, label: p.titolo, testo: p.sottotitolo, icona: icone[p.icona] ?? icone.globe }));
 const voci = [
   { href: '/', label: g.menu_home },
   { href: '/servizi/', label: g.menu_servizi },
@@ -23,9 +28,36 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
 
   <!-- Desktop -->
   <nav class="desktop" aria-label="Principale">
-    {voci.slice(1).map((v) => (
-      <a href={v.href} aria-current={attiva(v.href) ? 'page' : undefined}>{v.label}</a>
-    ))}
+    {voci.slice(1).map((v) =>
+      v.href === '/servizi/' && sotto.length ? (
+        <div class="tendina" data-tendina>
+          <a href={v.href} aria-current={attiva(v.href) ? 'page' : undefined}>{v.label}</a>
+          <button class="freccia" type="button" aria-expanded="false" aria-controls="sotto-servizi" aria-label={`Apri il sottomenu ${v.label}`} data-freccia>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </button>
+          <div class="sottomenu" id="sotto-servizi">
+            <ul>
+              {sotto.map((s) => (
+                <li>
+                  <a href={s.href} aria-current={path === s.href ? 'page' : undefined}>
+                    <span class="ico" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={s.icona} />
+                    </span>
+                    <span class="voce">
+                      <strong>{s.label}</strong>
+                      {s.testo && <small>{s.testo}</small>}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <a class="tutti" href={v.href}>Tutti i servizi <span aria-hidden="true">→</span></a>
+          </div>
+        </div>
+      ) : (
+        <a href={v.href} aria-current={attiva(v.href) ? 'page' : undefined}>{v.label}</a>
+      ),
+    )}
     <a class="btn" href="/contatti/">{g.menu_cta}</a>
   </nav>
 
@@ -38,10 +70,29 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
       <ul>
         {voci.map((v, i) => (
           <li style={`--i: ${i}`}>
-            <a href={v.href} aria-current={attiva(v.href) ? 'page' : undefined}>
-              <span class="num">{String(i + 1).padStart(2, '0')}</span>
-              {v.label}
-            </a>
+            <div class="riga">
+              <a href={v.href} aria-current={attiva(v.href) ? 'page' : undefined}>
+                <span class="num">{String(i + 1).padStart(2, '0')}</span>
+                {v.label}
+              </a>
+              {v.href === '/servizi/' && sotto.length > 0 && (
+                <button class="apri-sotto" type="button" aria-expanded="false" aria-controls="sotto-servizi-mobile" aria-label={`Mostra i ${v.label.toLowerCase()}`} data-apri-sotto>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                </button>
+              )}
+            </div>
+            {v.href === '/servizi/' && sotto.length > 0 && (
+              <ul class="sotto-mobile" id="sotto-servizi-mobile" hidden>
+                {sotto.map((s) => (
+                  <li>
+                    <a href={s.href} aria-current={path === s.href ? 'page' : undefined}>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={s.icona} />
+                      {s.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </li>
         ))}
         <li style={`--i: ${voci.length}`}>
@@ -91,6 +142,36 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
       toggle.focus();
     }
   });
+  // Sottomenu Servizi su desktop: si apre al passaggio del mouse (solo CSS) e con la freccia (tastiera e touch).
+  for (const t of header.querySelectorAll<HTMLElement>('[data-tendina]')) {
+    const freccia = t.querySelector<HTMLButtonElement>('[data-freccia]')!;
+    const imposta = (aperto: boolean) => {
+      t.classList.toggle('aperta', aperto);
+      freccia.setAttribute('aria-expanded', String(aperto));
+    };
+    freccia.addEventListener('click', () => imposta(!t.classList.contains('aperta')));
+    t.addEventListener('focusout', (e) => {
+      if (!t.contains(e.relatedTarget as Node)) imposta(false);
+    });
+    t.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && t.classList.contains('aperta')) {
+        imposta(false);
+        freccia.focus();
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!t.contains(e.target as Node)) imposta(false);
+    });
+  }
+  // Sottomenu Servizi nel menu mobile: si apre e si chiude con la freccia accanto alla voce.
+  for (const b of header.querySelectorAll<HTMLButtonElement>('[data-apri-sotto]')) {
+    const lista = document.getElementById(b.getAttribute('aria-controls')!)!;
+    b.addEventListener('click', () => {
+      const aperto = lista.hidden;
+      lista.hidden = !aperto;
+      b.setAttribute('aria-expanded', String(aperto));
+    });
+  }
   // Se lo schermo si allarga fino alla versione desktop, il menu mobile si chiude.
   matchMedia('(min-width: 48rem)').addEventListener('change', (m) => m.matches && chiudi());
 </script>
@@ -120,6 +201,40 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
   .desktop a:not(.btn) { color: var(--muted); text-decoration: none; }
   .desktop a:not(.btn):hover, .desktop a[aria-current='page'] { color: var(--text); }
   .overlay .logo, .overlay .desktop a:not(.btn) { color: var(--white); }
+
+  /* Sottomenu Servizi (desktop) */
+  .tendina { position: relative; display: flex; align-items: center; gap: 0.2rem; }
+  .freccia { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; transition: color 0.2s, transform 0.3s; }
+  .tendina:hover .freccia, .tendina.aperta .freccia { color: var(--text); transform: rotate(180deg); }
+  .overlay .freccia { color: var(--white); }
+  .sottomenu {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    width: min(40rem, 90vw);
+    padding: 1rem;
+    margin-top: 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.8);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, 0.5rem);
+    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(.2, .8, .2, 1), visibility 0s 0.3s;
+  }
+  /* Ponte invisibile tra la voce e il pannello, così il mouse non lo chiude passando */
+  .sottomenu::before { content: ''; position: absolute; inset: -1rem 0 100%; }
+  .tendina:hover .sottomenu, .tendina.aperta .sottomenu { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition-delay: 0s; }
+  .sottomenu ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.25rem; }
+  .sottomenu ul a { display: flex; align-items: center; gap: 0.85rem; padding: 0.7rem 0.75rem; border-radius: calc(var(--radius) * 0.6); text-decoration: none; transition: background-color 0.2s; }
+  .sottomenu ul a:hover, .sottomenu ul a:focus-visible, .sottomenu ul a[aria-current='page'] { background: var(--accent-soft); }
+  .ico { display: grid; place-items: center; flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: 0.65rem; background: var(--accent-soft); color: var(--accent); }
+  .voce { display: grid; gap: 0.1rem; line-height: 1.3; }
+  .voce strong { color: var(--text); font-weight: 600; font-size: var(--fs-sm); }
+  .voce small { color: var(--muted); font-size: var(--fs-xs); }
+  .desktop .sottomenu a.tutti { display: block; margin-top: 0.75rem; padding: 0.75rem 0.75rem 0.1rem; border-top: 1px solid var(--border); color: var(--accent); font-size: var(--fs-sm); font-weight: 600; }
 
   /* Icona: due linee che diventano una X */
   .toggle {
@@ -164,6 +279,17 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
     transition: opacity 0.35s ease;
   }
   .pannello[hidden] { display: none; }
+  .pannello nav { width: 100%; max-height: 100%; overflow-y: auto; }
+  .riga { display: flex; align-items: stretch; }
+  .riga a { flex: 1; }
+  .apri-sotto { flex-shrink: 0; width: 3rem; padding: 0; border: 0; border-bottom: 1px solid var(--border); background: none; color: var(--accent); cursor: pointer; }
+  .apri-sotto svg { transition: transform 0.3s; }
+  .apri-sotto[aria-expanded='true'] svg { transform: rotate(180deg); }
+  .pannello ul.sotto-mobile { padding: 0.5rem 0 0.5rem 2.25rem; gap: 0; }
+  .sotto-mobile[hidden] { display: none; }
+  .pannello ul.sotto-mobile li { opacity: 1; transform: none; transition: none; }
+  .pannello .sotto-mobile a:not(.btn) { align-items: center; gap: 0.75rem; padding-block: 0.55rem; border: 0; font-family: var(--font); font-weight: 500; font-size: var(--fs-base); color: var(--text-soft); }
+  .sotto-mobile svg { color: var(--accent); flex-shrink: 0; }
   .menu-aperto .pannello { opacity: 1; }
   .pannello ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; width: 100%; }
 
