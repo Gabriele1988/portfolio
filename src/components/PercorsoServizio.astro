@@ -53,7 +53,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
   <ol>
     {passi.map((p, i) => (
-      <li class:list={['passo', i % 2 ? 'destra' : 'sinistra']} data-passo>
+      <li class:list={['passo', i % 2 ? 'destra' : 'sinistra']} style={`--y: ${[50, 34, 62, 42, 58, 38][i % 6]}%; --xn: ${(i % 2 ? [24, 17, 29] : [76, 83, 71])[Math.floor(i / 2) % 3]}%`} data-passo>
         <span class="nodo" aria-hidden="true" data-nodo><Icona nome={p.icona} size={18} /></span>
         <div class="card" data-card>
           <p class="segno">
@@ -93,11 +93,6 @@ const pad = (n: number) => String(n).padStart(2, '0');
     let cl: number[] = [];
     let lunghezzaNodi: number[] = [];
 
-    // Curva morbida da a a b, verticale alle due estremità.
-    const curva = (a: Punto, b: Punto) => {
-      const k = (b.y - a.y) * 0.55;
-      return ` C ${a.x} ${a.y + k} ${b.x} ${b.y - k} ${b.x} ${b.y}`;
-    };
 
     function indiceA(y: number) {
       let lo = 0;
@@ -117,27 +112,81 @@ const pad = (n: number) => String(n).padStart(2, '0');
       svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       scia.setAttribute('y2', String(H));
 
-      let d = `M ${W / 2} 0`;
-      let prima: Punto = { x: W / 2, y: 0 };
+      // Il sentiero è fatto di tratti curvi (sempre verticali agli estremi, quindi morbidi).
+      // Ogni passaggio tra due fasi prova una forma diversa; se quella forma toccherebbe una card
+      // si passa alla successiva, fino alla S semplice che non le tocca mai.
+      type Tratto = [Punto, Punto, Punto, Punto];
+      const tratto = (a: Punto, b: Punto, k = 0.55): Tratto => {
+        const dy = (b.y - a.y) * k;
+        return [a, { x: a.x, y: a.y + dy }, { x: b.x, y: b.y - dy }, b];
+      };
+      const card: DOMRect[] = [];
       const nodi: Punto[] = [];
       for (const li of passi) {
-        const card = li.querySelector<HTMLElement>('[data-card]')!;
+        const c = li.querySelector<HTMLElement>('[data-card]')!;
         const nodo = li.querySelector<HTMLElement>('[data-nodo]')!;
-        const n = { x: li.offsetLeft + nodo.offsetLeft + nodo.offsetWidth / 2, y: li.offsetTop + nodo.offsetTop + nodo.offsetHeight / 2 };
-        nodi.push(n);
-        if (desktop.matches) {
-          // Card larghe meno di metà: un'unica grande S da un nodo all'altro passa sempre nello spazio libero.
-          d += curva(prima, n);
-          prima = n;
-          continue;
-        }
-        // Telefono: il sentiero scende nella striscia accanto alla card e cambia lato nello spazio tra due card.
-        const a = { x: n.x, y: li.offsetTop + card.offsetTop };
-        const b = { x: n.x, y: li.offsetTop + card.offsetTop + card.offsetHeight };
-        d += curva(prima, a) + curva(a, n) + curva(n, b);
-        prima = b;
+        card.push(new DOMRect(li.offsetLeft + c.offsetLeft, li.offsetTop + c.offsetTop, c.offsetWidth, c.offsetHeight));
+        nodi.push({ x: li.offsetLeft + nodo.offsetLeft + nodo.offsetWidth / 2, y: li.offsetTop + nodo.offsetTop + nodo.offsetHeight / 2 });
       }
-      d += curva(prima, { x: W / 2, y: H });
+      const margine = 14;
+      const libero = (tt: Tratto[]) =>
+        tt.every(([p0, p1, p2, p3]) => {
+          for (let t = 0.02; t < 1; t += 0.02) {
+            const u = 1 - t;
+            const x = u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x;
+            const y = u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y;
+            if (card.some((r) => x > r.left - margine && x < r.right + margine && y > r.top - margine && y < r.bottom + margine)) return false;
+          }
+          return true;
+        });
+
+      const tratti: Tratto[] = [];
+      const dx = W / 2;
+      if (desktop.matches) {
+        let da: Punto = { x: W / 2, y: 0 };
+        nodi.forEach((n, i) => {
+          const sopra = i ? card[i - 1].bottom : 0;
+          const varco = (sopra + card[i].top) / 2;
+          const lato = da.x > W / 2 ? 1 : -1; // lato da cui si parte
+          const forme: Tratto[][] = [
+            // ansa verso l'esterno, poi giù in diagonale
+            [tratto(da, { x: da.x + lato * W * 0.16, y: da.y + (varco - da.y) * 0.55 }, 0.6), tratto({ x: da.x + lato * W * 0.16, y: da.y + (varco - da.y) * 0.55 }, n, 0.5)],
+            // onda: attraversa il varco spostata da un lato, poi risale verso il nodo
+            [tratto(da, { x: W * (i % 2 ? 0.62 : 0.38), y: varco }, 0.5), tratto({ x: W * (i % 2 ? 0.62 : 0.38), y: varco }, n, 0.7)],
+            // S lunga e distesa
+            [tratto(da, n, 0.3)],
+            // S stretta, quasi a gomito
+            [tratto(da, n, 0.85)],
+            // doppia onda nel varco
+            [tratto(da, { x: W / 2 - lato * W * 0.06, y: varco - 30 }, 0.5), tratto({ x: W / 2 - lato * W * 0.06, y: varco - 30 }, { x: W / 2 + lato * W * 0.08, y: varco + 30 }, 0.5), tratto({ x: W / 2 + lato * W * 0.08, y: varco + 30 }, n, 0.5)],
+          ];
+          const ordine = [0, 1, 2, 4, 3].map((f) => forme[(f + i) % forme.length]);
+          tratti.push(...(ordine.find(libero) ?? [tratto(da, n)]));
+          da = n;
+        });
+        const fine = { x: W / 2, y: H };
+        const ultimo = nodi[nodi.length - 1] ?? { x: dx, y: 0 };
+        tratti.push(...([[tratto(ultimo, fine, 0.4)], [tratto(ultimo, fine)]].find(libero) ?? [tratto(ultimo, fine)]));
+      } else {
+        // Telefono: il sentiero scende nella striscia accanto alla card con piccole anse diverse
+        // e cambia lato nello spazio tra due card, ogni volta con una curva diversa.
+        const anse = [10, -8, 6, -12, 8, -6];
+        const pieghe = [0.55, 0.35, 0.75, 0.45, 0.65];
+        let da: Punto = { x: nodi[0]?.x ?? dx, y: 0 };
+        nodi.forEach((n, i) => {
+          const a = { x: n.x + anse[i % anse.length], y: card[i].top };
+          const b = { x: n.x - anse[(i + 2) % anse.length], y: card[i].bottom };
+          const k = pieghe[i % pieghe.length];
+          const cambio = [tratto(da, a, k)];
+          tratti.push(...(libero(cambio) ? cambio : [tratto(da, a)]), tratto(a, n, 0.6), tratto(n, b, 0.6));
+          da = b;
+        });
+        tratti.push(tratto(da, { x: da.x, y: H }));
+      }
+      const fine = tratti[tratti.length - 1][3];
+      arrivo.style.left = `${fine.x}px`;
+      let d = `M ${tratti[0][0].x} ${tratti[0][0].y}`;
+      for (const [, c1, c2, p] of tratti) d += ` C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p.x} ${p.y}`;
       base.setAttribute('d', d);
       pieno.setAttribute('d', d);
 
@@ -223,7 +272,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 </script>
 
 <style>
-  .percorso { --striscia: 4.5rem; position: relative; max-width: 72rem; margin: 0 auto; padding-bottom: 5rem; }
+  .percorso { --striscia: 4.5rem; position: relative; max-width: 72rem; margin: 0 auto; padding-bottom: 2.5rem; }
 
   .tracciato { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
   .base, .pieno { fill: none; stroke-linecap: round; }
@@ -250,7 +299,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   @keyframes dondola { 0%, 100% { transform: translateX(-1px) rotate(-2deg); } 50% { transform: translateX(1px) rotate(2deg); } }
 
   /* ---------- Fasi: card alternate, il sentiero passa nello spazio libero accanto ---------- */
-  ol { list-style: none; margin: 0; padding: 5rem 0 0; display: grid; gap: 8rem; }
+  ol { list-style: none; margin: 0; padding: 2.5rem 0 0; display: grid; gap: 8rem; }
   .passo { position: relative; display: flex; }
   .destra { justify-content: flex-end; }
   .card {
@@ -281,7 +330,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   .nodo {
     position: absolute;
     z-index: 2;
-    top: 50%;
+    top: var(--y, 50%);
     left: calc(100% - var(--striscia) / 2);
     width: 2.6rem;
     height: 2.6rem;
@@ -299,10 +348,9 @@ const pad = (n: number) => String(n).padStart(2, '0');
   .attivo .nodo { scale: 1.12; box-shadow: 0 0 0 6px var(--accent-soft), 0 0 28px color-mix(in srgb, var(--accent-light) 45%, transparent); }
 
   @media (min-width: 48rem) {
-    ol { padding-top: 7rem; gap: 5rem; }
+    ol { padding-top: 3rem; gap: 5rem; }
     .card { width: 46%; padding: 1.75rem 2rem; }
-    .sinistra .nodo { left: 76%; }
-    .destra .nodo { left: 24%; }
+    .sinistra .nodo, .destra .nodo { left: var(--xn); }
     .numero { font-family: var(--font-display); font-size: 2rem; line-height: 1; letter-spacing: 0.02em; }
     .raggiunto .numero { color: var(--text); }
     .segno { gap: 1rem; margin-bottom: 1rem !important; }
