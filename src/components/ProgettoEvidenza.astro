@@ -129,6 +129,14 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
   @media (min-width: 64rem) { .evidenza-box { grid-template-columns: 1fr 1fr; gap: 4rem; } }
   .evidenza-box p { margin: 0; }
   .testo, .lato { display: flex; flex-direction: column; gap: 1.25rem; }
+  /* Su mobile e tablet stesso ordine delle altre card: stato, immagine, titolo e testo, funzionalità, link. */
+  @media (max-width: 63.99rem) {
+    .evidenza-box { gap: 1.25rem; }
+    .testo, .lato { display: contents; }
+    .badge { order: -2; }
+    .media { order: -1; }
+    .piede { order: 1; }
+  }
 
   .badge { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
   .stato {
