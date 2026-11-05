@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.16.0
+ * Version:     1.16.1
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -510,7 +510,7 @@ function portfolio_testi_schema() {
 					'descrizione' => array( 'Descrizione del sito', 'textarea', 'Siti WordPress veloci e applicazioni web con Java, Spring Boot, Angular e PostgreSQL. Lavoro da Palermo, con clienti in tutta Italia.', 'Usata nei motori di ricerca e sotto il titolo della home.' ),
 				),
 				'Contatti' => array(
-					'email'           => array( 'Email', 'email', 'gvilardo@hotmail.com' ),
+					'email'           => array( 'Email', 'email', 'info@gabrielevilardo.it' ),
 					'telefono'        => array( 'Telefono', 'text', '340 4800981', 'Come vuoi che si legga, es. +39 333 1234567.' ),
 					'whatsapp'        => array( 'Numero WhatsApp', 'text', '393404800981', 'Con prefisso internazionale, es. 393331234567. Vuoto = nessun pulsante WhatsApp.' ),
 					'indirizzo'       => array( 'Indirizzo', 'text', 'Via Resuttana 367, 90146 Palermo (PA)', 'Mostrato nella pagina Chi sono e nei dati per Google Maps. Formato: via e civico, CAP città (provincia).' ),
