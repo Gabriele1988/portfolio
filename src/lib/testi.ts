@@ -32,6 +32,7 @@ export const TESTI_DEFAULT = {
     footer_titolo_nav: 'Navigazione',
     footer_titolo_contatti: 'Contatti',
     footer_privacy: 'Privacy Policy',
+    footer_cookie: 'Cookie Policy',
     dati_legali: '',
     copyright: 'Tutti i diritti riservati.',
     credito: 'Sviluppato con Astro & ♥',
