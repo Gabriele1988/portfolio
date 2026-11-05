@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Portfolio Core
- * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.16.1
+ * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
+ * Version:     1.17.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -231,6 +231,8 @@ add_action( 'template_redirect', function () {
 	$path = '/';
 	if ( is_singular( 'progetti' ) ) {
 		$path = '/progetti/' . get_post_field( 'post_name', get_queried_object_id() ) . '/';
+	} elseif ( is_singular( 'pagina_servizio' ) ) {
+		$path = '/servizi/' . get_post_field( 'post_name', get_queried_object_id() ) . '/';
 	} elseif ( is_post_type_archive( 'progetti' ) || is_tax( 'servizi' ) ) {
 		$path = '/progetti/';
 	}
@@ -280,7 +282,7 @@ add_action( 'transition_post_status', function ( $new, $old, $post ) {
 	if ( wp_is_post_revision( $post ) || wp_is_post_autosave( $post ) ) {
 		return;
 	}
-	if ( ! in_array( $post->post_type, array( 'progetti', 'page', 'post' ), true ) ) {
+	if ( ! in_array( $post->post_type, array( 'progetti', 'pagina_servizio', 'page', 'post' ), true ) ) {
 		return;
 	}
 	// Solo se il contenuto è o era pubblico.
@@ -1707,3 +1709,542 @@ add_action( 'wp_ajax_portfolio_ordina', function () {
 	portfolio_rebuild_later();
 	wp_send_json_success();
 } );
+
+/* -------------------------------------------------------------------------
+ * Pagine dei singoli servizi (/servizi/<slug>/ sul sito)
+ * Una pagina per servizio: introduzione, cosa include, percorso fase per fase e testo finale.
+ * Lo slug (permalink) diventa l'indirizzo; il campo "Ordine" decide la sequenza.
+ * Le card dei servizi in Home e nella pagina Servizi portano qui da sole quando il titolo coincide.
+ * ---------------------------------------------------------------------- */
+add_action( 'init', function () {
+	register_post_type( 'pagina_servizio', array(
+		'labels'             => array(
+			'name'          => 'Pagine servizi',
+			'singular_name' => 'Pagina servizio',
+			'add_new'       => 'Aggiungi pagina',
+			'add_new_item'  => 'Aggiungi pagina servizio',
+			'edit_item'     => 'Modifica pagina servizio',
+			'all_items'     => 'Pagine servizi',
+		),
+		'public'             => true,
+		'publicly_queryable' => true,
+		'exclude_from_search'=> true,
+		'show_in_rest'       => true,
+		'rest_base'          => 'pagine-servizi',
+		'menu_icon'          => 'dashicons-admin-tools',
+		'menu_position'      => 6,
+		'has_archive'        => false,
+		'rewrite'            => array( 'slug' => 'pagina-servizio' ),
+		'supports'           => array( 'title', 'page-attributes', 'revisions' ),
+	) );
+} );
+
+add_action( 'acf/init', function () {
+	if ( ! function_exists( 'acf_add_local_field_group' ) ) {
+		return;
+	}
+	acf_add_local_field_group( array(
+		'key'      => 'group_portfolio_pagina_servizio',
+		'title'    => 'Contenuto della pagina',
+		'fields'   => portfolio_pagina_servizio_campi(),
+		'location' => array( array( array( 'param' => 'post_type', 'operator' => '==', 'value' => 'pagina_servizio' ) ) ),
+		'position' => 'acf_after_title',
+	) );
+} );
+
+function portfolio_pagina_servizio_campi() {
+	$icone = array_merge( portfolio_icone(), array( 'cart' => 'Carrello (e-commerce)', 'layers' => 'Livelli (struttura)' ) );
+	return array(
+		array( 'key' => 'field_pps_icona', 'name' => 'icona', 'label' => 'Icona', 'type' => 'select', 'choices' => $icone, 'default_value' => 'globe', 'wrapper' => array( 'width' => 30 ) ),
+		array( 'key' => 'field_pps_sottotitolo', 'name' => 'sottotitolo', 'label' => 'Sottotitolo', 'type' => 'text', 'instructions' => 'Riga breve colorata sotto il titolo.', 'wrapper' => array( 'width' => 70 ) ),
+		array( 'key' => 'field_pps_intro', 'name' => 'intro', 'label' => 'Introduzione', 'type' => 'textarea', 'rows' => 3 ),
+		array( 'key' => 'field_pps_include', 'name' => 'include', 'label' => 'Cosa include', 'type' => 'textarea', 'rows' => 6, 'instructions' => 'Una voce per riga.' ),
+		array(
+			'key'          => 'field_pps_passi',
+			'name'         => 'passi',
+			'label'        => 'Percorso (fasi sulla linea con la navicella)',
+			'type'         => 'repeater',
+			'layout'       => 'block',
+			'button_label' => 'Aggiungi fase',
+			'collapsed'    => 'field_pps_passo_titolo',
+			'sub_fields'   => array(
+				array( 'key' => 'field_pps_passo_icona', 'name' => 'icona', 'label' => 'Icona', 'type' => 'select', 'choices' => $icone, 'default_value' => 'code', 'wrapper' => array( 'width' => 25 ) ),
+				array( 'key' => 'field_pps_passo_etichetta', 'name' => 'etichetta', 'label' => 'Nome della fase', 'type' => 'text', 'instructions' => 'Es. "Analisi".', 'wrapper' => array( 'width' => 25 ) ),
+				array( 'key' => 'field_pps_passo_domanda', 'name' => 'domanda', 'label' => 'Domanda', 'type' => 'text', 'instructions' => 'Es. "Chi deve trovarti?".', 'wrapper' => array( 'width' => 50 ) ),
+				array( 'key' => 'field_pps_passo_titolo', 'name' => 'titolo', 'label' => 'Titolo', 'type' => 'text', 'required' => 1 ),
+				array( 'key' => 'field_pps_passo_testo', 'name' => 'testo', 'label' => 'Testo', 'type' => 'textarea', 'rows' => 3 ),
+			),
+		),
+		array( 'key' => 'field_pps_dopo', 'name' => 'dopo', 'label' => 'Dopo la consegna', 'type' => 'textarea', 'rows' => 3, 'instructions' => 'Sotto compaiono da soli i link agli altri servizi.' ),
+		array( 'key' => 'field_pps_seo_titolo', 'name' => 'seo_titolo', 'label' => 'Titolo per Google', 'type' => 'text', 'instructions' => 'Vuoto = titolo della pagina.', 'wrapper' => array( 'width' => 40 ) ),
+		array( 'key' => 'field_pps_seo_descrizione', 'name' => 'seo_descrizione', 'label' => 'Descrizione per Google', 'type' => 'textarea', 'rows' => 2, 'instructions' => 'Vuota = introduzione.', 'wrapper' => array( 'width' => 60 ) ),
+	);
+}
+
+/** Pagine servizi pubblicate, nell'ordine scelto (campo "Ordine"), già pronte per il sito. */
+function portfolio_pagine_servizi_data() {
+	$righe = function ( $v ) {
+		return array_values( array_filter( array_map( 'trim', preg_split( '/\r?\n/', (string) $v ) ) ) );
+	};
+	$out   = array();
+	$posts = get_posts( array( 'post_type' => 'pagina_servizio', 'post_status' => 'publish', 'numberposts' => -1, 'orderby' => array( 'menu_order' => 'ASC', 'date' => 'ASC' ) ) );
+	foreach ( $posts as $post ) {
+		$m     = function ( $k ) use ( $post ) {
+			return (string) get_post_meta( $post->ID, $k, true );
+		};
+		$passi = array();
+		for ( $i = 0, $n = (int) get_post_meta( $post->ID, 'passi', true ); $i < $n; $i++ ) {
+			$titolo = $m( "passi_{$i}_titolo" );
+			if ( '' === $titolo ) {
+				continue;
+			}
+			$passi[] = array(
+				'icona'     => $m( "passi_{$i}_icona" ) ?: 'code',
+				'etichetta' => $m( "passi_{$i}_etichetta" ),
+				'domanda'   => $m( "passi_{$i}_domanda" ),
+				'titolo'    => $titolo,
+				'testo'     => $m( "passi_{$i}_testo" ),
+			);
+		}
+		$out[] = array(
+			'slug'            => $post->post_name,
+			'titolo'          => html_entity_decode( get_the_title( $post ), ENT_QUOTES, 'UTF-8' ),
+			'icona'           => $m( 'icona' ) ?: 'globe',
+			'sottotitolo'     => $m( 'sottotitolo' ),
+			'intro'           => $m( 'intro' ),
+			'include'         => $righe( $m( 'include' ) ),
+			'passi'           => $passi,
+			'dopo'            => $m( 'dopo' ),
+			'seo_titolo'      => $m( 'seo_titolo' ),
+			'seo_descrizione' => $m( 'seo_descrizione' ),
+		);
+	}
+	return $out;
+}
+
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'portfolio/v1', '/pagine-servizi', array(
+		'methods'             => 'GET',
+		'callback'            => 'portfolio_pagine_servizi_data',
+		'permission_callback' => '__return_true',
+	) );
+} );
+
+/**
+ * Al primo accesso alla bacheca dopo l'aggiornamento crea le sei pagine con i testi del sito
+ * (gli stessi di src/data/pagine-servizi.json), così si parte da pagine già scritte da modificare.
+ * Succede una volta sola e solo se non esiste ancora nessuna pagina servizio.
+ */
+add_action( 'admin_init', function () {
+	if ( get_option( 'portfolio_pagine_servizi_create' ) || ! current_user_can( 'publish_posts' ) ) {
+		return;
+	}
+	update_option( 'portfolio_pagine_servizi_create', 1, false );
+	if ( get_posts( array( 'post_type' => 'pagina_servizio', 'post_status' => 'any', 'numberposts' => 1, 'fields' => 'ids' ) ) ) {
+		return;
+	}
+	$chiavi = array();
+	foreach ( portfolio_pagina_servizio_campi() as $f ) {
+		$chiavi[ $f['name'] ] = $f['key'];
+		foreach ( isset( $f['sub_fields'] ) ? $f['sub_fields'] : array() as $sf ) {
+			$chiavi[ $f['name'] . '.' . $sf['name'] ] = $sf['key'];
+		}
+	}
+	$salva = function ( $id, $nome, $chiave, $valore ) {
+		update_post_meta( $id, $nome, wp_slash( $valore ) );
+		update_post_meta( $id, '_' . $nome, $chiave );
+	};
+	foreach ( json_decode( portfolio_pagine_servizi_predefinite(), true ) as $i => $p ) {
+		$id = wp_insert_post( array(
+			'post_type'   => 'pagina_servizio',
+			'post_status' => 'publish',
+			'post_title'  => $p['titolo'],
+			'post_name'   => $p['slug'],
+			'menu_order'  => $i + 1,
+		) );
+		if ( ! $id || is_wp_error( $id ) ) {
+			continue;
+		}
+		foreach ( array( 'icona', 'sottotitolo', 'intro', 'dopo', 'seo_titolo', 'seo_descrizione' ) as $k ) {
+			$salva( $id, $k, $chiavi[ $k ], (string) $p[ $k ] );
+		}
+		$salva( $id, 'include', $chiavi['include'], implode( "\n", $p['include'] ) );
+		$salva( $id, 'passi', $chiavi['passi'], count( $p['passi'] ) );
+		foreach ( $p['passi'] as $j => $passo ) {
+			foreach ( $passo as $k => $v ) {
+				$salva( $id, "passi_{$j}_{$k}", $chiavi[ "passi.{$k}" ], (string) $v );
+			}
+		}
+	}
+} );
+
+function portfolio_pagine_servizi_predefinite() {
+	return <<<'JSON'
+[
+	{
+		"slug": "sviluppo-web",
+		"titolo": "Sviluppo Web",
+		"icona": "globe",
+		"sottotitolo": "Siti veloci, moderni e su misura",
+		"intro": "Un sito non è una vetrina da riempire: è uno strumento che deve portarti contatti e clienti. Lo costruisco partendo da quello che vuoi ottenere, con codice pulito che carica in un attimo anche da telefono.",
+		"include": [
+			"Siti vetrina e istituzionali",
+			"Landing page ad alta conversione",
+			"Performance ottimizzate (Core Web Vitals)",
+			"Design responsive su ogni dispositivo",
+			"SEO tecnica di base",
+			"Formazione per gestire i contenuti"
+		],
+		"passi": [
+			{
+				"icona": "message",
+				"etichetta": "Obiettivo",
+				"domanda": "A cosa ti serve il sito?",
+				"titolo": "Partiamo da cosa vuoi ottenere",
+				"testo": "Prima del design parliamo di numeri: più richieste di preventivo, più prenotazioni, più credibilità. Un obiettivo chiaro guida ogni scelta successiva, dai testi ai pulsanti."
+			},
+			{
+				"icona": "search",
+				"etichetta": "Analisi",
+				"domanda": "Chi deve trovarti e cosa cerca?",
+				"titolo": "Studio il tuo pubblico e la concorrenza",
+				"testo": "Guardo come si muovono i tuoi clienti, quali parole usano su Google e cosa fanno i concorrenti. Così il sito risponde alle domande giuste, nel modo giusto."
+			},
+			{
+				"icona": "layers",
+				"etichetta": "Struttura e preventivo",
+				"domanda": "Quali pagine servono davvero?",
+				"titolo": "Mappa del sito e preventivo chiaro",
+				"testo": "Definisco pagine, sezioni e percorso dell'utente. Ricevi un preventivo dettagliato con tempi e costi, senza voci nascoste."
+			},
+			{
+				"icona": "palette",
+				"etichetta": "Materiali e design",
+				"domanda": "Che immagine vuoi dare?",
+				"titolo": "Testi, foto e prototipo",
+				"testo": "Raccogliamo i materiali e preparo il design delle pagine principali. Lo rivediamo insieme finché non ti rappresenta, prima di scrivere codice."
+			},
+			{
+				"icona": "code",
+				"etichetta": "Sviluppo",
+				"domanda": "Come lo rendiamo veloce?",
+				"titolo": "Costruzione su un'anteprima online",
+				"testo": "Sviluppo il sito su un indirizzo di prova che puoi visitare quando vuoi. Ottimizzo immagini, caricamento e accessibilità mentre procedo, non alla fine."
+			},
+			{
+				"icona": "rocket",
+				"etichetta": "Online",
+				"domanda": "Siamo pronti al decollo?",
+				"titolo": "Lancio e consegna",
+				"testo": "Test su browser e telefoni, collegamento del dominio, Search Console e messa online. Ti mostro come aggiornare i contenuti in autonomia."
+			}
+		],
+		"dopo": "Dopo la pubblicazione resto a disposizione per aggiornamenti, nuove pagine e controlli periodici su velocità e sicurezza.",
+		"seo_titolo": "Sviluppo siti web su misura a Palermo",
+		"seo_descrizione": "Siti web veloci, moderni e su misura: dall'obiettivo alla messa online, con codice pulito e performance ottimizzate. Gabriele Vilardo, web developer a Palermo."
+	},
+	{
+		"slug": "applicazioni-web",
+		"titolo": "Applicazioni web",
+		"icona": "server",
+		"sottotitolo": "Gestionali e piattaforme su misura",
+		"intro": "Quando fogli Excel, email e programmi scollegati non bastano più, serve uno strumento costruito sul tuo modo di lavorare. Progetto applicazioni web solide, dal database all'interfaccia.",
+		"include": [
+			"Analisi dei processi",
+			"API REST con Spring Boot",
+			"Interfacce in Angular",
+			"Database PostgreSQL",
+			"Accessi e permessi per ruolo",
+			"Rilascio e manutenzione"
+		],
+		"passi": [
+			{
+				"icona": "message",
+				"etichetta": "Obiettivo",
+				"domanda": "Quale problema vuoi risolvere?",
+				"titolo": "Capire dove si perde tempo",
+				"testo": "Partiamo dal lavoro di tutti i giorni: quali passaggi sono ripetitivi, dove nascono gli errori, chi deve vedere cosa. L'applicazione nasce da lì."
+			},
+			{
+				"icona": "search",
+				"etichetta": "Analisi",
+				"domanda": "Come funziona oggi il processo?",
+				"titolo": "Mappatura dei flussi e dei dati",
+				"testo": "Disegno i flussi attuali e quelli futuri, i dati da gestire e le integrazioni con i sistemi che usi già. Niente funzioni superflue."
+			},
+			{
+				"icona": "layers",
+				"etichetta": "Architettura e preventivo",
+				"domanda": "Su quali basi la costruiamo?",
+				"titolo": "Architettura e piano di lavoro",
+				"testo": "Scelgo le tecnologie adatte e divido il progetto in fasi rilasciabili. Ricevi un preventivo per fase, così vedi risultati presto e mantieni il controllo del budget."
+			},
+			{
+				"icona": "palette",
+				"etichetta": "Prototipo",
+				"domanda": "È comodo da usare?",
+				"titolo": "Prototipo cliccabile delle schermate",
+				"testo": "Prima del codice prepariamo le schermate principali e le proviamo con chi userà davvero lo strumento. Correggere qui costa pochissimo."
+			},
+			{
+				"icona": "code",
+				"etichetta": "Sviluppo",
+				"domanda": "Come procede il lavoro?",
+				"titolo": "Sviluppo a rilasci successivi",
+				"testo": "Backend con Java e Spring Boot, interfaccia in Angular, dati su PostgreSQL. A ogni rilascio provi le nuove funzioni su un ambiente di test."
+			},
+			{
+				"icona": "rocket",
+				"etichetta": "Rilascio",
+				"domanda": "Come passiamo al nuovo sistema?",
+				"titolo": "Messa in produzione e formazione",
+				"testo": "Migro i dati esistenti, metto online l'applicazione e formo il tuo team. Il passaggio avviene senza fermare il lavoro."
+			}
+		],
+		"dopo": "Un'applicazione cresce con la tua attività: dopo il rilascio mi occupo di manutenzione, backup e nuove funzioni quando servono.",
+		"seo_titolo": "Sviluppo applicazioni web e gestionali su misura",
+		"seo_descrizione": "Gestionali e piattaforme web su misura con Java, Spring Boot, Angular e PostgreSQL: analisi, prototipo, sviluppo a rilasci e formazione."
+	},
+	{
+		"slug": "wordpress",
+		"titolo": "WordPress",
+		"icona": "layout",
+		"sottotitolo": "Flessibilità e autonomia nella gestione",
+		"intro": "Oltre dieci anni di WordPress: temi scritti da zero, niente page builder pesanti e un pannello semplice per aggiornare i contenuti da solo. Anche in versione headless, collegato a un frontend velocissimo.",
+		"include": [
+			"Temi custom da zero",
+			"WordPress headless",
+			"ACF e custom post type",
+			"Migrazione da altri CMS",
+			"Sicurezza e aggiornamenti",
+			"Formazione per la gestione autonoma"
+		],
+		"passi": [
+			{
+				"icona": "message",
+				"etichetta": "Obiettivo",
+				"domanda": "Cosa vuoi poter gestire da solo?",
+				"titolo": "Contenuti e autonomia",
+				"testo": "Capiamo quali contenuti cambieranno spesso e chi li aggiornerà. WordPress va modellato su questo, non il contrario."
+			},
+			{
+				"icona": "search",
+				"etichetta": "Analisi",
+				"domanda": "Classico o headless?",
+				"titolo": "La soluzione tecnica giusta",
+				"testo": "Valuto se ti serve un sito WordPress classico o headless, quali plugin sono davvero necessari e se c'è un sito esistente da migrare."
+			},
+			{
+				"icona": "layers",
+				"etichetta": "Struttura e preventivo",
+				"domanda": "Come organizziamo i contenuti?",
+				"titolo": "Tipi di contenuto e campi su misura",
+				"testo": "Progetto custom post type e campi personalizzati, così ogni contenuto ha il suo modulo ordinato. Ricevi un preventivo dettagliato."
+			},
+			{
+				"icona": "palette",
+				"etichetta": "Design",
+				"domanda": "Che aspetto avrà?",
+				"titolo": "Design e prototipo delle pagine",
+				"testo": "Disegno le pagine principali sul tuo brand e le approviamo insieme prima di sviluppare il tema."
+			},
+			{
+				"icona": "code",
+				"etichetta": "Sviluppo",
+				"domanda": "Come resta leggero?",
+				"titolo": "Tema custom senza zavorra",
+				"testo": "Scrivo il tema da zero con solo il codice che serve. Il pannello resta pulito e il sito veloce, anche su hosting condiviso."
+			},
+			{
+				"icona": "rocket",
+				"etichetta": "Online",
+				"domanda": "Sai già come usarlo?",
+				"titolo": "Pubblicazione e formazione",
+				"testo": "Metto online il sito, configuro backup e sicurezza e ti mostro passo passo come aggiungere e modificare i contenuti."
+			}
+		],
+		"dopo": "Dopo la pubblicazione posso occuparmi di aggiornamenti di WordPress e plugin, backup e piccole modifiche, così non devi pensarci.",
+		"seo_titolo": "Sviluppo siti WordPress su misura e headless",
+		"seo_descrizione": "Temi WordPress custom da zero, WordPress headless, ACF e migrazioni: siti leggeri e facili da gestire in autonomia. Gabriele Vilardo, Palermo."
+	},
+	{
+		"slug": "e-commerce",
+		"titolo": "E-Commerce",
+		"icona": "cart",
+		"sottotitolo": "Vendi online senza complicazioni",
+		"intro": "Un negozio online funziona quando comprare è facile e gestire gli ordini non ti ruba la giornata. Costruisco e-commerce chiari per i clienti e semplici per te.",
+		"include": [
+			"WooCommerce personalizzato",
+			"Pagamenti e spedizioni",
+			"Catalogo prodotti ottimizzato",
+			"Integrazione con gestionali",
+			"Email e notifiche d'ordine",
+			"Pagine prodotto pensate per vendere"
+		],
+		"passi": [
+			{
+				"icona": "message",
+				"etichetta": "Obiettivo",
+				"domanda": "Cosa vendi e a chi?",
+				"titolo": "Prodotti, clienti e margini",
+				"testo": "Parliamo di catalogo, prezzi, zone di spedizione e di come gestisci oggi gli ordini. Da qui capiamo che negozio ti serve."
+			},
+			{
+				"icona": "search",
+				"etichetta": "Analisi",
+				"domanda": "Come compra il tuo cliente?",
+				"titolo": "Percorso d'acquisto e concorrenza",
+				"testo": "Studio come i tuoi clienti cercano e scelgono i prodotti e cosa offrono i concorrenti, per togliere ogni ostacolo tra il prodotto e il pagamento."
+			},
+			{
+				"icona": "layers",
+				"etichetta": "Struttura e preventivo",
+				"domanda": "Quali funzioni servono?",
+				"titolo": "Catalogo, pagamenti e spedizioni",
+				"testo": "Definisco categorie, varianti, metodi di pagamento, spedizioni e integrazioni. Ricevi un preventivo chiaro con tempi e costi."
+			},
+			{
+				"icona": "palette",
+				"etichetta": "Design",
+				"domanda": "Il prodotto si vede bene?",
+				"titolo": "Pagine prodotto e carrello",
+				"testo": "Progetto scheda prodotto, carrello e checkout perché siano chiari da telefono. Foto, prezzi e pulsanti al posto giusto."
+			},
+			{
+				"icona": "code",
+				"etichetta": "Sviluppo",
+				"domanda": "Tutto funziona davvero?",
+				"titolo": "Configurazione e test degli ordini",
+				"testo": "Sviluppo il negozio, importo il catalogo e faccio ordini di prova con ogni metodo di pagamento e spedizione."
+			},
+			{
+				"icona": "rocket",
+				"etichetta": "Online",
+				"domanda": "Pronti a vendere?",
+				"titolo": "Apertura del negozio",
+				"testo": "Metto online lo shop, collego statistiche e Search Console e ti mostro come gestire prodotti, ordini e resi."
+			}
+		],
+		"dopo": "Dopo l'apertura ti aiuto a migliorare le vendite: velocità, schede prodotto, promozioni e aggiornamenti di sicurezza.",
+		"seo_titolo": "Realizzazione e-commerce con WooCommerce",
+		"seo_descrizione": "Negozi online con WooCommerce chiari per i clienti e semplici da gestire: catalogo, pagamenti, spedizioni e integrazioni. Gabriele Vilardo, Palermo."
+	},
+	{
+		"slug": "seo-performance",
+		"titolo": "SEO & Performance",
+		"icona": "zap",
+		"sottotitolo": "Farsi trovare e caricare in un attimo",
+		"intro": "Un sito lento perde visitatori prima ancora che leggano una riga, e uno che Google non capisce non viene trovato. Lavoro sulla parte tecnica per renderlo rapido e ben posizionato.",
+		"include": [
+			"Audit tecnico",
+			"Core Web Vitals",
+			"Ottimizzazione immagini",
+			"SEO on-page e locale",
+			"Dati strutturati",
+			"Report con priorità di intervento"
+		],
+		"passi": [
+			{
+				"icona": "message",
+				"etichetta": "Obiettivo",
+				"domanda": "Per cosa vuoi farti trovare?",
+				"titolo": "Ricerche e risultati attesi",
+				"testo": "Partiamo dalle ricerche che contano per la tua attività e da dove sei oggi su Google, così misuriamo i progressi su dati reali."
+			},
+			{
+				"icona": "search",
+				"etichetta": "Audit",
+				"domanda": "Cosa rallenta il sito?",
+				"titolo": "Analisi tecnica completa",
+				"testo": "Controllo velocità, Core Web Vitals, indicizzazione, struttura dei contenuti, dati strutturati ed errori in Search Console."
+			},
+			{
+				"icona": "layers",
+				"etichetta": "Priorità e preventivo",
+				"domanda": "Da dove conviene partire?",
+				"titolo": "Piano di interventi in ordine di impatto",
+				"testo": "Ricevi un report chiaro con i problemi trovati, ordinati per impatto e difficoltà, e un preventivo per risolverli."
+			},
+			{
+				"icona": "zap",
+				"etichetta": "Ottimizzazione",
+				"domanda": "Quanto possiamo guadagnare?",
+				"titolo": "Velocità e Core Web Vitals",
+				"testo": "Ottimizzo immagini, font, script e cache. L'obiettivo è un sito che carica in un attimo anche da telefono e su hosting condiviso."
+			},
+			{
+				"icona": "code",
+				"etichetta": "SEO on-page",
+				"domanda": "Google capisce le tue pagine?",
+				"titolo": "Titoli, contenuti e dati strutturati",
+				"testo": "Sistemo titoli, descrizioni, intestazioni, link interni e dati strutturati, e curo la presenza locale se lavori sul territorio."
+			},
+			{
+				"icona": "chart",
+				"etichetta": "Misura",
+				"domanda": "Ha funzionato?",
+				"titolo": "Verifica dei risultati",
+				"testo": "Confrontiamo i dati prima e dopo: punteggi di velocità, posizioni e traffico. Ti lascio indicazioni per mantenere i risultati."
+			}
+		],
+		"dopo": "La SEO non finisce con un intervento: posso seguire il sito nel tempo con controlli periodici e nuovi contenuti ottimizzati.",
+		"seo_titolo": "Ottimizzazione SEO e velocità del sito",
+		"seo_descrizione": "Audit tecnico, Core Web Vitals, ottimizzazione immagini e SEO on-page e locale per un sito veloce e ben posizionato su Google."
+	},
+	{
+		"slug": "consulenza-digitale",
+		"titolo": "Consulenza Digitale",
+		"icona": "chart",
+		"sottotitolo": "Strategia prima della tecnologia",
+		"intro": "Non sempre serve un sito nuovo. A volte basta capire cosa non funziona e dove conviene investire. Ti aiuto a prendere decisioni con dati e priorità chiare.",
+		"include": [
+			"Audit del sito esistente",
+			"Scelta degli strumenti giusti",
+			"Pianificazione budget e priorità",
+			"Supporto nella scelta di fornitori",
+			"Affiancamento del tuo team"
+		],
+		"passi": [
+			{
+				"icona": "message",
+				"etichetta": "Ascolto",
+				"domanda": "Cosa non ti convince oggi?",
+				"titolo": "Il punto di partenza",
+				"testo": "Mi racconti obiettivi, dubbi e cosa hai già provato. Spesso il problema vero emerge proprio in questa prima chiacchierata."
+			},
+			{
+				"icona": "search",
+				"etichetta": "Analisi",
+				"domanda": "Dove sono i colli di bottiglia?",
+				"titolo": "Sito, strumenti e numeri",
+				"testo": "Analizzo sito, statistiche, strumenti che usi e concorrenza per capire cosa funziona, cosa no e perché."
+			},
+			{
+				"icona": "layers",
+				"etichetta": "Strategia",
+				"domanda": "Su cosa conviene investire?",
+				"titolo": "Priorità e budget",
+				"testo": "Ti propongo un piano con interventi ordinati per impatto e costo. Decidi tu cosa fare, quando e con chi."
+			},
+			{
+				"icona": "wrench",
+				"etichetta": "Strumenti",
+				"domanda": "Quali strumenti ti servono?",
+				"titolo": "Scelte tecniche senza sprechi",
+				"testo": "Ti consiglio piattaforme, servizi e fornitori adatti alle tue esigenze reali, evitando abbonamenti e funzioni che non userai."
+			},
+			{
+				"icona": "chart",
+				"etichetta": "Affiancamento",
+				"domanda": "Come lo mettiamo in pratica?",
+				"titolo": "Accompagnamento nelle scelte",
+				"testo": "Posso seguire l'attuazione, affiancare il tuo team o valutare i preventivi di altri fornitori, finché i risultati non arrivano."
+			}
+		],
+		"dopo": "Una consulenza può diventare un appuntamento periodico: rivediamo i numeri e aggiorniamo le priorità quando la tua attività cambia.",
+		"seo_titolo": "Consulenza digitale per piccole imprese",
+		"seo_descrizione": "Audit del sito, scelta degli strumenti e pianificazione di budget e priorità: una consulenza per investire nel digitale con dati chiari."
+	}
+]
+JSON;
+}

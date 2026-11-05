@@ -1,12 +1,12 @@
 ---
-import Base from '../layouts/Base.astro';
-import ServiziHome from '../components/ServiziHome.astro';
-import Timeline from '../components/Timeline.astro';
-import Faq from '../components/Faq.astro';
-import Icona from '../components/Icona.astro';
-import { getHome } from '../lib/wp';
-import { getTesti } from '../lib/testi';
-import { getElenchiServizi } from '../lib/servizi';
+import Base from '../../layouts/Base.astro';
+import ServiziHome from '../../components/ServiziHome.astro';
+import Timeline from '../../components/Timeline.astro';
+import Faq from '../../components/Faq.astro';
+import Icona from '../../components/Icona.astro';
+import { getHome } from '../../lib/wp';
+import { getTesti } from '../../lib/testi';
+import { getElenchiServizi } from '../../lib/servizi';
 
 const [home, testi, elenchi] = await Promise.all([getHome(), getTesti(), getElenchiServizi()]);
 const t = testi.pag_servizi;

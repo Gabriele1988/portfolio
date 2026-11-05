@@ -283,7 +283,27 @@ const HOME_DEFAULT: Home = {
   },
 };
 
+/** Le card senza link portano alla pagina del servizio, se esiste. */
+async function conPagine(home: Home): Promise<Home> {
+  const { getPagineServizi, paginaDi } = await import('./pagineServizi');
+  const pagine = await getPagineServizi();
+  return {
+    servizi: {
+      ...home.servizi,
+      elenco: home.servizi.elenco.map((v) => {
+        if (v.link.url) return v;
+        const p = paginaDi(v, pagine);
+        return p ? { ...v, link: { testo: v.link.testo || 'Scopri il servizio', url: `/servizi/${p.slug}/` } } : v;
+      }),
+    },
+  };
+}
+
 export async function getHome(): Promise<Home> {
+  return conPagine(await leggiHome());
+}
+
+async function leggiHome(): Promise<Home> {
   if (!API) return HOME_DEFAULT;
   const res = await fetch(`${CMS_URL}/wp-json/portfolio/v1/home`, { headers: { Accept: 'application/json' } });
   if (res.status === 404) {

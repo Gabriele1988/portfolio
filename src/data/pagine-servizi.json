@@ -1,0 +1,115 @@
+[
+  {
+    "slug": "sviluppo-web",
+    "titolo": "Sviluppo Web",
+    "icona": "globe",
+    "sottotitolo": "Siti veloci, moderni e su misura",
+    "intro": "Un sito non è una vetrina da riempire: è uno strumento che deve portarti contatti e clienti. Lo costruisco partendo da quello che vuoi ottenere, con codice pulito che carica in un attimo anche da telefono.",
+    "include": ["Siti vetrina e istituzionali", "Landing page ad alta conversione", "Performance ottimizzate (Core Web Vitals)", "Design responsive su ogni dispositivo", "SEO tecnica di base", "Formazione per gestire i contenuti"],
+    "passi": [
+      { "icona": "message", "etichetta": "Obiettivo", "domanda": "A cosa ti serve il sito?", "titolo": "Partiamo da cosa vuoi ottenere", "testo": "Prima del design parliamo di numeri: più richieste di preventivo, più prenotazioni, più credibilità. Un obiettivo chiaro guida ogni scelta successiva, dai testi ai pulsanti." },
+      { "icona": "search", "etichetta": "Analisi", "domanda": "Chi deve trovarti e cosa cerca?", "titolo": "Studio il tuo pubblico e la concorrenza", "testo": "Guardo come si muovono i tuoi clienti, quali parole usano su Google e cosa fanno i concorrenti. Così il sito risponde alle domande giuste, nel modo giusto." },
+      { "icona": "layers", "etichetta": "Struttura e preventivo", "domanda": "Quali pagine servono davvero?", "titolo": "Mappa del sito e preventivo chiaro", "testo": "Definisco pagine, sezioni e percorso dell'utente. Ricevi un preventivo dettagliato con tempi e costi, senza voci nascoste." },
+      { "icona": "palette", "etichetta": "Materiali e design", "domanda": "Che immagine vuoi dare?", "titolo": "Testi, foto e prototipo", "testo": "Raccogliamo i materiali e preparo il design delle pagine principali. Lo rivediamo insieme finché non ti rappresenta, prima di scrivere codice." },
+      { "icona": "code", "etichetta": "Sviluppo", "domanda": "Come lo rendiamo veloce?", "titolo": "Costruzione su un'anteprima online", "testo": "Sviluppo il sito su un indirizzo di prova che puoi visitare quando vuoi. Ottimizzo immagini, caricamento e accessibilità mentre procedo, non alla fine." },
+      { "icona": "rocket", "etichetta": "Online", "domanda": "Siamo pronti al decollo?", "titolo": "Lancio e consegna", "testo": "Test su browser e telefoni, collegamento del dominio, Search Console e messa online. Ti mostro come aggiornare i contenuti in autonomia." }
+    ],
+    "dopo": "Dopo la pubblicazione resto a disposizione per aggiornamenti, nuove pagine e controlli periodici su velocità e sicurezza.",
+    "seo_titolo": "Sviluppo siti web su misura a Palermo",
+    "seo_descrizione": "Siti web veloci, moderni e su misura: dall'obiettivo alla messa online, con codice pulito e performance ottimizzate. Gabriele Vilardo, web developer a Palermo."
+  },
+  {
+    "slug": "applicazioni-web",
+    "titolo": "Applicazioni web",
+    "icona": "server",
+    "sottotitolo": "Gestionali e piattaforme su misura",
+    "intro": "Quando fogli Excel, email e programmi scollegati non bastano più, serve uno strumento costruito sul tuo modo di lavorare. Progetto applicazioni web solide, dal database all'interfaccia.",
+    "include": ["Analisi dei processi", "API REST con Spring Boot", "Interfacce in Angular", "Database PostgreSQL", "Accessi e permessi per ruolo", "Rilascio e manutenzione"],
+    "passi": [
+      { "icona": "message", "etichetta": "Obiettivo", "domanda": "Quale problema vuoi risolvere?", "titolo": "Capire dove si perde tempo", "testo": "Partiamo dal lavoro di tutti i giorni: quali passaggi sono ripetitivi, dove nascono gli errori, chi deve vedere cosa. L'applicazione nasce da lì." },
+      { "icona": "search", "etichetta": "Analisi", "domanda": "Come funziona oggi il processo?", "titolo": "Mappatura dei flussi e dei dati", "testo": "Disegno i flussi attuali e quelli futuri, i dati da gestire e le integrazioni con i sistemi che usi già. Niente funzioni superflue." },
+      { "icona": "layers", "etichetta": "Architettura e preventivo", "domanda": "Su quali basi la costruiamo?", "titolo": "Architettura e piano di lavoro", "testo": "Scelgo le tecnologie adatte e divido il progetto in fasi rilasciabili. Ricevi un preventivo per fase, così vedi risultati presto e mantieni il controllo del budget." },
+      { "icona": "palette", "etichetta": "Prototipo", "domanda": "È comodo da usare?", "titolo": "Prototipo cliccabile delle schermate", "testo": "Prima del codice prepariamo le schermate principali e le proviamo con chi userà davvero lo strumento. Correggere qui costa pochissimo." },
+      { "icona": "code", "etichetta": "Sviluppo", "domanda": "Come procede il lavoro?", "titolo": "Sviluppo a rilasci successivi", "testo": "Backend con Java e Spring Boot, interfaccia in Angular, dati su PostgreSQL. A ogni rilascio provi le nuove funzioni su un ambiente di test." },
+      { "icona": "rocket", "etichetta": "Rilascio", "domanda": "Come passiamo al nuovo sistema?", "titolo": "Messa in produzione e formazione", "testo": "Migro i dati esistenti, metto online l'applicazione e formo il tuo team. Il passaggio avviene senza fermare il lavoro." }
+    ],
+    "dopo": "Un'applicazione cresce con la tua attività: dopo il rilascio mi occupo di manutenzione, backup e nuove funzioni quando servono.",
+    "seo_titolo": "Sviluppo applicazioni web e gestionali su misura",
+    "seo_descrizione": "Gestionali e piattaforme web su misura con Java, Spring Boot, Angular e PostgreSQL: analisi, prototipo, sviluppo a rilasci e formazione."
+  },
+  {
+    "slug": "wordpress",
+    "titolo": "WordPress",
+    "icona": "layout",
+    "sottotitolo": "Flessibilità e autonomia nella gestione",
+    "intro": "Oltre dieci anni di WordPress: temi scritti da zero, niente page builder pesanti e un pannello semplice per aggiornare i contenuti da solo. Anche in versione headless, collegato a un frontend velocissimo.",
+    "include": ["Temi custom da zero", "WordPress headless", "ACF e custom post type", "Migrazione da altri CMS", "Sicurezza e aggiornamenti", "Formazione per la gestione autonoma"],
+    "passi": [
+      { "icona": "message", "etichetta": "Obiettivo", "domanda": "Cosa vuoi poter gestire da solo?", "titolo": "Contenuti e autonomia", "testo": "Capiamo quali contenuti cambieranno spesso e chi li aggiornerà. WordPress va modellato su questo, non il contrario." },
+      { "icona": "search", "etichetta": "Analisi", "domanda": "Classico o headless?", "titolo": "La soluzione tecnica giusta", "testo": "Valuto se ti serve un sito WordPress classico o headless, quali plugin sono davvero necessari e se c'è un sito esistente da migrare." },
+      { "icona": "layers", "etichetta": "Struttura e preventivo", "domanda": "Come organizziamo i contenuti?", "titolo": "Tipi di contenuto e campi su misura", "testo": "Progetto custom post type e campi personalizzati, così ogni contenuto ha il suo modulo ordinato. Ricevi un preventivo dettagliato." },
+      { "icona": "palette", "etichetta": "Design", "domanda": "Che aspetto avrà?", "titolo": "Design e prototipo delle pagine", "testo": "Disegno le pagine principali sul tuo brand e le approviamo insieme prima di sviluppare il tema." },
+      { "icona": "code", "etichetta": "Sviluppo", "domanda": "Come resta leggero?", "titolo": "Tema custom senza zavorra", "testo": "Scrivo il tema da zero con solo il codice che serve. Il pannello resta pulito e il sito veloce, anche su hosting condiviso." },
+      { "icona": "rocket", "etichetta": "Online", "domanda": "Sai già come usarlo?", "titolo": "Pubblicazione e formazione", "testo": "Metto online il sito, configuro backup e sicurezza e ti mostro passo passo come aggiungere e modificare i contenuti." }
+    ],
+    "dopo": "Dopo la pubblicazione posso occuparmi di aggiornamenti di WordPress e plugin, backup e piccole modifiche, così non devi pensarci.",
+    "seo_titolo": "Sviluppo siti WordPress su misura e headless",
+    "seo_descrizione": "Temi WordPress custom da zero, WordPress headless, ACF e migrazioni: siti leggeri e facili da gestire in autonomia. Gabriele Vilardo, Palermo."
+  },
+  {
+    "slug": "e-commerce",
+    "titolo": "E-Commerce",
+    "icona": "cart",
+    "sottotitolo": "Vendi online senza complicazioni",
+    "intro": "Un negozio online funziona quando comprare è facile e gestire gli ordini non ti ruba la giornata. Costruisco e-commerce chiari per i clienti e semplici per te.",
+    "include": ["WooCommerce personalizzato", "Pagamenti e spedizioni", "Catalogo prodotti ottimizzato", "Integrazione con gestionali", "Email e notifiche d'ordine", "Pagine prodotto pensate per vendere"],
+    "passi": [
+      { "icona": "message", "etichetta": "Obiettivo", "domanda": "Cosa vendi e a chi?", "titolo": "Prodotti, clienti e margini", "testo": "Parliamo di catalogo, prezzi, zone di spedizione e di come gestisci oggi gli ordini. Da qui capiamo che negozio ti serve." },
+      { "icona": "search", "etichetta": "Analisi", "domanda": "Come compra il tuo cliente?", "titolo": "Percorso d'acquisto e concorrenza", "testo": "Studio come i tuoi clienti cercano e scelgono i prodotti e cosa offrono i concorrenti, per togliere ogni ostacolo tra il prodotto e il pagamento." },
+      { "icona": "layers", "etichetta": "Struttura e preventivo", "domanda": "Quali funzioni servono?", "titolo": "Catalogo, pagamenti e spedizioni", "testo": "Definisco categorie, varianti, metodi di pagamento, spedizioni e integrazioni. Ricevi un preventivo chiaro con tempi e costi." },
+      { "icona": "palette", "etichetta": "Design", "domanda": "Il prodotto si vede bene?", "titolo": "Pagine prodotto e carrello", "testo": "Progetto scheda prodotto, carrello e checkout perché siano chiari da telefono. Foto, prezzi e pulsanti al posto giusto." },
+      { "icona": "code", "etichetta": "Sviluppo", "domanda": "Tutto funziona davvero?", "titolo": "Configurazione e test degli ordini", "testo": "Sviluppo il negozio, importo il catalogo e faccio ordini di prova con ogni metodo di pagamento e spedizione." },
+      { "icona": "rocket", "etichetta": "Online", "domanda": "Pronti a vendere?", "titolo": "Apertura del negozio", "testo": "Metto online lo shop, collego statistiche e Search Console e ti mostro come gestire prodotti, ordini e resi." }
+    ],
+    "dopo": "Dopo l'apertura ti aiuto a migliorare le vendite: velocità, schede prodotto, promozioni e aggiornamenti di sicurezza.",
+    "seo_titolo": "Realizzazione e-commerce con WooCommerce",
+    "seo_descrizione": "Negozi online con WooCommerce chiari per i clienti e semplici da gestire: catalogo, pagamenti, spedizioni e integrazioni. Gabriele Vilardo, Palermo."
+  },
+  {
+    "slug": "seo-performance",
+    "titolo": "SEO & Performance",
+    "icona": "zap",
+    "sottotitolo": "Farsi trovare e caricare in un attimo",
+    "intro": "Un sito lento perde visitatori prima ancora che leggano una riga, e uno che Google non capisce non viene trovato. Lavoro sulla parte tecnica per renderlo rapido e ben posizionato.",
+    "include": ["Audit tecnico", "Core Web Vitals", "Ottimizzazione immagini", "SEO on-page e locale", "Dati strutturati", "Report con priorità di intervento"],
+    "passi": [
+      { "icona": "message", "etichetta": "Obiettivo", "domanda": "Per cosa vuoi farti trovare?", "titolo": "Ricerche e risultati attesi", "testo": "Partiamo dalle ricerche che contano per la tua attività e da dove sei oggi su Google, così misuriamo i progressi su dati reali." },
+      { "icona": "search", "etichetta": "Audit", "domanda": "Cosa rallenta il sito?", "titolo": "Analisi tecnica completa", "testo": "Controllo velocità, Core Web Vitals, indicizzazione, struttura dei contenuti, dati strutturati ed errori in Search Console." },
+      { "icona": "layers", "etichetta": "Priorità e preventivo", "domanda": "Da dove conviene partire?", "titolo": "Piano di interventi in ordine di impatto", "testo": "Ricevi un report chiaro con i problemi trovati, ordinati per impatto e difficoltà, e un preventivo per risolverli." },
+      { "icona": "zap", "etichetta": "Ottimizzazione", "domanda": "Quanto possiamo guadagnare?", "titolo": "Velocità e Core Web Vitals", "testo": "Ottimizzo immagini, font, script e cache. L'obiettivo è un sito che carica in un attimo anche da telefono e su hosting condiviso." },
+      { "icona": "code", "etichetta": "SEO on-page", "domanda": "Google capisce le tue pagine?", "titolo": "Titoli, contenuti e dati strutturati", "testo": "Sistemo titoli, descrizioni, intestazioni, link interni e dati strutturati, e curo la presenza locale se lavori sul territorio." },
+      { "icona": "chart", "etichetta": "Misura", "domanda": "Ha funzionato?", "titolo": "Verifica dei risultati", "testo": "Confrontiamo i dati prima e dopo: punteggi di velocità, posizioni e traffico. Ti lascio indicazioni per mantenere i risultati." }
+    ],
+    "dopo": "La SEO non finisce con un intervento: posso seguire il sito nel tempo con controlli periodici e nuovi contenuti ottimizzati.",
+    "seo_titolo": "Ottimizzazione SEO e velocità del sito",
+    "seo_descrizione": "Audit tecnico, Core Web Vitals, ottimizzazione immagini e SEO on-page e locale per un sito veloce e ben posizionato su Google."
+  },
+  {
+    "slug": "consulenza-digitale",
+    "titolo": "Consulenza Digitale",
+    "icona": "chart",
+    "sottotitolo": "Strategia prima della tecnologia",
+    "intro": "Non sempre serve un sito nuovo. A volte basta capire cosa non funziona e dove conviene investire. Ti aiuto a prendere decisioni con dati e priorità chiare.",
+    "include": ["Audit del sito esistente", "Scelta degli strumenti giusti", "Pianificazione budget e priorità", "Supporto nella scelta di fornitori", "Affiancamento del tuo team"],
+    "passi": [
+      { "icona": "message", "etichetta": "Ascolto", "domanda": "Cosa non ti convince oggi?", "titolo": "Il punto di partenza", "testo": "Mi racconti obiettivi, dubbi e cosa hai già provato. Spesso il problema vero emerge proprio in questa prima chiacchierata." },
+      { "icona": "search", "etichetta": "Analisi", "domanda": "Dove sono i colli di bottiglia?", "titolo": "Sito, strumenti e numeri", "testo": "Analizzo sito, statistiche, strumenti che usi e concorrenza per capire cosa funziona, cosa no e perché." },
+      { "icona": "layers", "etichetta": "Strategia", "domanda": "Su cosa conviene investire?", "titolo": "Priorità e budget", "testo": "Ti propongo un piano con interventi ordinati per impatto e costo. Decidi tu cosa fare, quando e con chi." },
+      { "icona": "wrench", "etichetta": "Strumenti", "domanda": "Quali strumenti ti servono?", "titolo": "Scelte tecniche senza sprechi", "testo": "Ti consiglio piattaforme, servizi e fornitori adatti alle tue esigenze reali, evitando abbonamenti e funzioni che non userai." },
+      { "icona": "chart", "etichetta": "Affiancamento", "domanda": "Come lo mettiamo in pratica?", "titolo": "Accompagnamento nelle scelte", "testo": "Posso seguire l'attuazione, affiancare il tuo team o valutare i preventivi di altri fornitori, finché i risultati non arrivano." }
+    ],
+    "dopo": "Una consulenza può diventare un appuntamento periodico: rivediamo i numeri e aggiorniamo le priorità quando la tua attività cambia.",
+    "seo_titolo": "Consulenza digitale per piccole imprese",
+    "seo_descrizione": "Audit del sito, scelta degli strumenti e pianificazione di budget e priorità: una consulenza per investire nel digitale con dati chiari."
+  }
+]

@@ -1,0 +1,184 @@
+---
+// Pagina di un singolo servizio: cosa include, il percorso fase per fase (con la navicella),
+// i progetti realizzati con quel servizio, gli altri servizi e la chiamata finale.
+import type { GetStaticPaths } from 'astro';
+import Base from '../../layouts/Base.astro';
+import Icona from '../../components/Icona.astro';
+import PercorsoServizio from '../../components/PercorsoServizio.astro';
+import ProgettoCard from '../../components/ProgettoCard.astro';
+import { icone } from '../../lib/icone';
+import { getPagineServizi, progettiDi, type PaginaServizio } from '../../lib/pagineServizi';
+import { getProgetti } from '../../lib/wp';
+import { getTesti } from '../../lib/testi';
+
+export const getStaticPaths = (async () => {
+  const pagine = await getPagineServizi();
+  return pagine.map((pagina) => ({ params: { slug: pagina.slug }, props: { pagina } }));
+}) satisfies GetStaticPaths;
+
+const { pagina: s } = Astro.props as { pagina: PaginaServizio };
+const [pagine, progetti, testi] = await Promise.all([getPagineServizi(), getProgetti(), getTesti()]);
+const t = testi.pag_servizi;
+const g = testi.generale;
+const collegati = progettiDi(s, progetti).slice(0, 3);
+const altri = pagine.filter((p) => p.slug !== s.slug);
+const indice = pagine.findIndex((p) => p.slug === s.slug);
+const pad = (n: number) => String(n).padStart(2, '0');
+
+const url = new URL(Astro.url.pathname, Astro.site).href;
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Service',
+      name: s.titolo,
+      description: s.seo_descrizione || s.intro,
+      url,
+      serviceType: s.titolo,
+      areaServed: 'IT',
+      provider: { '@type': 'Person', name: g.nome, url: new URL('/', Astro.site).href },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', Astro.site).href },
+        { '@type': 'ListItem', position: 2, name: 'Servizi', item: new URL('/servizi/', Astro.site).href },
+        { '@type': 'ListItem', position: 3, name: s.titolo, item: url },
+      ],
+    },
+  ],
+};
+---
+
+<Base title={s.seo_titolo || s.titolo} description={s.seo_descrizione || s.intro}>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <section class="wrap section testa">
+    <nav class="briciole" aria-label="Percorso">
+      <a href="/servizi/">Servizi</a>
+      <span aria-hidden="true">/</span>
+      <span aria-current="page">{s.titolo}</span>
+    </nav>
+    <span class="icona" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={icone[s.icona] ?? icone.globe} />
+    </span>
+    <p class="contatore">Servizio {pad(indice + 1)} / {pad(pagine.length)}</p>
+    <h1>{s.titolo}</h1>
+    {s.sottotitolo && <p class="sottotitolo">{s.sottotitolo}</p>}
+    {s.intro && <p class="intro">{s.intro}</p>}
+    <div class="azioni">
+      <a class="btn" href="/contatti/">Richiedi un preventivo</a>
+      {s.passi.length > 0 && <a class="btn btn-ghost" href="#percorso">Come lavoro <span aria-hidden="true">↓</span></a>}
+    </div>
+  </section>
+
+  {s.include.length > 0 && (
+    <section class="wrap section">
+      <h2 class="titolo-sezione">Cosa <span class="evidenza">include</span></h2>
+      <ul class="include">
+        {s.include.map((v) => <li>{v}</li>)}
+      </ul>
+    </section>
+  )}
+
+  {s.passi.length > 0 && (
+    <section class="wrap section" id="percorso">
+      <header class="intestazione">
+        <p class="etichetta">Il percorso</p>
+        <h2 class="titolo-sezione">Dall’idea <span class="evidenza">alla messa online</span></h2>
+        <p class="intro">Ogni fase risponde a una domanda precisa. Scorri e segui la navicella: sai sempre a che punto siamo e cosa succede dopo.</p>
+      </header>
+      <PercorsoServizio passi={s.passi} />
+    </section>
+  )}
+
+  {collegati.length > 0 && (
+    <section class="wrap section">
+      <h2 class="titolo-sezione">Progetti <span class="evidenza">realizzati</span></h2>
+      <div class="progetti">
+        {collegati.map((p) => <ProgettoCard progetto={p} testi={testi.progetti} sizes="(min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 100vw" />)}
+      </div>
+      <p class="tutti"><a class="btn btn-ghost" href="/progetti/">Tutti i progetti <Icona nome="arrowRight" /></a></p>
+    </section>
+  )}
+
+  <hr class="sep" />
+
+  <section class="wrap section dopo">
+    <h2 class="titolo-sezione">Dopo la <span class="evidenza">consegna</span></h2>
+    {s.dopo && <p class="intro">{s.dopo}</p>}
+    {altri.length > 0 && (
+      <>
+        <p class="etichetta">Altri servizi</p>
+        <ul class="altri">
+          {altri.map((a) => (
+            <li>
+              <a href={`/servizi/${a.slug}/`}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={icone[a.icona] ?? icone.globe} />
+                {a.titolo}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+  </section>
+
+  <hr class="sep" />
+
+  <section class="wrap section chiusura">
+    <h2>{t.cta_titolo}</h2>
+    {t.cta_testo && <p class="intro">{t.cta_testo}</p>}
+    <a class="btn grande" href="/contatti/">{t.cta_pulsante}<Icona nome="arrowRight" /></a>
+  </section>
+</Base>
+
+<style>
+  .testa { text-align: center; padding-top: 4rem; }
+  @media (max-width: 39.99rem) { .testa { padding-top: 20px; } }
+  .briciole { display: flex; justify-content: center; gap: 0.6rem; margin-bottom: 2.5rem; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .briciole a { color: var(--text-soft); text-decoration: none; }
+  .briciole a:hover { color: var(--accent); }
+  .briciole [aria-current] { color: var(--accent); }
+  .icona { display: inline-grid; place-items: center; width: 4rem; height: 4rem; border-radius: 1rem; background: var(--accent-soft); color: var(--accent); }
+  .contatore { margin: 1.25rem 0 0.75rem; font-family: var(--mono); font-size: var(--fs-sm); color: var(--accent); }
+  h1 { font-size: var(--fs-page); margin: 0 auto 1.25rem; max-width: 16ch; }
+  .sottotitolo { margin: 0 0 1.5rem; color: var(--accent); text-transform: uppercase; font-weight: 600; font-size: var(--fs-sm); letter-spacing: 0.12em; }
+  .intro { color: var(--text-soft); font-size: var(--fs-lead); max-width: 42rem; margin: 0 auto; }
+  .azioni { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; margin-top: 2.25rem; }
+
+  .titolo-sezione { font-size: var(--fs-section); text-align: center; margin: 0 0 3rem; }
+  .intestazione { text-align: center; margin-bottom: 2rem; }
+  .intestazione .titolo-sezione { margin-bottom: 1rem; }
+  .etichetta { font-family: var(--mono); font-size: var(--fs-sm); letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.75rem; }
+
+  .include { list-style: none; margin: 0 auto; padding: 0; max-width: 64rem; display: grid; gap: 0.75rem; }
+  @media (min-width: 40rem) { .include { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 64rem) { .include { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; } }
+  .include li { display: flex; align-items: center; gap: 0.9rem; padding: 1.1rem 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); font-weight: 500; line-height: 1.4; transition: border-color 0.3s; }
+  .include li:hover { border-color: var(--accent-border); }
+  .include li::before { content: ''; flex-shrink: 0; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+
+  .progetti { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; }
+  .progetti > :global(*) { flex: 0 1 100%; }
+  .progetti > :global(.card) { height: auto; }
+  @media (min-width: 40rem) { .progetti > :global(*) { flex-basis: calc((100% - 1.5rem) / 2); } }
+  @media (min-width: 64rem) { .progetti > :global(*) { flex-basis: calc((100% - 3rem) / 3); } }
+  .tutti { text-align: center; margin: 2.5rem 0 0; }
+  .tutti .btn { display: inline-flex; align-items: center; gap: 0.5rem; }
+
+  .sep { border: 0; height: 1px; margin: 0; background: linear-gradient(90deg, transparent, var(--accent-border), transparent); }
+
+  .dopo { text-align: center; }
+  .dopo .titolo-sezione { margin-bottom: 1.25rem; }
+  .dopo .intro { margin-bottom: 3rem; }
+  .altri { list-style: none; margin: 0 auto; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; max-width: 56rem; }
+  .altri a { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1.2rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); text-decoration: none; font-size: var(--fs-sm); font-weight: 500; transition: border-color 0.25s, color 0.25s; }
+  .altri a:hover { border-color: var(--accent-border); color: var(--accent); }
+  .altri svg { color: var(--accent); }
+
+  .chiusura { text-align: center; }
+  .chiusura h2 { font-size: var(--fs-section); margin: 0 0 1rem; }
+  .chiusura .intro { margin-bottom: 2.25rem; }
+  .grande { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.95rem 1.75rem; font-family: var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; font-size: var(--fs-sm); }
+</style>

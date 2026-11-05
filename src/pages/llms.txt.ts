@@ -28,7 +28,7 @@ export const GET: APIRoute = async ({ site }) => {
     '',
     '## Servizi',
     '',
-    ...home.servizi.elenco.map((s) => `- ${s.titolo}: ${riga(s.descrizione)}`),
+    ...home.servizi.elenco.map((s) => (s.link.url.startsWith('/') ? `- [${s.titolo}](${url(s.link.url)}): ${riga(s.descrizione)}` : `- ${s.titolo}: ${riga(s.descrizione)}`)),
     '',
     '## Progetti',
     '',
