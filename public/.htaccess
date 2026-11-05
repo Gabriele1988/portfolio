@@ -15,6 +15,10 @@ RedirectMatch 301 ^/chi-sono/?$ /chi-sono-web-designer-palermo/
   <If "%{REQUEST_URI} =~ m#^/_astro/#">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </If>
+  # Font e immagini fisse del sito cambiano raramente: un anno di cache.
+  <If "%{REQUEST_URI} =~ m#^/(fonts|img)/#">
+    Header set Cache-Control "public, max-age=31536000"
+  </If>
   <FilesMatch "\.(html|xml|txt)$">
     Header set Cache-Control "public, max-age=0, must-revalidate"
   </FilesMatch>

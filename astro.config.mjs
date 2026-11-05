@@ -31,6 +31,8 @@ export default defineConfig({
   trailingSlash: 'ignore',
   build: {
     format: 'directory',
+    // CSS dentro la pagina: nessun file CSS che blocca il primo disegno (PageSpeed).
+    inlineStylesheets: 'always',
   },
   // Vecchio indirizzo della pagina Chi sono (su Apache il 301 vero è in public/.htaccess).
   redirects: {

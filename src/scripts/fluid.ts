@@ -22,6 +22,8 @@ export interface FluidOptions {
   raggio?: number;
   /** Se nessuno muove il mouse, il fumo si muove da solo seguendo una curva. */
   automatico?: boolean;
+  /** Chiamata se il dispositivo è troppo lento (fotogrammi oltre 50 ms): l'effetto si ferma da solo. */
+  onLento?: () => void;
 }
 
 const config = {
@@ -42,10 +44,11 @@ const clearSrc =
 // così dietro il fumo c'è esattamente il colore di sfondo del sito, senza stacchi.
 const displaySrc =
   "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; void main () {     vec3 c = min(texture2D(uTexture, vUv).rgb, 1.0);     gl_FragColor = vec4(c, max(c.r, max(c.g, c.b))); }";
-// Variante per "immagine": la densità del fumo decide dove si vede la foto. Dentro il fumo la foto è
+// Variante per "immagine": la densità del fumo decide dove si vede la foto, con la stessa sfumatura
+// del fumo colorato della home (stessa forma, cambiano solo i colori). Dentro il fumo la foto è
 // schiarita, così il testo in mix-blend-mode: difference sopra diventa scuro e leggibile.
 const displayImmagineSrc =
-  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; uniform sampler2D uImmagine; uniform vec2 dim; uniform vec3 rect; uniform float buio; void main () {     vec3 d = texture2D(uTexture, vUv).rgb;     float m = smoothstep(0.02, 0.45, max(d.r, max(d.g, d.b)));     vec2 p = (vUv * dim - rect.xy) / rect.z;     vec4 c = texture2D(uImmagine, vec2(p.x, 1.0 - p.y)) * step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0);     vec3 chiara = c.a - (c.a - c.rgb) * 0.4;     gl_FragColor = vec4(mix(c.rgb, chiara, m), c.a) * mix(buio, 1.0, m); }";
+  "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTexture; uniform sampler2D uImmagine; uniform vec2 dim; uniform vec3 rect; uniform float buio; void main () {     vec3 d = texture2D(uTexture, vUv).rgb;     float m = min(max(d.r, max(d.g, d.b)) * 2.5, 1.0);     vec2 p = (vUv * dim - rect.xy) / rect.z;     vec4 c = texture2D(uImmagine, vec2(p.x, 1.0 - p.y)) * step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0);     vec3 chiara = c.a - (c.a - c.rgb) * 0.4;     gl_FragColor = vec4(mix(c.rgb, chiara, m), c.a) * mix(buio, 1.0, m); }";
 const splatSrc =
   "precision highp float; precision mediump sampler2D; varying vec2 vUv; uniform sampler2D uTarget; uniform float aspectRatio; uniform vec3 color; uniform vec2 point; uniform float radius; void main () {     vec2 p = vUv - point.xy;     p.x *= aspectRatio;     vec3 splat = exp(-dot(p, p) / radius) * color;     vec3 base = texture2D(uTarget, vUv).xyz;     gl_FragColor = vec4(base + splat, 1.0); }";
 const advectionManualFilteringSrc =
@@ -416,30 +419,49 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
   const onVisibility = () => document.visibilityState === 'visible' && schedule();
   document.addEventListener('visibilitychange', onVisibility);
 
+  let pronto = document.readyState === 'complete';
   function schedule() {
-    if (!raf && !stopped) {
+    if (!raf && !stopped && pronto) {
       lastTime = Date.now();
       raf = requestAnimationFrame(frame);
     }
   }
-  function frame() {
+  // Su dispositivi senza GPU vera (o molto lenti) ogni fotogramma blocca la pagina per centinaia di ms.
+  // Si misura il tempo tra un fotogramma e l'altro (comprende il disegno, che avviene fuori da update):
+  // se nei primi 60 fotogrammi almeno 4 superano gli 80 ms, l'effetto si spegne e resta lo sfondo statico.
+  let fotogrammi = 0;
+  let lenti = 0;
+  let precedente = 0;
+  function frame(ora: number) {
     raf = 0;
-    if (stopped || !visible || document.visibilityState !== 'visible') return;
+    if (stopped || !visible || document.visibilityState !== 'visible') {
+      precedente = 0;
+      return;
+    }
+    if (precedente && fotogrammi++ < 60 && ora - precedente > 80 && ++lenti >= 4) {
+      ferma();
+      opts.onLento?.();
+      return;
+    }
+    precedente = ora;
     const dt = Math.min((Date.now() - lastTime) / 1000, 0.016);
     lastTime = Date.now();
     update(dt);
     raf = requestAnimationFrame(frame);
   }
-  schedule();
+  // Parte a pagina caricata, così non rallenta il caricamento.
+  if (pronto) schedule();
+  else addEventListener('load', () => { pronto = true; schedule(); }, { once: true });
 
-  return () => {
+  function ferma() {
     stopped = true;
     cancelAnimationFrame(raf);
     io.disconnect();
     document.removeEventListener('visibilitychange', onVisibility);
     opts.target.removeEventListener('pointermove', onMove);
     opts.target.removeEventListener('pointerleave', onLeave);
-  };
+  }
+  return ferma;
 }
 
 /*

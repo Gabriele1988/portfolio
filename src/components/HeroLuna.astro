@@ -72,8 +72,10 @@ const { occhiello, titolo, testo, cta, foto, fotoAlt, badge } = Astro.props;
       const cy = largo ? H * 0.58 : H * 0.4;
       return { x: cx - lato / 2, y: cy - lato / 2, lato };
     };
-    const stop = calmo ? null : startFluid(canvas, { target: sez, immagine: { src: canvas.dataset.src!, rect, buio: 0.1 }, raggio: 0.0032, automatico: true });
-    if (!stop) sez.classList.add('senza-gl');
+    // Stessa forma del fumo della home (stesso raggio); cambiano solo i colori, presi dalla luna.
+    const senzaGl = () => { canvas.hidden = true; sez.classList.add('senza-gl'); };
+    const stop = calmo ? null : startFluid(canvas, { target: sez, immagine: { src: canvas.dataset.src!, rect, buio: 0.1 }, automatico: true, onLento: senzaGl });
+    if (!stop) senzaGl();
   }
 </script>
 

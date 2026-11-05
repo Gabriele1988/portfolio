@@ -27,7 +27,9 @@ const { generale: g, home: h } = await getTesti();
   const canvas = hero.querySelector<HTMLCanvasElement>('canvas')!;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const stop = reduce ? null : startFluid(canvas, { target: hero });
+  // Parte da solo; se il dispositivo è troppo lento si ferma e resta lo sfondo statico.
+  const statico = () => hero.classList.replace('is-live', 'is-static') || hero.classList.add('is-static');
+  const stop = reduce ? null : startFluid(canvas, { target: hero, automatico: true, onLento: statico });
   hero.classList.add(stop ? 'is-live' : 'is-static');
 </script>
 
