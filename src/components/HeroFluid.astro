@@ -78,6 +78,8 @@ const { generale: g, home: h } = await getTesti();
     color: var(--white);
     mix-blend-mode: difference;
   }
+  /* Senza fumo il "difference" sullo sfondo viola renderebbe il testo verdastro: resta bianco. */
+  .is-static [data-blend] { mix-blend-mode: normal; }
   h1 {
     font-size: var(--fs-hero);
     line-height: 1;

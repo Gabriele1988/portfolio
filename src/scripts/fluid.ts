@@ -79,6 +79,14 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
   if (!isWebGL2) gl = canvas.getContext('webgl', params) as WebGLRenderingContext | null;
   if (!gl) return null;
   const g = gl;
+  // Senza scheda grafica (rendering software, come nei test di PageSpeed) l'effetto bloccherebbe la pagina:
+  // si rinuncia subito e la hero mostra lo sfondo statico.
+  const info = g.getExtension('WEBGL_debug_renderer_info');
+  const renderer = String(info ? g.getParameter(info.UNMASKED_RENDERER_WEBGL) : g.getParameter(g.RENDERER));
+  if (/swiftshader|llvmpipe|softpipe|software|microsoft basic render/i.test(renderer)) {
+    g.getExtension('WEBGL_lose_context')?.loseContext();
+    return null;
+  }
 
   const halfFloat = g.getExtension('OES_texture_half_float');
   let supportLinearFloat: unknown = g.getExtension('OES_texture_half_float_linear');
@@ -428,7 +436,8 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
   }
   // Su dispositivi senza GPU vera (o molto lenti) ogni fotogramma blocca la pagina per centinaia di ms.
   // Si misura il tempo tra un fotogramma e l'altro (comprende il disegno, che avviene fuori da update):
-  // se nei primi 60 fotogrammi almeno 4 superano gli 80 ms, l'effetto si spegne e resta lo sfondo statico.
+  // se nei primi 60 fotogrammi almeno 4 superano i 50 ms (soglia dei "task lunghi" di PageSpeed),
+  // l'effetto si spegne e resta lo sfondo statico.
   let fotogrammi = 0;
   let lenti = 0;
   let precedente = 0;
@@ -438,7 +447,7 @@ export function startFluid(canvas: HTMLCanvasElement, opts: FluidOptions): (() =
       precedente = 0;
       return;
     }
-    if (precedente && fotogrammi++ < 60 && ora - precedente > 80 && ++lenti >= 4) {
+    if (precedente && fotogrammi++ < 60 && ora - precedente > 50 && ++lenti >= 4) {
       ferma();
       opts.onLento?.();
       return;

@@ -11,8 +11,10 @@ interface Props {
   progetto: Progetto;
   testi: Testi['progetti'];
   eager?: boolean;
+  /** Larghezza della card rispetto allo schermo (per scegliere l'immagine giusta). Predefinita: griglia a 2 colonne. */
+  sizes?: string;
 }
-const { progetto: p, testi: t, eager = false } = Astro.props;
+const { progetto: p, testi: t, eager = false, sizes = '(min-width: 48rem) 45vw, 100vw' } = Astro.props;
 const online = p.stato === 'online';
 const etichettaStato = { online: t.stato_online, in_sviluppo: t.stato_sviluppo, offline: t.stato_offline }[p.stato];
 const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
@@ -31,8 +33,8 @@ const tag = p.tecnologie.length ? p.tecnologie : p.servizi.map((s) => s.nome);
         alt={p.copertina.alt || p.titolo}
         width={p.copertina.width ?? 1200}
         height={p.copertina.height ?? 750}
-        widths={[480, 800, 1200]}
-        sizes="(min-width: 48rem) 45vw, 100vw"
+        widths={[400, 640, 800, 1200]}
+        sizes={sizes}
         loading={eager ? 'eager' : 'lazy'}
         fetchpriority={eager ? 'high' : undefined}
       />
