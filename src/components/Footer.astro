@@ -5,8 +5,10 @@ import Logo from './Logo.astro';
 import Icona from './Icona.astro';
 import Social from './Social.astro';
 import { getTesti } from '../lib/testi';
+import { getPagineServizi } from '../lib/pagineServizi';
 
-const g = (await getTesti()).generale;
+const [testi, pagine] = await Promise.all([getTesti(), getPagineServizi()]);
+const g = testi.generale;
 const anno = new Date().getFullYear();
 const righe = (t: string) => t.split('\n').map((r) => r.trim()).filter(Boolean);
 const voci = [
@@ -35,7 +37,16 @@ const voci = [
         </ul>
       </nav>
 
-      <div>
+      {pagine.length > 0 && (
+        <nav aria-label={g.menu_servizi}>
+          <p class="titolo">{g.menu_servizi}</p>
+          <ul>
+            {pagine.map((p) => <li><a href={`/servizi/${p.slug}/`}>{p.titolo}</a></li>)}
+          </ul>
+        </nav>
+      )}
+
+      <div class="recapiti">
         <p class="titolo">{g.footer_titolo_contatti}</p>
         <ul class="contatti">
           {g.email && <li><a href={`mailto:${g.email}`}><Icona nome="mail" />{g.email}</a></li>}
@@ -58,9 +69,10 @@ const voci = [
   footer::before { content: ''; position: absolute; inset: 0 0 auto; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-border), transparent); }
   footer p { margin: 0; }
 
-  .colonne { display: grid; gap: 3rem; padding-block: 4.5rem 3.5rem; }
-  @media (min-width: 48rem) { .colonne { grid-template-columns: 1fr 1fr; } .marca { grid-column: 1 / -1; } }
-  @media (min-width: 64rem) { .colonne { grid-template-columns: 2fr 1fr 1fr; } .marca { grid-column: auto; } }
+  .colonne { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem 1.5rem; padding-block: 4.5rem 3.5rem; }
+  .marca, .recapiti { grid-column: 1 / -1; }
+  @media (min-width: 48rem) { .colonne { grid-template-columns: repeat(3, 1fr); gap: 3rem; } .recapiti { grid-column: auto; } }
+  @media (min-width: 64rem) { .colonne { grid-template-columns: 1.6fr 1fr 1fr 1.2fr; } .marca { grid-column: auto; } }
 
   .marca { display: grid; gap: 1.75rem; align-content: start; }
   .logo { display: inline-block; color: var(--text); line-height: 0; }
