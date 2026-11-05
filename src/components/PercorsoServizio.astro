@@ -1,6 +1,6 @@
 ---
 // Percorso di un servizio: un sentiero curvo che si snoda tra le fasi (a sinistra e a destra, alternate)
-// e si riempie scorrendo. Un ufo viaggia sulla punta seguendo le curve (si inclina verso dove va)
+// e si riempie scorrendo. Una piccola flotta di ufo viaggia sulla punta seguendo le curve (si inclina verso dove va)
 // e le fasi che ha superato restano accese. In fondo c'è il pianeta d'arrivo.
 // Il tracciato si ricalcola dalle posizioni reali delle card (anche quando cambiano larghezza o testi).
 // Con "riduci movimento" il sentiero è pieno e l'ufo è fermo all'arrivo.
@@ -28,21 +28,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
   <div class="navicella" aria-hidden="true" data-navicella>
     <div class="scafo" data-scafo>
-      <svg viewBox="96 60 232 142" width="72" height="44" fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10">
-        <defs>
-          <linearGradient id="pc-ufo" x1="96" y1="0" x2="328" y2="0" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stop-color="rgb(160 105 255)" />
-            <stop offset="1" stop-color="rgb(229 0 255)" />
-          </linearGradient>
-        </defs>
-        <path class="cupola" d="M279.613,140.334c0-37.403-30.321-67.723-67.723-67.723s-67.723,30.321-67.723,67.723" fill="rgb(160 105 255 / 0.22)" stroke="url(#pc-ufo)" />
-        <path d="M196.889,140.334h83.787c13.583,0,26.609,5.396,36.213,15c-9.604,9.604-22.631,15-36.213,15H143.102c-13.583,0-26.609-5.396-36.213-15c9.604-9.604,22.631-15,36.213-15h38.787" fill="rgb(97 9 250 / 0.55)" stroke="url(#pc-ufo)" />
-        <g class="raggi" stroke="rgb(240 138 255)">
-          <line x1="166.889" y1="170.334" x2="166.889" y2="192.611" />
-          <line x1="211.889" y1="170.334" x2="211.889" y2="192.611" />
-          <line x1="256.889" y1="170.334" x2="256.889" y2="192.611" />
-        </g>
-      </svg>
+      <svg viewBox="0 0 512 512" width="88" height="88"><g> <g> <path style="fill:#A4FEF1;" d="M211.889,72.366c-37.403,0-67.723,30.321-67.723,67.723l46.936,5.213l88.511-5.213C279.613,102.687,249.292,72.366,211.889,72.366z"/> <path style="fill:#6EFEEB;" d="M167.868,118.388c0-13.947,4.22-26.906,11.447-37.679c-20.948,11.516-35.149,33.787-35.149,59.381h135.447c0-7.594-1.269-14.887-3.574-21.702H167.868z"/> <path style="fill:#5B92F2;" d="M280.676,140.09H143.102c-13.583,0-26.609,5.396-36.213,15v0c9.604,9.604,22.631,15,36.213,15h137.574c13.583,0,26.609-5.396,36.213-15v0C307.285,145.485,294.259,140.09,280.676,140.09z"/> <path style="fill:#A4FEF1;" d="M331,222.384c-37.403,0-67.723,30.321-67.723,67.723l46.936,5.213l88.511-5.213C398.723,252.704,368.403,222.384,331,222.384z"/> <path style="fill:#6EFEEB;" d="M286.979,268.405c0-13.947,4.22-26.906,11.447-37.679c-20.948,11.516-35.149,33.787-35.149,59.381h135.447c0-7.594-1.269-14.887-3.574-21.702H286.979z"/> <path style="fill:#E54696;" d="M399.787,290.107H262.213c-13.583,0-26.609,5.396-36.213,15v0c9.604,9.604,22.631,15,36.213,15h137.574c13.583,0,26.609-5.396,36.213-15v0C426.396,295.503,413.369,290.107,399.787,290.107z"/> <path style="fill:#A4FEF1;" d="M181,364.677c-37.403,0-67.723,30.321-67.723,67.723l46.936,5.213l88.511-5.213C248.723,394.998,218.403,364.677,181,364.677z"/> <path style="fill:#6EFEEB;" d="M136.979,410.698c0-13.947,4.22-26.906,11.447-37.679c-20.948,11.516-35.149,33.787-35.149,59.381h135.447c0-7.594-1.269-14.887-3.574-21.702H136.979z"/> <path style="fill:#923EC3;" d="M249.787,432.4H112.213c-13.583,0-26.609,5.396-36.213,15v0c9.604,9.604,22.631,15,36.213,15h137.574c13.583,0,26.609-5.396,36.213-15v0C276.396,437.796,263.369,432.4,249.787,432.4z"/> <circle style="fill:#ABE700;" cx="361" cy="65.228" r="15.042"/> <circle style="fill:#5B92F2;" cx="466" cy="200.228" r="15.042"/> <circle style="fill:#923EC3;" cx="106" cy="231.847" r="15.042"/> <circle style="fill:#FDE31D;" cx="360.958" cy="408.811" r="15.042"/> <circle style="fill:#E54696;" cx="406" cy="470.23" r="15.042"/> <path style="fill:#FEEF8F;" d="M462,29.69c0,21.836,17.702,39.538,39.538,39.538H512h-10.462C479.702,69.228,462,86.93,462,108.766v10.462v-10.462c0-21.836-17.702-39.538-39.538-39.538H412h10.462C444.298,69.228,462,51.526,462,29.69V19.228V29.69z"/> <path style="fill:#FDE31D;" d="M50,259.604c0,21.836,17.702,39.538,39.538,39.538H100H89.538C67.702,299.141,50,316.843,50,338.679v10.462v-10.462c0-21.836-17.702-39.538-39.538-39.538H0h10.462C32.298,299.141,50,281.44,50,259.604v-10.462V259.604z"/> </g> <g> <g> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M166,433.4h83.787c13.583,0,26.609,5.396,36.213,15l0,0v0c-9.604,9.604-22.631,15-36.213,15H112.213c-13.583,0-26.609-5.396-36.213-15l0,0h0c9.604-9.604,22.631-15,36.213-15H151"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M248.723,433.4c0-37.403-30.321-67.723-67.723-67.723s-67.723,30.321-67.723,67.723"/> <line class="raggio" style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" x1="181" y1="463.4" x2="181" y2="485.677"/> <line class="raggio" style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" x1="226" y1="463.4" x2="226" y2="485.677"/> <line class="raggio" style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" x1="136" y1="463.4" x2="136" y2="485.677"/> </g> <g> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M316,290.334h83.787c13.583,0,26.609,5.396,36.213,15v0l0,0c-9.604,9.604-22.631,15-36.213,15H262.213c-13.583,0-26.609-5.396-36.213-15h0l0,0c9.604-9.604,22.631-15,36.213-15H301"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M398.723,290.334c0-37.403-30.321-67.723-67.723-67.723s-67.723,30.321-67.723,67.723"/> <line class="raggio" style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" x1="331" y1="320.334" x2="331" y2="342.611"/> <line class="raggio" style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" x1="376" y1="320.334" x2="376" y2="342.611"/> <line class="raggio" style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" x1="286" y1="320.334" x2="286" y2="342.611"/> </g> <g> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M196.889,140.334h83.787c13.583,0,26.609,5.396,36.213,15v0v0c-9.604,9.604-22.631,15-36.213,15H143.102c-13.583,0-26.609-5.396-36.213-15l0,0l0,0c9.604-9.604,22.631-15,36.213-15h38.787"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M279.613,140.334c0-37.403-30.321-67.723-67.723-67.723s-67.723,30.321-67.723,67.723"/> <line class="raggio" style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" x1="211.889" y1="170.334" x2="211.889" y2="192.611"/> <line class="raggio" style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" x1="256.889" y1="170.334" x2="256.889" y2="192.611"/> <line class="raggio" style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" x1="166.889" y1="170.334" x2="166.889" y2="192.611"/> </g> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="361" cy="65.228" r="15.042"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="466" cy="200.228" r="15.042"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M462,29.69c0,21.836,17.702,39.538,39.538,39.538H512h-10.462C479.702,69.228,462,86.93,462,108.766v10.462v-10.462c0-21.836-17.702-39.538-39.538-39.538H412h10.462C444.298,69.228,462,51.526,462,29.69V19.228V29.69z"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="106" cy="231.847" r="15.042"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="361" cy="410.23" r="15.042"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="406" cy="470.23" r="15.042"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M50,259.604c0,21.836,17.702,39.538,39.538,39.538H100H89.538C67.702,299.141,50,316.843,50,338.679v10.462v-10.462c0-21.836-17.702-39.538-39.538-39.538H0h10.462C32.298,299.141,50,281.44,50,259.604v-10.462V259.604z"/> </g> </g></svg>
     </div>
   </div>
 
@@ -64,27 +50,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
   </ol>
 
   <div class="arrivo" aria-hidden="true" data-arrivo>
-    <svg viewBox="0 0 512 512" width="72" height="72" fill="none" stroke-width="15" stroke-miterlimit="10">
-      <defs>
-        <linearGradient id="pc-pianeta" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stop-color="rgb(160 105 255)" />
-          <stop offset="1" stop-color="rgb(229 0 255)" />
-        </linearGradient>
-      </defs>
-      <g stroke="url(#pc-pianeta)">
-        <circle class="corpo" cx="256" cy="256" r="165" fill="rgb(97 9 250 / 0.18)" stroke="none" />
-        <path d="M319.945,416.26c-19.774,7.897-41.352,12.24-63.945,12.24c-95.269,0-172.5-77.231-172.5-172.5c0-22.706,4.387-44.387,12.36-64.242" />
-        <path d="M417.794,196.04c6.924,18.675,10.706,38.876,10.706,59.96c0,58.742-29.361,110.625-74.209,141.776" />
-        <path d="M114.248,157.675C145.401,112.847,197.273,83.5,256,83.5c68.903,0,128.37,40.398,156.008,98.801" />
-        <circle cx="196" cy="204.598" r="30" />
-        <path d="M415.701,321.311C406.289,300.489,385.336,286,361,286c-33.137,0-60,26.863-60,60c0,1.963,0.094,3.905,0.279,5.82" />
-        <circle cx="199" cy="337.287" r="22.287" />
-        <circle cx="331" cy="157.598" r="15" />
-        <path d="M47.724,122.79C13.499,69.366-0.342,28.981,14.319,14.319c20.366-20.366,90.368,14.266,176.006,82.134" />
-        <path d="M415.43,321.526c67.945,85.705,102.629,155.776,82.251,176.154c-29.289,29.289-161.237-55.171-294.714-188.648C141.709,247.775,90.775,186.839,56.423,136.001" />
-        <path d="M397.769,354.284c45.633,55.433,70.535,96.163,61.607,105.091c-14.873,14.873-117.984-64.124-230.306-176.445S37.751,67.498,52.625,52.625c8.929-8.929,49.657,15.972,105.087,61.603" />
-      </g>
-    </svg>
+    <svg viewBox="0 0 512.174 512.174" width="96" height="96"><g> <g> <circle style="fill:#94B7F7;" cx="256.174" cy="256.087" r="172.5"/> <path style="fill:#5B92F2;" d="M272.385,412.377c-95.269,0-172.5-77.231-172.5-172.5c0-43.509,16.115-83.25,42.693-113.596c-36.101,31.618-58.903,78.047-58.903,129.807c0,95.269,77.231,172.5,172.5,172.5c51.76,0,98.189-22.803,129.807-58.904C355.635,396.262,315.894,412.377,272.385,412.377z"/> <circle style="fill:#5B92F2;" cx="151.132" cy="451.045" r="15.042"/> <circle style="fill:#923EC3;" cx="361.174" cy="46.087" r="15.042"/> <circle style="fill:#923EC3;" cx="466.174" cy="182.388" r="15.042"/> <path style="fill:#5B92F2;" d="M369.752,382.576l-64.351-57.295l-3.948,26.626l53.012,45.956c8.902-6.186,20.027-15.162,31.053-27.656C379.867,375.191,374.493,379.282,369.752,382.576z"/> <circle style="fill:#E54696;" cx="466.174" cy="181.388" r="15.042"/> <path style="fill:#FDE31D;" d="M415.604,321.613l-17.661,32.758c45.633,55.432,70.535,96.163,61.607,105.092c-14.873,14.873-117.985-64.124-230.306-176.445C116.923,170.696,37.926,67.585,52.799,52.712c8.929-8.929,49.657,15.972,105.087,61.603L190.5,96.54C104.862,28.673,34.859-5.96,14.493,14.406C-20.856,69,143.173,249.367,203.141,309.12c133.477,133.477,265.425,217.937,294.714,188.648C518.233,477.39,483.549,407.319,415.604,321.613z"/> <path style="fill:#5B92F2;" d="M211.238,217.685c-16.569,0-30-13.431-30-30c0-3.476,0.598-6.812,1.686-9.917c-9.922,4.894-16.75,15.106-16.75,26.917c0,16.569,13.431,30,30,30c13.092,0,24.219-8.39,28.314-20.083C220.492,216.573,215.996,217.685,211.238,217.685z"/> <circle style="fill:#5B92F2;" cx="199.174" cy="337.374" r="22.287"/> <circle style="fill:#5B92F2;" cx="331.174" cy="157.685" r="15"/> <line style="fill:none;stroke:#FFFFFF;stroke-width:15;stroke-miterlimit:10;" x1="196.174" y1="121.087" x2="196.174" y2="136.087"/> <line style="fill:none;stroke:#FFFFFF;stroke-width:15;stroke-miterlimit:10;" x1="226.174" y1="121.087" x2="226.174" y2="136.087"/> <path style="fill:#FEEF8F;" d="M462.174,10.549c0,21.836,17.702,39.538,39.538,39.538h10.462h-10.462c-21.836,0-39.538,17.702-39.538,39.538v10.462V89.625c0-21.836-17.702-39.538-39.538-39.538h-10.462h10.462C444.472,50.087,462.174,32.385,462.174,10.549V0.087V10.549z"/> <path style="fill:#FDE31D;" d="M50,421.723c0,21.836,17.702,39.538,39.538,39.538H100H89.538C67.702,461.261,50,478.963,50,500.799v10.462v-10.462c0-21.836-17.702-39.538-39.538-39.538H0h10.462C32.298,461.261,50,443.56,50,421.723v-10.462V421.723z"/> <circle style="fill:#ABE700;" cx="39.788" cy="346.087" r="15.042"/> </g> <g> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M320.119,416.347c-19.774,7.897-41.352,12.24-63.945,12.24c-95.269,0-172.5-77.231-172.5-172.5c0-22.706,4.387-44.387,12.36-64.242"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M417.968,196.128c6.924,18.675,10.706,38.876,10.706,59.96c0,58.742-29.361,110.625-74.209,141.776"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M114.422,157.762c31.153-44.828,83.026-74.175,141.752-74.175c68.903,0,128.37,40.398,156.008,98.801"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="196.174" cy="204.685" r="30"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M415.875,321.398c-9.413-20.822-30.365-35.311-54.701-35.311c-33.137,0-60,26.863-60,60c0,1.963,0.094,3.905,0.279,5.82"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="199.174" cy="337.374" r="22.287"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="331.174" cy="157.685" r="15"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M47.898,122.877C13.673,69.453-0.168,29.068,14.493,14.406C34.859-5.96,104.862,28.672,190.499,96.54"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M415.604,321.613c67.945,85.705,102.629,155.776,82.251,176.154c-29.289,29.289-161.237-55.171-294.714-188.648C141.883,247.862,90.949,186.926,56.597,136.088"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M397.943,354.371c45.633,55.433,70.535,96.163,61.607,105.091c-14.873,14.873-117.984-64.124-230.306-176.445S37.926,67.585,52.799,52.712c8.929-8.929,49.657,15.972,105.087,61.603"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="361.174" cy="46.087" r="15.042"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="466.174" cy="181.087" r="15.042"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M462.174,10.549c0,21.836,17.702,39.538,39.538,39.538h10.462h-10.462c-21.836,0-39.538,17.702-39.538,39.538v10.462V89.625c0-21.836-17.702-39.538-39.538-39.538h-10.462h10.462C444.472,50.087,462.174,32.385,462.174,10.549V0.087V10.549z"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="151.132" cy="451.045" r="15.042"/> <circle style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" cx="39.788" cy="346.087" r="15.042"/> <path style="fill:none;stroke:#f4f0ff;stroke-width:15;stroke-miterlimit:10;" d="M50.174,422.549c0,21.836,17.702,39.538,39.538,39.538h10.462H89.712c-21.836,0-39.538,17.702-39.538,39.538v10.462v-10.462c0-21.836-17.702-39.538-39.538-39.538H0.174h10.462C32.472,462.087,50.174,444.385,50.174,422.549v-10.462V422.549z"/> </g> </g></svg>
   </div>
 </div>
 
@@ -299,17 +265,17 @@ const pad = (n: number) => String(n).padStart(2, '0');
   .navicella { position: absolute; z-index: 3; top: 0; left: 0; width: 0; height: 0; will-change: transform; pointer-events: none; }
   .scafo {
     position: absolute;
-    left: -36px;
-    top: -26px;
-    width: 72px;
-    height: 44px;
-    filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent-light) 60%, transparent));
+    left: -44px;
+    top: -44px;
+    width: 88px;
+    height: 88px;
+    filter: drop-shadow(0 0 8px rgb(164 254 241 / 0.35));
   }
   .scafo svg { display: block; overflow: visible; animation: dondola 3s ease-in-out infinite; }
   /* Raggi sotto l'ufo: tremolano mentre si muove */
-  .raggi { opacity: 0.35; transition: opacity 0.3s; }
-  .in-volo .raggi { opacity: 1; animation: raggi 0.35s ease-in-out infinite alternate; }
-  .fermo .raggi { opacity: 0; }
+  .raggio { opacity: 0.35; transition: opacity 0.3s; }
+  .in-volo .raggio { opacity: 1; animation: raggi 0.35s ease-in-out infinite alternate; }
+  .fermo .raggio { opacity: 0; }
   @keyframes raggi { from { opacity: 0.45; } to { opacity: 1; } }
   @keyframes dondola { 0%, 100% { transform: translateY(-2px) rotate(-3deg); } 50% { transform: translateY(2px) rotate(3deg); } }
 
@@ -372,12 +338,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
   }
 
   /* ---------- Pianeta d'arrivo ---------- */
-  .arrivo { position: absolute; left: 50%; bottom: 0; z-index: 2; translate: -50% 50%; width: 4.5rem; height: 4.5rem; }
-  .arrivo svg { display: block; width: 100%; height: 100%; overflow: visible; opacity: 0.55; transition: opacity 0.5s, scale 0.6s cubic-bezier(.3, 1.6, .5, 1), filter 0.5s; }
+  .arrivo { position: absolute; left: 50%; bottom: 0; z-index: 2; translate: -50% 50%; width: 4.75rem; height: 4.75rem; }
+  @media (min-width: 48rem) { .arrivo { width: 6.5rem; height: 6.5rem; } .scafo { scale: 1.2; } }
+  .arrivo svg { display: block; width: 100%; height: 100%; overflow: visible; opacity: 0.7; transition: opacity 0.5s, scale 0.6s cubic-bezier(.3, 1.6, .5, 1), filter 0.5s; }
   .arrivo.raggiunto svg { opacity: 1; scale: 1.12; filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent-light) 60%, transparent)); }
 
   @media (prefers-reduced-motion: reduce) {
     .card { opacity: 1; transform: none; transition: none; }
-    .scafo svg, .in-volo .raggi { animation: none; }
+    .scafo svg, .in-volo .raggio { animation: none; }
   }
 </style>
