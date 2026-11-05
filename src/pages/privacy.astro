@@ -16,6 +16,9 @@ const titolare = g.nome_completo || g.nome;
 const aggiornata = '5 novembre 2026';
 // La casella del Titolare è su Outlook.com (Microsoft) se l'indirizzo è hotmail/outlook/live.
 const microsoft = /@(hotmail|outlook|live|msn)\./i.test(g.email);
+// Hosting del sito e di WordPress; la posta con il dominio del sito (es. info@gabrielevilardo.it) è sullo stesso hosting.
+const hosting = { nome: 'Grinta Hosting', url: 'https://grintahosting.it/' };
+const emailSuHosting = g.email.toLowerCase().endsWith('@' + dominio.replace(/^www\./, ''));
 
 const indice = [
   { id: 'riepilogo', titolo: 'Riepilogo' },
@@ -262,11 +265,11 @@ const finalita = ['Contattare l’Utente', 'Creazione e gestione di questo sito'
         <IconaStrumento icona="server" />
         <div>
           <h4>Hosting del sito e log tecnici</h4>
-          <p class="tipo">Fornitore di hosting del Titolare</p>
+          <p class="tipo">{hosting.nome}</p>
         </div>
       </header>
       <p>
-      Il sito {dominio} e WordPress sono ospitati presso il fornitore di hosting del Titolare. Durante l’accesso alle
+      Il sito {dominio} e WordPress sono ospitati presso <a href={hosting.url} target="_blank" rel="noopener">{hosting.nome}</a>, fornitore dei servizi di infrastruttura web. Durante l’accesso alle
       pagine l’infrastruttura può trattare indirizzo IP, data e ora della richiesta, pagine richieste, informazioni sul
       browser e sul dispositivo e log tecnici necessari all’erogazione del sito, alla sicurezza, alla prevenzione degli
       abusi e alla diagnosi di malfunzionamenti. I tempi di conservazione dei log dipendono dalle impostazioni del
@@ -278,12 +281,12 @@ const finalita = ['Contattare l’Utente', 'Creazione e gestione di questo sito'
         <IconaStrumento icona="mail" />
         <div>
           <h4>Gestione della posta elettronica</h4>
-          <p class="tipo">{microsoft ? 'Microsoft Outlook.com' : 'Servizio email del Titolare'}</p>
+          <p class="tipo">{microsoft ? 'Microsoft Outlook.com' : emailSuHosting ? hosting.nome : 'Servizio email del Titolare'}</p>
         </div>
       </header>
       <p>
       Le comunicazioni inviate a {g.email || 'l’indirizzo del Titolare'}, comprese quelle generate dal modulo contatti, sono
-      gestite tramite {microsoft ? <>il servizio Outlook.com di Microsoft (<a href="https://privacy.microsoft.com/it-it/privacystatement" target="_blank" rel="noopener">privacy policy</a>)</> : 'il servizio email del Titolare'}.
+      gestite tramite {microsoft ? <>il servizio Outlook.com di Microsoft (<a href="https://privacy.microsoft.com/it-it/privacystatement" target="_blank" rel="noopener">privacy policy</a>)</> : emailSuHosting ? <>il servizio email di {hosting.nome}</> : 'il servizio email del Titolare'}.
       Per ricevere, consegnare e conservare i messaggi possono essere trattati nome del mittente, indirizzo email,
       eventuale numero di telefono e altri dati inclusi nel testo, insieme a data e ora e alle intestazioni tecniche
       necessarie al recapito e alla sicurezza. Le informazioni servono a rispondere alle richieste e a gestire i rapporti
