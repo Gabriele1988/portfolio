@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.22.1
+ * Version:     1.22.2
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -2703,7 +2703,8 @@ function portfolio_blog_testo( $argomento ) {
 	$prompt .= "- Apri con un paragrafo che dica subito il problema del lettore. Usa sottotitoli <h2> chiari, esempi pratici e consigli applicabili.\n";
 	$prompt .= "- Chiudi con un breve paragrafo che inviti a chiedere un parere o un preventivo, con un link a " . $sito . "/contatti/.\n";
 	$prompt .= "- Non inventare dati, statistiche, clienti o citazioni. Se citi numeri, devono essere prudenti e generali.\n";
-	$prompt .= "- titolo: massimo 65 caratteri, con la parola chiave principale. meta_descrizione: 140-155 caratteri. estratto: 1-2 frasi.\n";
+	$prompt .= "- titolo: frase naturale e completa rivolta al lettore (dagli del tu), con articoli e possessivi, mai stile telegrafico da parole chiave. Formato preferito: una domanda diretta seguita dalla promessa, es. \"Il tuo sito web non porta clienti? 5 motivi e come rimediare\" (NON \"Sito web non porta clienti: 5 motivi e come rimediare\"). Massimo 70 caratteri, con la parola chiave principale.\n";
+	$prompt .= "- meta_descrizione: 140-155 caratteri. estratto: 1-2 frasi.\n";
 	$prompt .= "- slug: breve, minuscolo, parole separate da trattini, senza articoli inutili.\n";
 	$prompt .= "- tag: da 2 a 5, brevi.\n";
 	$prompt .= "- prompt_immagine: descrizione in inglese di un'immagine di copertina che rappresenti il tema in modo visivo e metaforico, senza testo, scritte, loghi o persone riconoscibili.\n";
