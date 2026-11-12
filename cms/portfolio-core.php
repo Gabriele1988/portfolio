@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.21.0
+ * Version:     1.22.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -2560,6 +2560,7 @@ function portfolio_blog_opzioni() {
 		'modello_immagine'=> 'gemini-3.1-flash-image',
 		'avvisa'          => 1,
 		'immagine'        => 'grafica',
+		'immagine_base'   => 0,
 	) );
 }
 
@@ -2750,9 +2751,26 @@ function portfolio_blog_testo( $argomento ) {
 	return $a;
 }
 
-function portfolio_copertina_png( $titolo, $etichetta, $bold, $medium, $seme ) {
+function portfolio_copertina_png( $titolo, $etichetta, $bold, $medium, $seme, $base = '' ) {
 	$w = 1600; $h = 900;
 	mt_srand( crc32( $seme ) );
+	// Immagine di base scelta in Blog automatico: ritagliata a 16:9 (dal centro), con un velo scuro dove va il testo.
+	$foto = $base && is_readable( $base ) ? @imagecreatefromstring( (string) file_get_contents( $base ) ) : false; // phpcs:ignore
+	if ( $foto ) {
+		$fw = imagesx( $foto ); $fh = imagesy( $foto );
+		$scala = max( $w / $fw, $h / $fh );
+		$sw = (int) round( $w / $scala ); $sh = (int) round( $h / $scala );
+		$im = imagecreatetruecolor( $w, $h );
+		imagecopyresampled( $im, $foto, 0, 0, (int) ( ( $fw - $sw ) / 2 ), (int) ( ( $fh - $sh ) / 2 ), $w, $h, $sw, $sh );
+		imagedestroy( $foto );
+		imagealphablending( $im, true );
+		for ( $x = 0; $x < $w; $x += 4 ) {
+			$a = (int) max( 0, min( 127, 127 - ( 1 - $x / ( $w * 0.85 ) ) * 115 ) );
+			imagefilledrectangle( $im, $x, 0, $x + 3, $h, imagecolorallocatealpha( $im, 8, 8, 12, $a ) );
+		}
+		imagefilledrectangle( $im, 0, 0, $w, $h, imagecolorallocatealpha( $im, 8, 8, 12, 95 ) );
+		return portfolio_copertina_testo( $im, $titolo, $etichetta, $bold, $medium );
+	}
 	// Sfondo: macchie di luce viola e fucsia disegnate in piccolo e ingrandite (sfumature morbide).
 	$pw = 160; $ph = 90;
 	$p = imagecreatetruecolor( $pw, $ph );
@@ -2792,7 +2810,12 @@ function portfolio_copertina_png( $titolo, $etichetta, $bold, $medium, $seme ) {
 	imagefilledellipse( $im, $cx, $cy, 230, 230, imagecolorallocatealpha( $im, 244, 240, 255, 112 ) );
 	imageellipse( $im, $cx, $cy, 230, 230, imagecolorallocatealpha( $im, 244, 240, 255, 60 ) );
 	imagearc( $im, $cx, $cy, 420, 110, 160, 380, imagecolorallocatealpha( $im, 240, 138, 255, 40 ) );
+	return portfolio_copertina_testo( $im, $titolo, $etichetta, $bold, $medium );
+}
 
+/** Scrive etichetta, titolo e indirizzo del sito sulla copertina e la restituisce in PNG. */
+function portfolio_copertina_testo( $im, $titolo, $etichetta, $bold, $medium ) {
+	$h      = imagesy( $im );
 	$bianco = imagecolorallocate( $im, 255, 255, 255 );
 	$viola  = imagecolorallocate( $im, 196, 160, 255 );
 	$x0 = 110;
@@ -2850,7 +2873,8 @@ function portfolio_blog_copertina_grafica( $articolo, $post_id ) {
 		return new WP_Error( 'portfolio_copertina', 'Font della copertina non scaricato.' );
 	}
 	$tag  = (array) ( $articolo['tag'] ?? array() );
-	$png  = portfolio_copertina_png( $articolo['titolo'], 'Blog' . ( $tag ? ' · ' . $tag[0] : '' ), $bold, $medium, $articolo['titolo'] );
+	$base = (int) portfolio_blog_opzioni()['immagine_base'];
+	$png  = portfolio_copertina_png( $articolo['titolo'], 'Blog' . ( $tag ? ' · ' . $tag[0] : '' ), $bold, $medium, $articolo['titolo'], $base ? (string) get_attached_file( $base ) : '' );
 	return portfolio_blog_allega( base64_encode( $png ), 'image/png', $articolo, $post_id, sanitize_text_field( $articolo['titolo'] ) );
 }
 
@@ -3007,7 +3031,10 @@ add_action( 'save_post_post', function ( $id ) {
 } );
 
 add_action( 'admin_menu', function () {
-	add_submenu_page( 'edit.php', 'Blog automatico', 'Blog automatico', 'manage_options', 'portfolio-blog', 'portfolio_blog_pagina' );
+	$hook = add_submenu_page( 'edit.php', 'Blog automatico', 'Blog automatico', 'manage_options', 'portfolio-blog', 'portfolio_blog_pagina' );
+	add_action( 'load-' . $hook, function () {
+		wp_enqueue_media();
+	} );
 } );
 
 add_action( 'admin_post_portfolio_blog_salva', function () {
@@ -3030,6 +3057,7 @@ add_action( 'admin_post_portfolio_blog_salva', function () {
 		'modello_immagine' => sanitize_text_field( $in['modello_immagine'] ?? '' ) ?: $def['modello_immagine'],
 		'avvisa'           => empty( $in['avvisa'] ) ? 0 : 1,
 		'immagine'         => ( $in['immagine'] ?? '' ) === 'gemini' ? 'gemini' : 'grafica',
+		'immagine_base'    => wp_attachment_is_image( (int) ( $in['immagine_base'] ?? 0 ) ) ? (int) $in['immagine_base'] : 0,
 	);
 	update_option( 'portfolio_blog', $o );
 	portfolio_blog_pianifica();
@@ -3082,6 +3110,33 @@ function portfolio_blog_pagina() {
 					<label><input type="radio" name="immagine" value="grafica" <?php checked( $o['immagine'], 'grafica' ); ?>> Copertina grafica con il titolo, nei colori del sito (gratuita)</label><br>
 					<label><input type="radio" name="immagine" value="gemini" <?php checked( $o['immagine'], 'gemini' ); ?>> Illustrazione creata da Gemini (serve la fatturazione attiva o i crediti Google Cloud)</label>
 					<p class="description">Se Gemini non riesce a creare l'immagine si usa la copertina grafica.</p></td></tr>
+				<tr><th scope="row">Immagine di base</th><td>
+					<input type="hidden" name="immagine_base" id="pb-base" value="<?php echo esc_attr( $o['immagine_base'] ); ?>">
+					<div id="pb-base-anteprima" style="margin-bottom:8px"><?php echo $o['immagine_base'] ? wp_get_attachment_image( $o['immagine_base'], 'medium', false, array( 'style' => 'max-width:320px;height:auto;border-radius:6px' ) ) : ''; ?></div>
+					<button type="button" class="button" id="pb-base-scegli">Scegli immagine</button>
+					<button type="button" class="button-link" id="pb-base-togli" <?php echo $o['immagine_base'] ? '' : 'hidden'; ?>>Togli</button>
+					<p class="description">Facoltativa. La copertina grafica usa questa immagine come sfondo, con un velo scuro e il titolo sopra. Va bene una 1600×900 o più grande: viene ritagliata a 16:9 dal centro. Senza immagine si usa lo sfondo spaziale.</p>
+					<script>
+						jQuery( function ( $ ) {
+							var cornice;
+							$( '#pb-base-scegli' ).on( 'click', function () {
+								cornice = cornice || wp.media( { title: 'Immagine di base delle copertine', library: { type: 'image' }, multiple: false, button: { text: 'Usa questa immagine' } } );
+								cornice.off( 'select' ).on( 'select', function () {
+									var a = cornice.state().get( 'selection' ).first().toJSON();
+									$( '#pb-base' ).val( a.id );
+									var u = ( a.sizes && a.sizes.medium ? a.sizes.medium.url : a.url );
+									$( '#pb-base-anteprima' ).html( $( '<img>' ).attr( 'src', u ).css( { maxWidth: '320px', height: 'auto', borderRadius: '6px' } ) );
+									$( '#pb-base-togli' ).prop( 'hidden', false );
+								} );
+								cornice.open();
+							} );
+							$( '#pb-base-togli' ).on( 'click', function () {
+								$( '#pb-base' ).val( 0 );
+								$( '#pb-base-anteprima' ).empty();
+								$( this ).prop( 'hidden', true );
+							} );
+						} );
+					</script></td></tr>
 				<tr><th scope="row"><label for="pb-stile">Stile immagine AI</label></th><td><textarea id="pb-stile" name="stile_immagine" rows="2" class="large-text"><?php echo esc_textarea( $o['stile_immagine'] ); ?></textarea></td></tr>
 				<tr><th scope="row">Modelli Gemini</th><td>
 					<label>Testo <input type="text" name="modello_testo" value="<?php echo esc_attr( $o['modello_testo'] ); ?>" class="regular-text"></label><br>
