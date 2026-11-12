@@ -16,12 +16,25 @@ export interface Passo {
   testo: string;
 }
 
+export interface Vantaggio {
+  icona: string;
+  /** Continua la frase del titolo della sezione, es. "Un sito che" → "vende". */
+  titolo: string;
+  testo: string;
+}
+
 export interface PaginaServizio {
   slug: string;
   titolo: string;
   icona: string;
   sottotitolo: string;
   intro: string;
+  /** Il problema che il servizio risolve (sezione subito dopo l'introduzione). */
+  problema_titolo: string;
+  problema_testo: string;
+  /** Inizio della frase dei vantaggi, es. "Un sito che". */
+  vantaggi_titolo: string;
+  vantaggi: Vantaggio[];
   include: string[];
   passi: Passo[];
   dopo: string;
@@ -39,6 +52,12 @@ function normalizza(p: any): PaginaServizio {
     icona: String(p.icona || 'globe'),
     sottotitolo: String(p.sottotitolo ?? ''),
     intro: String(p.intro ?? ''),
+    problema_titolo: String(p.problema_titolo ?? ''),
+    problema_testo: String(p.problema_testo ?? ''),
+    vantaggi_titolo: String(p.vantaggi_titolo ?? ''),
+    vantaggi: (Array.isArray(p.vantaggi) ? p.vantaggi : [])
+      .filter((x: any) => x?.titolo)
+      .map((x: any) => ({ icona: String(x.icona || 'zap'), titolo: String(x.titolo), testo: String(x.testo ?? '') })),
     include: righe(p.include),
     passi: (Array.isArray(p.passi) ? p.passi : [])
       .filter((x: any) => x?.titolo)
@@ -68,7 +87,19 @@ async function carica(): Promise<PaginaServizio[]> {
   }
   if (!res.ok) throw new Error(`CMS: ${res.status} ${res.statusText} su /portfolio/v1/pagine-servizi`);
   const dati = ((await res.json()) as any[]).map(normalizza).filter((p) => p.slug && p.titolo);
-  return dati.length ? dati : PREDEFINITE;
+  if (!dati.length) return PREDEFINITE;
+  // Pagine create prima dell'aggiunta di problema e vantaggi: si completano con i testi predefiniti dello stesso servizio.
+  return dati.map((p) => {
+    const d = PREDEFINITE.find((x) => x.slug === p.slug);
+    if (!d) return p;
+    return {
+      ...p,
+      problema_titolo: p.problema_titolo || d.problema_titolo,
+      problema_testo: p.problema_testo || d.problema_testo,
+      vantaggi_titolo: p.vantaggi_titolo || d.vantaggi_titolo,
+      vantaggi: p.vantaggi.length ? p.vantaggi : d.vantaggi,
+    };
+  });
 }
 
 /** Tutte le pagine servizio pubblicate, nell'ordine scelto in WordPress. */

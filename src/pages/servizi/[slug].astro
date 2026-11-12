@@ -6,6 +6,7 @@ import Base from '../../layouts/Base.astro';
 import Icona from '../../components/Icona.astro';
 import PercorsoServizio from '../../components/PercorsoServizio.astro';
 import ProgettoCard from '../../components/ProgettoCard.astro';
+import RigheTesto from '../../components/RigheTesto.astro';
 import { icone } from '../../lib/icone';
 import { getPagineServizi, progettiDi, type PaginaServizio } from '../../lib/pagineServizi';
 import { getProgetti } from '../../lib/wp';
@@ -52,6 +53,7 @@ const jsonLd = {
 
 <Base title={s.seo_titolo || s.titolo} description={s.seo_descrizione || s.intro}>
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  <RigheTesto slot="head" />
 
   <section class="wrap section testa">
     <nav class="briciole" aria-label="Percorso">
@@ -63,20 +65,52 @@ const jsonLd = {
       <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={icone[s.icona] ?? icone.globe} />
     </span>
     <p class="contatore">Servizio {pad(indice + 1)} / {pad(pagine.length)}</p>
-    <h1>{s.titolo}</h1>
-    {s.sottotitolo && <p class="sottotitolo">{s.sottotitolo}</p>}
-    {s.intro && <p class="intro">{s.intro}</p>}
+    <h1 data-righe="subito">{s.titolo}</h1>
+    {s.sottotitolo && <p class="sottotitolo" data-righe="subito" style="--ritardo: 0.15s">{s.sottotitolo}</p>}
+    {s.intro && <p class="intro" data-righe="subito" style="--ritardo: 0.25s">{s.intro}</p>}
     <div class="azioni">
       <a class="btn" href="/contatti/">Richiedi un preventivo</a>
       {s.passi.length > 0 && <a class="btn btn-ghost" href="#percorso">Come lavoro <span aria-hidden="true">↓</span></a>}
     </div>
   </section>
 
+  {s.problema_titolo && (
+    <section class="wrap section problema">
+      <p class="etichetta">Il problema</p>
+      <h2 data-righe>{s.problema_titolo}</h2>
+      {s.problema_testo && <p class="testo-problema" data-righe style="--ritardo: 0.2s">{s.problema_testo}</p>}
+    </section>
+  )}
+
+  {s.vantaggi.length > 0 && (
+    <section class="wrap section">
+      <header class="intestazione">
+        <p class="etichetta">La soluzione</p>
+        <h2 class="titolo-sezione frase" data-righe>
+          {s.vantaggi_titolo || 'Un servizio che'}{' '}
+          <span class="evidenza ruota"><span class="ruota-testo" data-ruota={JSON.stringify(s.vantaggi.map((v) => v.titolo))}>{s.vantaggi[0].titolo}</span></span>
+        </h2>
+      </header>
+      <ul class="vantaggi">
+        {s.vantaggi.map((v, i) => (
+          <li class="vantaggio" style={`--i: ${i % 3}`} data-appari>
+            <span class="ico-vantaggio" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={icone[v.icona] ?? icone.zap} />
+            </span>
+            <h3><span class="puntini" aria-hidden="true">…</span>{v.titolo}</h3>
+            {v.testo && <p>{v.testo}</p>}
+          </li>
+        ))}
+      </ul>
+      <p class="azioni-centro"><a class="btn" href="/contatti/">Parliamone <Icona nome="arrowRight" /></a></p>
+    </section>
+  )}
+
   {s.include.length > 0 && (
     <section class="wrap section">
-      <h2 class="titolo-sezione">Cosa <span class="evidenza">include</span></h2>
+      <h2 class="titolo-sezione" data-righe>Cosa <span class="evidenza">include</span></h2>
       <ul class="include">
-        {s.include.map((v) => <li>{v}</li>)}
+        {s.include.map((v, i) => <li style={`--i: ${i % 3}`} data-appari>{v}</li>)}
       </ul>
     </section>
   )}
@@ -85,8 +119,8 @@ const jsonLd = {
     <section class="wrap section" id="percorso">
       <header class="intestazione">
         <p class="etichetta">Il percorso</p>
-        <h2 class="titolo-sezione">Dall’idea <span class="evidenza">alla messa online</span></h2>
-        <p class="intro">Ogni fase risponde a una domanda precisa. Scorri e segui la navicella: sai sempre a che punto siamo e cosa succede dopo.</p>
+        <h2 class="titolo-sezione" data-righe>Dall’idea <span class="evidenza">alla messa online</span></h2>
+        <p class="intro" data-righe style="--ritardo: 0.2s">Ogni fase risponde a una domanda precisa. Scorri e segui la navicella: sai sempre a che punto siamo e cosa succede dopo.</p>
       </header>
       <PercorsoServizio passi={s.passi} />
     </section>
@@ -94,7 +128,7 @@ const jsonLd = {
 
   {collegati.length > 0 && (
     <section class="wrap section">
-      <h2 class="titolo-sezione">Progetti <span class="evidenza">realizzati</span></h2>
+      <h2 class="titolo-sezione" data-righe>Progetti <span class="evidenza">realizzati</span></h2>
       <div class="progetti">
         {collegati.map((p) => <ProgettoCard progetto={p} testi={testi.progetti} sizes="(min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 100vw" />)}
       </div>
@@ -105,8 +139,8 @@ const jsonLd = {
   <hr class="sep" />
 
   <section class="wrap section dopo">
-    <h2 class="titolo-sezione">Dopo la <span class="evidenza">consegna</span></h2>
-    {s.dopo && <p class="intro">{s.dopo}</p>}
+    <h2 class="titolo-sezione" data-righe>Dopo la <span class="evidenza">consegna</span></h2>
+    {s.dopo && <p class="intro" data-righe style="--ritardo: 0.2s">{s.dopo}</p>}
     {altri.length > 0 && (
       <>
         <p class="etichetta">Altri servizi</p>
@@ -127,11 +161,35 @@ const jsonLd = {
   <hr class="sep" />
 
   <section class="wrap section chiusura">
-    <h2>{t.cta_titolo}</h2>
-    {t.cta_testo && <p class="intro">{t.cta_testo}</p>}
+    <h2 data-righe>{t.cta_titolo}</h2>
+    {t.cta_testo && <p class="intro" data-righe style="--ritardo: 0.2s">{t.cta_testo}</p>}
     <a class="btn grande" href="/contatti/">{t.cta_pulsante}<Icona nome="arrowRight" /></a>
   </section>
 </Base>
+
+<script>
+  // "Un sito che … vende / non si blocca / …": la parola evidenziata cambia ogni pochi secondi.
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    for (const el of document.querySelectorAll<HTMLElement>('[data-ruota]')) {
+      const parole: string[] = JSON.parse(el.dataset.ruota || '[]');
+      if (parole.length < 2) continue;
+      let i = 0;
+      setInterval(() => {
+        if (document.hidden) return;
+        el.classList.add('esce');
+        setTimeout(() => {
+          i = (i + 1) % parole.length;
+          el.textContent = parole[i];
+          // riparte da sotto e sale al suo posto
+          el.classList.remove('esce');
+          el.classList.add('entra');
+          el.getBoundingClientRect();
+          el.classList.remove('entra');
+        }, 350);
+      }, 2600);
+    }
+  }
+</script>
 
 <style>
   .testa { text-align: center; padding-top: 5rem; }
@@ -151,6 +209,30 @@ const jsonLd = {
   .intestazione { text-align: center; margin-bottom: 4rem; }
   .intestazione .titolo-sezione { margin-bottom: 1rem; }
   .etichetta { font-family: var(--mono); font-size: var(--fs-sm); letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.75rem; }
+
+  .problema { text-align: center; }
+  .problema h2 { font-size: var(--fs-section); line-height: 1.1; max-width: 22ch; margin: 0 auto 1.5rem; }
+  .testo-problema { color: var(--text-soft); font-size: var(--fs-lead); max-width: 44rem; margin: 0 auto; line-height: 1.7; }
+
+  .frase { margin-inline: auto; line-height: 1.1; }
+  /* La parola che cambia sta su una riga sua, alta sempre uguale: cambiando non sposta nulla (niente CLS). */
+  /* Cambia scorrendo dentro la sua riga (senza dissolvenza, così il contrasto del testo resta sempre pieno). */
+  .ruota { display: flex; align-items: flex-start; justify-content: center; height: 2.3em; overflow: hidden; }
+  .ruota-testo { display: block; text-wrap: balance; transition: transform 0.35s cubic-bezier(.6, 0, .4, 1); }
+  @media (min-width: 64rem) { .ruota { height: 1.2em; } .ruota-testo { white-space: nowrap; } }
+  .ruota-testo:global(.esce) { transform: translateY(-120%); }
+  .ruota-testo:global(.entra) { transform: translateY(120%); transition: none; }
+  .vantaggi { list-style: none; margin: 0 auto; padding: 0; max-width: 72rem; display: grid; gap: 1rem; }
+  @media (min-width: 40rem) { .vantaggi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 64rem) { .vantaggi { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; } }
+  .vantaggio { padding: 1.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .vantaggio:hover { border-color: var(--accent-border); }
+  .ico-vantaggio { display: inline-grid; place-items: center; width: 3rem; height: 3rem; margin-bottom: 1.1rem; border: 1px solid var(--accent-border); border-radius: 12px; color: var(--accent-light); }
+  .vantaggio h3 { font-size: var(--fs-lg); line-height: 1.25; margin: 0 0 0.6rem; }
+  .puntini { color: var(--accent); }
+  .vantaggio p { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.65; }
+  .azioni-centro { text-align: center; margin: 2.5rem 0 0; }
+  .azioni-centro .btn { display: inline-flex; align-items: center; gap: 0.5rem; }
 
   .include { list-style: none; margin: 0 auto; padding: 0; max-width: 64rem; display: grid; gap: 0.75rem; }
   @media (min-width: 40rem) { .include { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

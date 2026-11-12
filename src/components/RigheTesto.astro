@@ -1,0 +1,133 @@
+---
+// Testi che compaiono riga per riga (elementi con data-righe) e blocchi che compaiono uno dopo l'altro (data-appari).
+// Il testo è nell'HTML come sempre (SEO e lettori di schermo invariati): lo script divide le parole,
+// capisce come vanno a capo e fa salire le righe una alla volta quando entrano nello schermo.
+// I testi in alto (data-righe="subito"), prima che lo script parta, sono quasi trasparenti ma non invisibili: così il browser
+// li conta già come disegnati e il punteggio PageSpeed (LCP) non peggiora. Senza JavaScript o con "riduci movimento" non succede nulla.
+---
+
+<script is:inline>
+  (function () {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var h = document.documentElement;
+    h.classList.add('righe');
+    // Rete di sicurezza: se lo script principale non parte, il testo torna visibile.
+    setTimeout(function () { h.classList.add('righe-scadute'); }, 2500);
+  })();
+</script>
+
+<script>
+  const html = document.documentElement;
+  if (html.classList.contains('righe')) {
+    // Divide il testo in parole (anche dentro <span>, <strong>…) e numera le righe in base alla posizione.
+    const dividi = (el: HTMLElement) => {
+      const parole: HTMLElement[] = [];
+      const visita = (nodo: Node) => {
+        for (const figlio of [...nodo.childNodes]) {
+          if (figlio.nodeType === Node.TEXT_NODE) {
+            const frammento = document.createDocumentFragment();
+            for (const pezzo of (figlio.textContent ?? '').split(/(\s+)/)) {
+              if (!pezzo) continue;
+              if (/^\s+$/.test(pezzo)) frammento.append(pezzo);
+              else {
+                const s = document.createElement('span');
+                s.className = 'parola';
+                s.textContent = pezzo;
+                frammento.append(s);
+                parole.push(s);
+              }
+            }
+            figlio.replaceWith(frammento);
+          } else if (figlio instanceof HTMLElement && !figlio.matches('svg, br, .btn')) {
+            visita(figlio);
+          }
+        }
+      };
+      visita(el);
+      return parole;
+    };
+    // Prima tutte le scritture, poi tutte le letture: un solo calcolo del layout.
+    const prepara = (elementi: HTMLElement[]) => {
+      const gruppi = elementi.map((el) => [el, dividi(el)] as const);
+      const posizioni = gruppi.map(([, parole]) => parole.map((p) => p.getBoundingClientRect().top));
+      gruppi.forEach(([el, parole], g) => {
+        let riga = -1;
+        let alto = -Infinity;
+        parole.forEach((p, k) => {
+          if (posizioni[g][k] > alto + 4) {
+            riga++;
+            alto = posizioni[g][k];
+          }
+          p.style.setProperty('--riga', String(riga));
+        });
+        el.classList.add('diviso');
+      });
+    };
+
+    const rivela = new IntersectionObserver(
+      (voci) => {
+        for (const v of voci) {
+          if (v.isIntersecting) {
+            v.target.classList.add('in-vista');
+            rivela.unobserve(v.target);
+          }
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px' },
+    );
+    // Gli elementi più in basso si preparano poco prima di arrivare sullo schermo (nascosti mentre sono ancora fuori),
+    // così al caricamento il lavoro è minimo e il resto della pagina resta testo normale.
+    const vicino = new IntersectionObserver(
+      (voci) => {
+        const testi: HTMLElement[] = [];
+        for (const v of voci) {
+          if (!v.isIntersecting) continue;
+          const el = v.target as HTMLElement;
+          vicino.unobserve(el);
+          if (el.hasAttribute('data-righe')) testi.push(el);
+          else el.classList.add('in-attesa');
+          rivela.observe(el);
+        }
+        if (testi.length) prepara(testi);
+      },
+      { rootMargin: '0px 0px 35% 0px' },
+    );
+
+    const subito = [...document.querySelectorAll<HTMLElement>('[data-righe="subito"]')];
+    prepara(subito);
+    subito.forEach((el) => rivela.observe(el));
+    document.querySelectorAll<HTMLElement>('[data-righe]:not([data-righe="subito"]), [data-appari]').forEach((el) => vicino.observe(el));
+  }
+</script>
+
+<style is:global>
+  /* Testi in alto (data-righe="subito"): in attesa dello script quasi trasparenti, non nascosti */
+  html.righe:not(.righe-scadute) [data-righe='subito']:not(.diviso) { opacity: 0.01; }
+
+  html.righe [data-righe].diviso .parola {
+    display: inline-block;
+    opacity: 0.01;
+    transform: translateY(0.55em);
+    transition: opacity 0.55s ease, transform 0.7s cubic-bezier(.2, .8, .2, 1);
+    transition-delay: calc(var(--ritardo, 0s) + var(--riga, 0) * 0.11s);
+  }
+  html.righe [data-righe].diviso.in-vista .parola { opacity: 1; transform: none; }
+  /* In alto più rapidi: il testo è già tutto al suo posto in meno di un secondo */
+  html.righe [data-righe='subito'].diviso .parola { transition-duration: 0.45s, 0.55s; transition-delay: calc(var(--ritardo, 0s) * 0.5 + var(--riga, 0) * 0.06s); }
+  /* Più in basso: anche visibility, così i controlli di accessibilità non leggono come "testo poco contrastato"
+     le parole ancora in attesa (tornano visibili all'inizio della loro transizione). */
+  html.righe [data-righe]:not([data-righe='subito']).diviso .parola {
+    visibility: hidden;
+    transition-property: opacity, transform, visibility;
+  }
+  html.righe [data-righe]:not([data-righe='subito']).diviso.in-vista .parola { visibility: visible; }
+
+  html.righe [data-appari].in-attesa {
+    opacity: 0.01;
+    transform: translateY(1.5rem);
+    visibility: hidden;
+    transition: opacity 0.6s ease, transform 0.75s cubic-bezier(.2, .8, .2, 1), visibility 0s, border-color 0.3s;
+    transition-delay: calc(var(--i, 0) * 0.08s);
+  }
+  html.righe [data-appari].in-attesa.in-vista { opacity: 1; transform: none; visibility: visible; }
+</style>

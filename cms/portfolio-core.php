@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.17.0
+ * Version:     1.18.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -765,6 +765,7 @@ function portfolio_icone() {
 		'snail' => 'Lumaca (lentezza)', 'compass' => 'Bussola', 'lock' => 'Lucchetto', 'settings' => 'Ingranaggio',
 		'moto' => 'Moto', 'fish' => 'Pesce', 'chefHat' => 'Cappello da chef', 'torii' => 'Portale giapponese',
 		'ball' => 'Pallone', 'book' => 'Libro', 'camera' => 'Macchina fotografica', 'music' => 'Musica', 'heart' => 'Cuore',
+		'shield' => 'Scudo', 'trendingUp' => 'Grafico in crescita', 'sparkles' => 'Scintille', 'target' => 'Bersaglio', 'users' => 'Persone', 'refresh' => 'Frecce circolari',
 	);
 }
 
@@ -1753,11 +1754,32 @@ add_action( 'acf/init', function () {
 } );
 
 function portfolio_pagina_servizio_campi() {
-	$icone = array_merge( portfolio_icone(), array( 'cart' => 'Carrello (e-commerce)', 'layers' => 'Livelli (struttura)' ) );
+	$icone = array_merge( portfolio_icone(), array(
+		'cart' => 'Carrello (e-commerce)', 'layers' => 'Livelli (struttura)', 'shield' => 'Scudo (sicurezza)', 'trendingUp' => 'Grafico in crescita (vendite)',
+		'sparkles' => 'Scintille (distintivo)', 'target' => 'Bersaglio (obiettivi)', 'users' => 'Persone (team)', 'refresh' => 'Frecce (integrazioni)',
+		'clock' => 'Orologio (tempo)', 'mapPin' => 'Segnaposto (zona)',
+	) );
 	return array(
 		array( 'key' => 'field_pps_icona', 'name' => 'icona', 'label' => 'Icona', 'type' => 'select', 'choices' => $icone, 'default_value' => 'globe', 'wrapper' => array( 'width' => 30 ) ),
 		array( 'key' => 'field_pps_sottotitolo', 'name' => 'sottotitolo', 'label' => 'Sottotitolo', 'type' => 'text', 'instructions' => 'Riga breve colorata sotto il titolo.', 'wrapper' => array( 'width' => 70 ) ),
 		array( 'key' => 'field_pps_intro', 'name' => 'intro', 'label' => 'Introduzione', 'type' => 'textarea', 'rows' => 3 ),
+		array( 'key' => 'field_pps_problema_titolo', 'name' => 'problema_titolo', 'label' => 'Il problema: titolo', 'type' => 'text', 'instructions' => 'Il problema che il servizio risolve, es. "Un bel sito non basta, se non porta clienti".' ),
+		array( 'key' => 'field_pps_problema_testo', 'name' => 'problema_testo', 'label' => 'Il problema: testo', 'type' => 'textarea', 'rows' => 3 ),
+		array( 'key' => 'field_pps_vantaggi_titolo', 'name' => 'vantaggi_titolo', 'label' => 'Inizio della frase dei vantaggi', 'type' => 'text', 'instructions' => 'Es. "Un sito che": ogni vantaggio completa la frase ("vende", "non si blocca"…).' ),
+		array(
+			'key'          => 'field_pps_vantaggi',
+			'name'         => 'vantaggi',
+			'label'        => 'Vantaggi',
+			'type'         => 'repeater',
+			'layout'       => 'block',
+			'button_label' => 'Aggiungi vantaggio',
+			'collapsed'    => 'field_pps_vantaggio_titolo',
+			'sub_fields'   => array(
+				array( 'key' => 'field_pps_vantaggio_icona', 'name' => 'icona', 'label' => 'Icona', 'type' => 'select', 'choices' => $icone, 'default_value' => 'zap', 'wrapper' => array( 'width' => 25 ) ),
+				array( 'key' => 'field_pps_vantaggio_titolo', 'name' => 'titolo', 'label' => 'Completa la frase', 'type' => 'text', 'required' => 1, 'instructions' => 'Es. "vende".', 'wrapper' => array( 'width' => 75 ) ),
+				array( 'key' => 'field_pps_vantaggio_testo', 'name' => 'testo', 'label' => 'Testo', 'type' => 'textarea', 'rows' => 2 ),
+			),
+		),
 		array( 'key' => 'field_pps_include', 'name' => 'include', 'label' => 'Cosa include', 'type' => 'textarea', 'rows' => 6, 'instructions' => 'Una voce per riga.' ),
 		array(
 			'key'          => 'field_pps_passi',
@@ -1806,12 +1828,23 @@ function portfolio_pagine_servizi_data() {
 				'testo'     => $m( "passi_{$i}_testo" ),
 			);
 		}
+		$vantaggi = array();
+		for ( $i = 0, $n = (int) get_post_meta( $post->ID, 'vantaggi', true ); $i < $n; $i++ ) {
+			$titolo = $m( "vantaggi_{$i}_titolo" );
+			if ( '' !== $titolo ) {
+				$vantaggi[] = array( 'icona' => $m( "vantaggi_{$i}_icona" ) ?: 'zap', 'titolo' => $titolo, 'testo' => $m( "vantaggi_{$i}_testo" ) );
+			}
+		}
 		$out[] = array(
 			'slug'            => $post->post_name,
 			'titolo'          => html_entity_decode( get_the_title( $post ), ENT_QUOTES, 'UTF-8' ),
 			'icona'           => $m( 'icona' ) ?: 'globe',
 			'sottotitolo'     => $m( 'sottotitolo' ),
 			'intro'           => $m( 'intro' ),
+			'problema_titolo' => $m( 'problema_titolo' ),
+			'problema_testo'  => $m( 'problema_testo' ),
+			'vantaggi_titolo' => $m( 'vantaggi_titolo' ),
+			'vantaggi'        => $vantaggi,
 			'include'         => $righe( $m( 'include' ) ),
 			'passi'           => $passi,
 			'dopo'            => $m( 'dopo' ),
@@ -1835,14 +1868,8 @@ add_action( 'rest_api_init', function () {
  * (gli stessi di src/data/pagine-servizi.json), così si parte da pagine già scritte da modificare.
  * Succede una volta sola e solo se non esiste ancora nessuna pagina servizio.
  */
-add_action( 'admin_init', function () {
-	if ( get_option( 'portfolio_pagine_servizi_create' ) || ! current_user_can( 'publish_posts' ) ) {
-		return;
-	}
-	update_option( 'portfolio_pagine_servizi_create', 1, false );
-	if ( get_posts( array( 'post_type' => 'pagina_servizio', 'post_status' => 'any', 'numberposts' => 1, 'fields' => 'ids' ) ) ) {
-		return;
-	}
+/** Chiavi ACF dei campi delle pagine servizio: "nome" e "repeater.sottocampo". */
+function portfolio_pagina_servizio_chiavi() {
 	$chiavi = array();
 	foreach ( portfolio_pagina_servizio_campi() as $f ) {
 		$chiavi[ $f['name'] ] = $f['key'];
@@ -1850,31 +1877,76 @@ add_action( 'admin_init', function () {
 			$chiavi[ $f['name'] . '.' . $sf['name'] ] = $sf['key'];
 		}
 	}
-	$salva = function ( $id, $nome, $chiave, $valore ) {
+	return $chiavi;
+}
+
+/** Salva su una pagina servizio i campi indicati (valori semplici e repeater) presi dai testi predefiniti. */
+function portfolio_pagina_servizio_salva( $id, $p, $campi ) {
+	$chiavi = portfolio_pagina_servizio_chiavi();
+	$salva  = function ( $nome, $chiave, $valore ) use ( $id ) {
 		update_post_meta( $id, $nome, wp_slash( $valore ) );
 		update_post_meta( $id, '_' . $nome, $chiave );
 	};
-	foreach ( json_decode( portfolio_pagine_servizi_predefinite(), true ) as $i => $p ) {
-		$id = wp_insert_post( array(
-			'post_type'   => 'pagina_servizio',
-			'post_status' => 'publish',
-			'post_title'  => $p['titolo'],
-			'post_name'   => $p['slug'],
-			'menu_order'  => $i + 1,
-		) );
-		if ( ! $id || is_wp_error( $id ) ) {
+	foreach ( $campi as $k ) {
+		if ( ! isset( $p[ $k ] ) ) {
 			continue;
 		}
-		foreach ( array( 'icona', 'sottotitolo', 'intro', 'dopo', 'seo_titolo', 'seo_descrizione' ) as $k ) {
-			$salva( $id, $k, $chiavi[ $k ], (string) $p[ $k ] );
+		if ( 'include' === $k ) {
+			$salva( $k, $chiavi[ $k ], implode( "\n", $p[ $k ] ) );
+		} elseif ( is_array( $p[ $k ] ) ) {
+			$salva( $k, $chiavi[ $k ], count( $p[ $k ] ) );
+			foreach ( $p[ $k ] as $j => $riga ) {
+				foreach ( $riga as $sk => $v ) {
+					$salva( "{$k}_{$j}_{$sk}", $chiavi[ "{$k}.{$sk}" ], (string) $v );
+				}
+			}
+		} else {
+			$salva( $k, $chiavi[ $k ], (string) $p[ $k ] );
 		}
-		$salva( $id, 'include', $chiavi['include'], implode( "\n", $p['include'] ) );
-		$salva( $id, 'passi', $chiavi['passi'], count( $p['passi'] ) );
-		foreach ( $p['passi'] as $j => $passo ) {
-			foreach ( $passo as $k => $v ) {
-				$salva( $id, "passi_{$j}_{$k}", $chiavi[ "passi.{$k}" ], (string) $v );
+	}
+}
+
+/**
+ * Al primo accesso alla bacheca dopo l'aggiornamento crea le sei pagine con i testi del sito
+ * (gli stessi di src/data/pagine-servizi.json), così si parte da pagine già scritte da modificare.
+ * Succede una volta sola e solo se non esiste ancora nessuna pagina servizio.
+ * Le pagine create con una versione precedente ricevono una volta i nuovi campi (problema e vantaggi), se vuoti.
+ */
+add_action( 'admin_init', function () {
+	if ( ! current_user_can( 'publish_posts' ) ) {
+		return;
+	}
+	$predefinite = json_decode( portfolio_pagine_servizi_predefinite(), true );
+	if ( ! get_option( 'portfolio_pagine_servizi_create' ) ) {
+		update_option( 'portfolio_pagine_servizi_create', 1, false );
+		update_option( 'portfolio_pagine_servizi_vantaggi', 1, false );
+		if ( get_posts( array( 'post_type' => 'pagina_servizio', 'post_status' => 'any', 'numberposts' => 1, 'fields' => 'ids' ) ) ) {
+			return;
+		}
+		foreach ( $predefinite as $i => $p ) {
+			$id = wp_insert_post( array(
+				'post_type'   => 'pagina_servizio',
+				'post_status' => 'publish',
+				'post_title'  => $p['titolo'],
+				'post_name'   => $p['slug'],
+				'menu_order'  => $i + 1,
+			) );
+			if ( $id && ! is_wp_error( $id ) ) {
+				portfolio_pagina_servizio_salva( $id, $p, array_keys( array_diff_key( $p, array( 'slug' => 1, 'titolo' => 1 ) ) ) );
 			}
 		}
+		return;
+	}
+	if ( ! get_option( 'portfolio_pagine_servizi_vantaggi' ) ) {
+		update_option( 'portfolio_pagine_servizi_vantaggi', 1, false );
+		foreach ( $predefinite as $p ) {
+			$post = get_page_by_path( $p['slug'], OBJECT, 'pagina_servizio' );
+			if ( ! $post || (int) get_post_meta( $post->ID, 'vantaggi', true ) > 0 || '' !== (string) get_post_meta( $post->ID, 'problema_titolo', true ) ) {
+				continue;
+			}
+			portfolio_pagina_servizio_salva( $post->ID, $p, array( 'problema_titolo', 'problema_testo', 'vantaggi_titolo', 'vantaggi' ) );
+		}
+		portfolio_rebuild_later();
 	}
 } );
 
@@ -1887,6 +1959,41 @@ function portfolio_pagine_servizi_predefinite() {
 		"icona": "globe",
 		"sottotitolo": "Siti veloci, moderni e su misura",
 		"intro": "Un sito non è una vetrina da riempire: è uno strumento che deve portarti contatti e clienti. Lo costruisco partendo da quello che vuoi ottenere, con codice pulito che carica in un attimo anche da telefono.",
+		"problema_titolo": "Un bel sito non basta, se non porta clienti",
+		"problema_testo": "Pagine lente, testi generici e pulsanti nascosti: il visitatore se ne va in pochi secondi e chiama un concorrente. Il sito deve lavorare per te anche quando non ci sei.",
+		"vantaggi_titolo": "Un sito che",
+		"vantaggi": [
+			{
+				"icona": "trendingUp",
+				"titolo": "vende",
+				"testo": "Ogni pagina ha un obiettivo e un invito all'azione chiaro: chiamare, scrivere, prenotare o chiedere un preventivo."
+			},
+			{
+				"icona": "zap",
+				"titolo": "carica in un attimo",
+				"testo": "Codice leggero e immagini ottimizzate: punteggi alti su PageSpeed anche da telefono, da dove arriva la maggior parte delle visite."
+			},
+			{
+				"icona": "search",
+				"titolo": "si fa trovare su Google",
+				"testo": "Struttura, titoli e dati strutturati pensati per la SEO fin dal primo giorno, non aggiunti alla fine."
+			},
+			{
+				"icona": "shield",
+				"titolo": "non si blocca",
+				"testo": "Niente plugin pesanti o temi da rattoppare: meno cose che si rompono, meno sorprese."
+			},
+			{
+				"icona": "sparkles",
+				"titolo": "ti distingue",
+				"testo": "Un design su misura per il tuo brand, non un template uguale a quello di altri mille siti."
+			},
+			{
+				"icona": "smartphone",
+				"titolo": "funziona ovunque",
+				"testo": "Perfetto su telefono, tablet e computer, e accessibile anche a chi naviga con la tastiera o uno screen reader."
+			}
+		],
 		"include": [
 			"Siti vetrina e istituzionali",
 			"Landing page ad alta conversione",
@@ -1949,6 +2056,41 @@ function portfolio_pagine_servizi_predefinite() {
 		"icona": "server",
 		"sottotitolo": "Gestionali e piattaforme su misura",
 		"intro": "Quando fogli Excel, email e programmi scollegati non bastano più, serve uno strumento costruito sul tuo modo di lavorare. Progetto applicazioni web solide, dal database all'interfaccia.",
+		"problema_titolo": "Fogli Excel, email e programmi che non si parlano?",
+		"problema_testo": "Ogni giorno si perde tempo a copiare dati, cercare file e correggere errori. Più l'attività cresce, più il problema peggiora, e gli strumenti generici non si adattano al tuo modo di lavorare.",
+		"vantaggi_titolo": "Un gestionale che",
+		"vantaggi": [
+			{
+				"icona": "clock",
+				"titolo": "ti fa risparmiare ore",
+				"testo": "Automatizza i passaggi ripetitivi: preventivi, scadenze, report e notifiche partono da soli."
+			},
+			{
+				"icona": "layers",
+				"titolo": "mette tutto in un posto",
+				"testo": "Clienti, ordini, documenti e storico in un unico archivio, sempre aggiornato e consultabile da ovunque."
+			},
+			{
+				"icona": "users",
+				"titolo": "lavora come il tuo team",
+				"testo": "Ruoli e permessi su misura: ognuno vede e modifica solo quello che gli serve."
+			},
+			{
+				"icona": "shield",
+				"titolo": "protegge i tuoi dati",
+				"testo": "Accessi sicuri, backup automatici e dati su un database solido come PostgreSQL."
+			},
+			{
+				"icona": "trendingUp",
+				"titolo": "cresce con te",
+				"testo": "Architettura modulare: le nuove funzioni si aggiungono senza rifare tutto da capo."
+			},
+			{
+				"icona": "refresh",
+				"titolo": "si collega al resto",
+				"testo": "API per dialogare con fatturazione, e-commerce, CRM e gli strumenti che usi già."
+			}
+		],
 		"include": [
 			"Analisi dei processi",
 			"API REST con Spring Boot",
@@ -2011,6 +2153,41 @@ function portfolio_pagine_servizi_predefinite() {
 		"icona": "layout",
 		"sottotitolo": "Flessibilità e autonomia nella gestione",
 		"intro": "Oltre dieci anni di WordPress: temi scritti da zero, niente page builder pesanti e un pannello semplice per aggiornare i contenuti da solo. Anche in versione headless, collegato a un frontend velocissimo.",
+		"problema_titolo": "WordPress lento, pieno di plugin e difficile da aggiornare?",
+		"problema_testo": "Temi pesanti e page builder rendono il sito lento e fragile: ogni aggiornamento è un rischio e modificare una pagina diventa un'impresa.",
+		"vantaggi_titolo": "Un WordPress che",
+		"vantaggi": [
+			{
+				"icona": "settings",
+				"titolo": "aggiorni da solo",
+				"testo": "Un pannello pulito con campi chiari: cambi testi, foto e pagine senza toccare il codice e senza rompere il layout."
+			},
+			{
+				"icona": "zap",
+				"titolo": "è leggero e veloce",
+				"testo": "Tema scritto da zero, senza page builder: carica in un attimo anche su hosting condiviso."
+			},
+			{
+				"icona": "shield",
+				"titolo": "non si rompe agli aggiornamenti",
+				"testo": "Pochi plugin scelti con cura, aggiornamenti e backup sotto controllo."
+			},
+			{
+				"icona": "search",
+				"titolo": "piace a Google",
+				"testo": "HTML pulito, struttura corretta e prestazioni alte: le basi per posizionarsi bene."
+			},
+			{
+				"icona": "layers",
+				"titolo": "si adatta ai tuoi contenuti",
+				"testo": "Tipi di contenuto e campi su misura per progetti, eventi, prodotti o qualsiasi cosa tu debba pubblicare."
+			},
+			{
+				"icona": "rocket",
+				"titolo": "può diventare headless",
+				"testo": "Lo usi come pannello di gestione e il sito pubblico vola, come quello che stai visitando."
+			}
+		],
 		"include": [
 			"Temi custom da zero",
 			"WordPress headless",
@@ -2073,6 +2250,41 @@ function portfolio_pagine_servizi_predefinite() {
 		"icona": "cart",
 		"sottotitolo": "Vendi online senza complicazioni",
 		"intro": "Un negozio online funziona quando comprare è facile e gestire gli ordini non ti ruba la giornata. Costruisco e-commerce chiari per i clienti e semplici per te.",
+		"problema_titolo": "Tante visite al negozio, ma pochi ordini?",
+		"problema_testo": "Schede prodotto confuse, checkout lungo, spese di spedizione a sorpresa: basta un ostacolo e il carrello resta abbandonato.",
+		"vantaggi_titolo": "Un negozio che",
+		"vantaggi": [
+			{
+				"icona": "trendingUp",
+				"titolo": "trasforma le visite in ordini",
+				"testo": "Schede prodotto chiare, foto curate e un checkout breve, pensato per comprare da telefono."
+			},
+			{
+				"icona": "zap",
+				"titolo": "è veloce anche con tanti prodotti",
+				"testo": "Catalogo ottimizzato e immagini leggere: niente attese tra una pagina e l'altra."
+			},
+			{
+				"icona": "lock",
+				"titolo": "ispira fiducia",
+				"testo": "Pagamenti sicuri, condizioni chiare e recensioni ben visibili: il cliente compra tranquillo."
+			},
+			{
+				"icona": "search",
+				"titolo": "si fa trovare",
+				"testo": "Categorie e prodotti strutturati per Google, con prezzi e disponibilità nei risultati di ricerca."
+			},
+			{
+				"icona": "settings",
+				"titolo": "si gestisce facilmente",
+				"testo": "Ordini, magazzino e spedizioni da un unico pannello, con email automatiche ai clienti."
+			},
+			{
+				"icona": "refresh",
+				"titolo": "parla con il tuo gestionale",
+				"testo": "Collegamento con magazzino, fatturazione e corrieri, per non inserire due volte gli stessi dati."
+			}
+		],
 		"include": [
 			"WooCommerce personalizzato",
 			"Pagamenti e spedizioni",
@@ -2135,6 +2347,41 @@ function portfolio_pagine_servizi_predefinite() {
 		"icona": "zap",
 		"sottotitolo": "Farsi trovare e caricare in un attimo",
 		"intro": "Un sito lento perde visitatori prima ancora che leggano una riga, e uno che Google non capisce non viene trovato. Lavoro sulla parte tecnica per renderlo rapido e ben posizionato.",
+		"problema_titolo": "Il tuo sito c'è, ma su Google non ti trova nessuno?",
+		"problema_testo": "Se il sito è lento o Google non lo capisce, i clienti finiscono dai concorrenti. Spesso il problema è tecnico, e si può risolvere.",
+		"vantaggi_titolo": "Un sito che",
+		"vantaggi": [
+			{
+				"icona": "search",
+				"titolo": "compare nelle ricerche giuste",
+				"testo": "Lavoro sulle parole che usano davvero i tuoi clienti, anche nelle ricerche locali."
+			},
+			{
+				"icona": "zap",
+				"titolo": "supera i Core Web Vitals",
+				"testo": "Ottimizzo caricamento, stabilità e reattività: punteggi alti e una navigazione più piacevole."
+			},
+			{
+				"icona": "smartphone",
+				"titolo": "è perfetto da telefono",
+				"testo": "Google valuta prima la versione mobile: la rendo veloce e comoda da usare."
+			},
+			{
+				"icona": "target",
+				"titolo": "Google capisce al volo",
+				"testo": "Titoli, struttura, link interni e dati strutturati in ordine: ogni pagina dice chiaramente di cosa parla."
+			},
+			{
+				"icona": "mapPin",
+				"titolo": "ti fa trovare in zona",
+				"testo": "Scheda Google Business e SEO locale per chi cerca un servizio vicino a sé."
+			},
+			{
+				"icona": "chart",
+				"titolo": "misura i risultati",
+				"testo": "Report chiari prima e dopo: posizioni, traffico e velocità, senza gergo tecnico."
+			}
+		],
 		"include": [
 			"Audit tecnico",
 			"Core Web Vitals",
@@ -2197,6 +2444,41 @@ function portfolio_pagine_servizi_predefinite() {
 		"icona": "chart",
 		"sottotitolo": "Strategia prima della tecnologia",
 		"intro": "Non sempre serve un sito nuovo. A volte basta capire cosa non funziona e dove conviene investire. Ti aiuto a prendere decisioni con dati e priorità chiare.",
+		"problema_titolo": "Investi nel digitale ma non sai cosa funziona?",
+		"problema_testo": "Abbonamenti inutili, fornitori che non si parlano, un sito che non porta risultati: senza una strategia si spende tanto e si raccoglie poco.",
+		"vantaggi_titolo": "Scelte che",
+		"vantaggi": [
+			{
+				"icona": "target",
+				"titolo": "partono dagli obiettivi",
+				"testo": "Prima capiamo cosa vuoi ottenere, poi scegliamo gli strumenti. Mai il contrario."
+			},
+			{
+				"icona": "chart",
+				"titolo": "si basano sui dati",
+				"testo": "Analizzo sito, statistiche e concorrenza per capire dove conviene davvero intervenire."
+			},
+			{
+				"icona": "wrench",
+				"titolo": "evitano gli sprechi",
+				"testo": "Ti consiglio solo gli strumenti e i servizi che ti servono, senza abbonamenti superflui."
+			},
+			{
+				"icona": "compass",
+				"titolo": "danno una direzione chiara",
+				"testo": "Un piano con priorità, tempi e budget: sai cosa fare adesso e cosa può aspettare."
+			},
+			{
+				"icona": "users",
+				"titolo": "coinvolgono il tuo team",
+				"testo": "Spiego le scelte in modo semplice e affianco chi lavora con te."
+			},
+			{
+				"icona": "shield",
+				"titolo": "ti lasciano libero",
+				"testo": "Nessuna dipendenza da un solo fornitore: le decisioni restano tue."
+			}
+		],
 		"include": [
 			"Audit del sito esistente",
 			"Scelta degli strumenti giusti",
