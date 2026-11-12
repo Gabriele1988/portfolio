@@ -1,5 +1,7 @@
 ---
-// Percorso di un servizio: le fasi sono box ravvicinati a zig-zag e il sentiero luminoso passa SOTTO i box
+// Percorso di un servizio: le fasi sono box ravvicinati a zig-zag e il sentiero luminoso passa SOTTO i box.
+// Ogni servizio ha un sentiero suo (forma, ampiezza delle curve, lato di partenza), ricavato dallo slug:
+// cambia da pagina a pagina ma resta sempre lo stesso per lo stesso servizio. Le curve sono ampie e morbide
 // (si intravede attraverso il vetro sfocato). Scorrendo, il razzo segue il sentiero lasciando una scia:
 // quando passa sotto un box lo illumina dal basso (la luce segue il razzo), il box si accende e il numero
 // della fase si colora. In fondo c'è il pianeta d'arrivo.
@@ -9,12 +11,18 @@ import type { Passo } from '../lib/pagineServizi';
 
 interface Props {
   passi: Passo[];
+  /** Rende unico il sentiero di questo servizio (di solito lo slug). */
+  seme?: string;
 }
-const { passi } = Astro.props;
+const { passi, seme = '' } = Astro.props;
+// Numero stabile dallo slug: decide lato di partenza e proporzioni delle colonne.
+const h = [...seme].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) >>> 0, 7);
+const colonne = ['1fr 1fr', '1.2fr 0.8fr', '0.85fr 1.15fr', '1.1fr 0.9fr'][h % 4];
+const daDestra = (h >> 3) % 2 === 1;
 const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
-<div class="percorso" data-percorso style={`--n: ${passi.length}`}>
+<div class:list={['percorso', { 'da-destra': daDestra }]} data-percorso data-seme={seme} style={`--colonne: ${colonne}`}>
   <svg class="tracciato" aria-hidden="true" data-tracciato>
     <defs>
       <linearGradient id="pc-scia" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="1000" data-scia>
@@ -94,6 +102,67 @@ const pad = (n: number) => String(n).padStart(2, '0');
       return lo;
     }
 
+    // Generatore pseudo-casuale con seme: stesso slug, stesso sentiero.
+    function casuale(seme: string) {
+      let a = 2166136261;
+      for (const c of seme) a = Math.imul(a ^ c.charCodeAt(0), 16777619);
+      return () => {
+        a = (a + 0x6d2b79f5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    // Il sentiero non segue i box: è un "fiume" che scende per tutta la sezione con anse larghe.
+    // Punti distanziati (mai curve strette) e uno stile diverso per ogni servizio.
+    function sentiero(W: number, H: number, seme: string, largo: boolean) {
+      const r = casuale(seme || 'percorso');
+      const stile = Math.floor(r() * 4);
+      const passo = (largo ? 300 : 240) + r() * (largo ? 180 : 120);
+      const n = Math.max(3, Math.round(H / passo));
+      const fase = r() * Math.PI * 2;
+      const freq = 0.55 + r() * 0.6;
+      const lato = r() < 0.5 ? -1 : 1;
+      const margine = largo ? 0.06 : 0.1;
+      const xs: number[] = [];
+      for (let j = 0; j <= n; j++) {
+        let x: number;
+        if (stile === 0) {
+          // Onda regolare che si allarga scendendo
+          x = 0.5 + lato * Math.sin(j * freq * 1.6 + fase) * (0.18 + (0.24 * j) / n);
+        } else if (stile === 1) {
+          // Lunghe derive: resta su un lato per un po', poi attraversa tutta la pagina
+          x = 0.5 + lato * 0.38 * Math.sign(Math.sin(j * freq + fase)) * (0.6 + 0.4 * r());
+        } else if (stile === 2) {
+          // Due onde sovrapposte: anse grandi e piccole alternate
+          x = 0.5 + 0.28 * Math.sin(j * freq * 1.3 + fase) + 0.14 * Math.sin(j * freq * 3.1 + fase * 2);
+        } else {
+          // Serpentina ampia da bordo a bordo
+          x = j % 2 ? 0.5 + lato * (0.3 + r() * 0.14) : 0.5 - lato * (0.24 + r() * 0.2);
+        }
+        xs.push(Math.min(1 - margine, Math.max(margine, x)));
+      }
+      xs[0] = 0.5;
+      xs[n] = 0.5;
+      const punti = xs.map((x, j) => {
+        const sposta = j > 0 && j < n ? (r() - 0.5) * 0.3 : 0;
+        return { x: x * W, y: ((j + sposta) / n) * H };
+      });
+      // Curva di Catmull-Rom: passa da tutti i punti senza spigoli, con tangenti lunghe (curve morbide).
+      let d = `M ${punti[0].x} ${punti[0].y}`;
+      for (let i = 0; i < punti.length - 1; i++) {
+        const a = punti[Math.max(0, i - 1)];
+        const p = punti[i];
+        const q = punti[i + 1];
+        const b = punti[Math.min(punti.length - 1, i + 2)];
+        const c1 = { x: p.x + (q.x - a.x) / 6, y: p.y + (q.y - a.y) / 6 };
+        const c2 = { x: q.x - (b.x - p.x) / 6, y: q.y - (b.y - p.y) / 6 };
+        d += ` C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${q.x} ${q.y}`;
+      }
+      return d;
+    }
+
     function disegna() {
       const W = el.clientWidth;
       const H = el.clientHeight;
@@ -101,20 +170,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
       svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       gradiente.setAttribute('y2', String(H));
 
-      // Il sentiero attraversa il centro di ogni box (passandoci sotto), da metà in alto a metà in fondo.
       box = passi.map((li, i) => new DOMRect(li.offsetLeft + card[i].offsetLeft, li.offsetTop + card[i].offsetTop, card[i].offsetWidth, card[i].offsetHeight));
-      const punti = [{ x: W / 2, y: 0 }, ...box.map((r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 })), { x: W / 2, y: H }];
-      // Curva di Catmull-Rom: passa da tutti i punti senza spigoli. Le tangenti verticali restano ampie (curve morbide).
-      let d = `M ${punti[0].x} ${punti[0].y}`;
-      for (let i = 0; i < punti.length - 1; i++) {
-        const a = punti[Math.max(0, i - 1)];
-        const p = punti[i];
-        const q = punti[i + 1];
-        const b = punti[Math.min(punti.length - 1, i + 2)];
-        const c1 = { x: p.x + (q.x - a.x) / 6, y: p.y + Math.max(0, q.y - a.y) / 4 };
-        const c2 = { x: q.x - (b.x - p.x) / 6, y: q.y - Math.max(0, b.y - p.y) / 4 };
-        d += ` C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${q.x} ${q.y}`;
-      }
+      const d = sentiero(W, H, el.dataset.seme ?? '', W >= 768);
       for (const path of [base, alone, pieno]) path.setAttribute('d', d);
 
       lunghezza = pieno.getTotalLength();
@@ -212,7 +269,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 </script>
 
 <style>
-  .percorso { position: relative; max-width: 72rem; margin: 0 auto; padding: 3rem 0 4rem; }
+  .percorso { position: relative; padding: 3rem 0 4rem; }
 
   .tracciato { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
   .base, .alone, .pieno { fill: none; stroke-linecap: round; }
@@ -272,7 +329,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
     padding: 1.4rem 1.4rem 1.5rem;
     overflow: hidden;
     /* Vetro: il sentiero luminoso si vede sfocato sotto il box */
-    background: color-mix(in srgb, var(--surface) 62%, transparent);
+    /* Su telefono il sentiero attraversa i testi: vetro più coprente per leggerli bene */
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);
     border: 1px solid var(--border);
@@ -312,11 +370,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
   /* Desktop: due colonne, ogni box parte a metà del precedente (zig-zag compatto) */
   @media (min-width: 48rem) {
     .percorso { padding: 3.5rem 0 5rem; }
-    ol { grid-template-columns: 1fr 1fr; column-gap: 4rem; row-gap: 1.5rem; grid-auto-rows: auto; }
+    ol { grid-template-columns: var(--colonne, 1fr 1fr); column-gap: 4rem; row-gap: 1.5rem; grid-auto-rows: auto; }
     .passo { grid-row: var(--r) / span 2; }
     .sinistra { grid-column: 1; padding: 0; }
     .destra { grid-column: 2; padding: 0; }
-    .card { padding: 1.75rem 2rem 1.9rem; }
+    .da-destra .sinistra { grid-column: 2; }
+    .da-destra .destra { grid-column: 1; }
+    .card { padding: 1.75rem 2rem 1.9rem; background: color-mix(in srgb, var(--surface) 62%, transparent); }
     .numero { font-size: 2.25rem; }
     .scafo { left: -32px; top: -32px; width: 64px; height: 64px; }
   }

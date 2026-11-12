@@ -122,7 +122,7 @@ const jsonLd = {
         <h2 class="titolo-sezione" data-righe>Dall’idea <span class="evidenza">alla messa online</span></h2>
         <p class="intro" data-righe style="--ritardo: 0.2s">Ogni fase risponde a una domanda precisa. Scorri e segui la navicella: sai sempre a che punto siamo e cosa succede dopo.</p>
       </header>
-      <PercorsoServizio passi={s.passi} />
+      <PercorsoServizio passi={s.passi} seme={s.slug} />
     </section>
   )}
 
@@ -222,7 +222,7 @@ const jsonLd = {
   @media (min-width: 64rem) { .ruota { height: 1.2em; } .ruota-testo { white-space: nowrap; } }
   .ruota-testo:global(.esce) { transform: translateY(-120%); }
   .ruota-testo:global(.entra) { transform: translateY(120%); transition: none; }
-  .vantaggi { list-style: none; margin: 0 auto; padding: 0; max-width: 72rem; display: grid; gap: 1rem; }
+  .vantaggi { list-style: none; margin: 0 auto; padding: 0; display: grid; gap: 1rem; }
   @media (min-width: 40rem) { .vantaggi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (min-width: 64rem) { .vantaggi { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; } }
   .vantaggio { padding: 1.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
@@ -234,7 +234,7 @@ const jsonLd = {
   .azioni-centro { text-align: center; margin: 2.5rem 0 0; }
   .azioni-centro .btn { display: inline-flex; align-items: center; gap: 0.5rem; }
 
-  .include { list-style: none; margin: 0 auto; padding: 0; max-width: 64rem; display: grid; gap: 0.75rem; }
+  .include { list-style: none; margin: 0 auto; padding: 0; display: grid; gap: 0.75rem; }
   @media (min-width: 40rem) { .include { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (min-width: 64rem) { .include { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; } }
   .include li { display: flex; align-items: center; gap: 0.9rem; padding: 1.1rem 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); font-weight: 500; line-height: 1.4; transition: border-color 0.3s; }
@@ -254,7 +254,7 @@ const jsonLd = {
   .dopo { text-align: center; }
   .dopo .titolo-sezione { margin-bottom: 1.25rem; }
   .dopo .intro { margin-bottom: 3rem; }
-  .altri { list-style: none; margin: 0 auto; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; max-width: 56rem; }
+  .altri { list-style: none; margin: 0 auto; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; }
   .altri a { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1.2rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); text-decoration: none; font-size: var(--fs-sm); font-weight: 500; transition: border-color 0.25s, color 0.25s; }
   .altri a:hover { border-color: var(--accent-border); color: var(--accent); }
   .altri svg { color: var(--accent); }
