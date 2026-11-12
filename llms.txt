@@ -10,6 +10,7 @@ Contatti: info@gabrielevilardo.it · 340 4800981. Per un preventivo: https://gab
 - [Servizi](https://gabrielevilardo.it/servizi/): Siti web, applicazioni su misura e WordPress: i problemi che risolvo e come lavoro, passo dopo passo.
 - [Progetti](https://gabrielevilardo.it/progetti/): Una selezione di lavori: il problema, la soluzione e il risultato.
 - [Chi sono](https://gabrielevilardo.it/chi-sono-web-designer-palermo/): Cerchi un Web Designer a Palermo? Sono Gabriele Vilardo: +10 anni di esperienza in siti WordPress, Elementor, codice custom e sviluppo Full-Stack. Scopri di più.
+- [Blog](https://gabrielevilardo.it/blog/): guide pratiche su siti web, WordPress, SEO e velocità
 - [Contatti](https://gabrielevilardo.it/contatti/): modulo di contatto, email, telefono e WhatsApp
 
 ## Servizi
@@ -39,6 +40,10 @@ Contatti: info@gabrielevilardo.it · 340 4800981. Per un preventivo: https://gab
 - [Palermore — Portale Turistico e Valorizzazione Territoriale](https://gabrielevilardo.it/progetti/palermore-portale-turistico-e-valorizzazione-territoriale/): Sviluppo e implementazione tecnica per Palermore a partire da un template grafico fornito dal cliente, integrando layout custom con Elementor, archivi dinamici tramite Custom Post Type e gestione avanzata dei dati con Custom Field
 - [La Fisioterapia Palermo — Studio Fisioterapico e Riabilitazione](https://gabrielevilardo.it/progetti/la-fisioterapia-palermo-studio-fisioterapico-e-riabilitazione/): Sviluppo e implementazione tecnica per La Fisioterapia Palermo a partire da un template grafico fornito dal cliente, integrando layout custom con Elementor, archivi dinamici tramite Custom Post Type e un modulo di prenotazione online degli appuntamenti basato sulle disponibilità
 - [Gruppo Securpol — Sicurezza e Vigilanza Privata](https://gabrielevilardo.it/progetti/gruppo-securpol-sicurezza-e-vigilanza-privata/): Sviluppo del portale web istituzionale per Gruppo Securpol su base WordPress ed Elementor, progettato per presentare i servizi di vigilanza privata, sicurezza e controllo accessi con un'impronta professionale e istituzionale
+
+## Articoli del blog
+
+- [Sito web non porta clienti: 5 motivi e come rimediare](https://gabrielevilardo.it/blog/sito-web-non-porta-clienti-soluzioni/): Il tuo sito web non genera contatti? Scopri i 5 errori più comuni che allontanano i clienti e come trasformare la tua pagina in uno strumento utile.
 
 ## Domande frequenti
 
