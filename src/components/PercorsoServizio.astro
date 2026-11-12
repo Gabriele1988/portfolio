@@ -1,9 +1,9 @@
 ---
-// Percorso di un servizio: un sentiero curvo che si snoda tra le fasi (a sinistra e a destra, alternate)
-// e si riempie scorrendo. Un razzo viaggia sulla punta seguendo le curve (punta dove va, si gira quando risali)
-// e le fasi che ha superato restano accese. In fondo c'è il pianeta d'arrivo.
-// Il tracciato si ricalcola dalle posizioni reali delle card (anche quando cambiano larghezza o testi).
-// Con "riduci movimento" il sentiero è pieno e il razzo è fermo all'arrivo.
+// Percorso di un servizio: le fasi sono box ravvicinati a zig-zag e il sentiero luminoso passa SOTTO i box
+// (si intravede attraverso il vetro sfocato). Scorrendo, il razzo segue il sentiero lasciando una scia:
+// quando passa sotto un box lo illumina dal basso (la luce segue il razzo), il box si accende e il numero
+// della fase si colora. In fondo c'è il pianeta d'arrivo.
+// Il tracciato si ricalcola dalle posizioni reali dei box. Con "riduci movimento" tutto è acceso e fermo.
 import Icona from './Icona.astro';
 import type { Passo } from '../lib/pagineServizi';
 
@@ -14,19 +14,26 @@ const { passi } = Astro.props;
 const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
-<div class="percorso" data-percorso>
+<div class="percorso" data-percorso style={`--n: ${passi.length}`}>
   <svg class="tracciato" aria-hidden="true" data-tracciato>
     <defs>
       <linearGradient id="pc-scia" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="1000" data-scia>
         <stop offset="0" stop-color="rgb(97 9 250)" />
-        <stop offset="1" stop-color="rgb(229 0 255)" />
+        <stop offset="0.5" stop-color="rgb(229 0 255)" />
+        <stop offset="1" stop-color="rgb(160 105 255)" />
       </linearGradient>
     </defs>
     <path class="base" data-base />
+    <path class="alone" data-alone />
     <path class="pieno" data-pieno />
   </svg>
 
+  <div class="scia" aria-hidden="true" data-scia-punti>
+    {Array.from({ length: 6 }, () => <span />)}
+  </div>
+
   <div class="navicella" aria-hidden="true" data-navicella>
+    <span class="bagliore"></span>
     <div class="scafo" data-scafo>
       <svg viewBox="0 0 512.001 512.001" width="64" height="64"><path style="fill:#FF5249;" d="M501.752,10.001c0,0-1.93,53.83-24.3,117.12l-92.82-92.82 C447.922,11.931,501.752,10.001,501.752,10.001z"/> <path style="fill:#FFFFFF;" d="M384.632,34.301l92.82,92.82c-14.54,41.18-37.75,86.36-74.69,123.3 c-34.041,34.041-74.993,61.29-117.81,80.18l-103.8-103.8c12.64-28.65,30.28-59.22,53.59-88.17c8.16-10.13,17.01-20.06,26.59-29.64 C298.272,72.051,343.452,48.841,384.632,34.301z"/> <path style="fill:#7BD8E8;" d="M388.612,123.141c15.62,15.62,15.62,40.95,0,56.57s-40.94,15.62-56.57,0 c-15.62-15.63-15.62-40.95,0-56.57S372.992,107.521,388.612,123.141z"/> <g> <path style="fill:#FF5249;" d="M374.472,278.701c51.54,77.31-44.94,127.28-98.99,127.28c28.28-28.28,20.02-64.83,20.02-64.83 l-10.55-10.55c28.65-12.64,59.22-30.28,88.17-53.59L374.472,278.701z"/> <path style="fill:#FF5249;" d="M169.532,300.041l-1.62-1.62c-4.78-4.79-7.13-11.73-5.45-18.29c4.17-16.24,10.33-34.36,18.69-53.33 l103.8,103.8c-18.97,8.36-37.09,14.52-53.33,18.69c-6.56,1.68-13.5-0.67-18.29-5.45l-1.62-1.62L169.532,300.041z"/> <path style="fill:#FF5249;" d="M233.052,137.281l1.69,1.35c-23.31,28.95-40.95,59.52-53.59,88.17l-10.55-10.55 c0,0-36.55-8.26-64.83,20.02C105.772,182.221,155.742,85.741,233.052,137.281z"/> </g> <path style="fill:#FFDD78;" d="M169.532,300.041l42.18,42.18c-3.03,11.99-10.22,24.61-21.09,35.48 c-23.43,23.43-84.85,28.28-84.85,28.28s4.85-61.42,28.28-84.85C144.922,310.261,157.542,303.071,169.532,300.041z"/> <path fill="#f4f0ff" d="M268.662,257.491c3.9-3.91,3.9-10.24,0-14.14c-3.91-3.91-10.24-3.91-14.15,0c-3.9,3.9-3.9,10.23,0,14.14 C258.422,261.391,264.752,261.391,268.662,257.491z"/> <path fill="#f4f0ff" d="M395.933,186.782c19.538-19.538,19.542-51.171,0-70.712c-19.54-19.539-51.172-19.54-70.713,0 c-19.489,19.489-19.49,51.209,0.003,70.714C344.719,206.268,376.439,206.276,395.933,186.782z M339.363,130.212 c11.723-11.723,30.703-11.725,42.428,0c11.723,11.722,11.725,30.703,0,42.427c-11.693,11.694-30.727,11.694-42.426,0.002 C327.67,160.939,327.669,141.905,339.363,130.212z"/> <path fill="#f4f0ff" d="M102.194,245.509c1.237,0.513,2.537,0.762,3.825,0.762c2.603,0,5.16-1.017,7.073-2.929 c20.083-20.083,44.854-18.827,52.946-17.763l3.502,3.502c-6.892,16.4-12.444,32.708-16.516,48.569 c-1.47,5.74-0.974,11.814,1.211,17.37c-9.628,4.437-18.917,10.952-27.005,19.04c-25.741,25.742-30.968,88.476-31.178,91.134 c-0.23,2.917,0.828,5.789,2.897,7.858c1.883,1.882,4.43,2.929,7.07,2.929c0.262,0,0.525-0.01,0.788-0.031 c2.658-0.209,65.394-5.436,91.135-31.177c8.085-8.085,14.599-17.373,19.036-26.999c5.882,2.313,11.936,2.598,17.38,1.203 c15.854-4.071,32.16-9.621,48.562-16.514l3.502,3.502c1.063,8.093,2.319,32.864-17.763,52.945c-2.859,2.86-3.715,7.161-2.167,10.897 c1.547,3.737,5.193,6.173,9.238,6.173c39.58,0,94.915-23.571,115.295-61.652c8.851-16.537,14.877-42.699-4.341-75.348 c8.147-6.886,15.994-14.086,23.396-21.488c33.02-33.02,58.942-75.763,77.048-127.039c22.62-63.998,24.783-117.834,24.864-120.094 c0.1-2.775-0.959-5.466-2.922-7.43c-1.964-1.963-4.644-3.027-7.43-2.922c-2.261,0.081-56.096,2.245-120.091,24.864 c-51.28,18.106-94.023,44.029-127.042,77.049c-7.399,7.399-14.599,15.245-21.488,23.396c-32.648-19.218-58.81-13.192-75.349-4.341 c-38.081,20.38-61.652,75.716-61.652,115.296C96.021,240.315,98.458,243.962,102.194,245.509z M183.8,370.63 c-13.75,13.75-46.005,21.002-66.392,23.963c2.962-20.388,10.215-52.642,23.964-66.391c7.7-7.7,16.628-13.538,25.602-16.826 l33.652,33.652C197.338,354.002,191.501,362.93,183.8,370.63z M229.39,339.603c-2.894,0.741-6.246-0.347-8.738-2.835 c-48.541-48.54,13.77,13.771-45.412-45.412c-2.494-2.499-3.582-5.85-2.843-8.739c3.203-12.474,7.392-25.272,12.486-38.193 l82.695,82.695C254.655,332.214,241.859,336.402,229.39,339.603z M373.394,344.891c-13.102,24.479-46.09,42.523-76.152,48.734 c9.585-18.037,11.698-40.998,8.196-54.921c-0.813-3.234-2.923-4.86-3.041-5.051c24.233-11.737,47.182-25.818,68.486-42.015 C381.29,310.652,382.147,328.535,373.394,344.891z M473.311,108.587l-69.896-69.896c38.081-11.828,71.21-16.257,87.746-17.849 C489.568,37.381,485.138,70.51,473.311,108.587z M268.653,116.062c29.625-29.626,67.859-53.204,113.671-70.176l83.792,83.792 c-16.97,45.811-40.548,84.045-70.176,113.672c-9.011,9.01-18.714,17.715-28.84,25.872c-24.342,19.6-51.134,36.202-79.718,49.418 l-94.02-94.018c13.216-28.586,29.818-55.378,49.416-79.717C250.942,134.772,259.646,125.068,268.653,116.062z M167.111,138.608 c16.359-8.754,34.24-7.896,53.252,2.511c-16.197,21.302-30.278,44.252-42.015,68.487c-0.149-0.092-1.949-2.355-5.293-3.109 c-1.375-0.311-27.834-6.002-54.679,8.265C124.588,184.699,142.631,151.71,167.111,138.608z"/> <path fill="#f4f0ff" d="M212.093,455.481l28.28-28.29c3.904-3.906,3.903-10.238-0.002-14.142c-3.907-3.905-10.239-3.903-14.143,0.002l-28.28,28.29 c-3.904,3.906-3.903,10.238,0.002,14.142C201.857,459.387,208.189,459.387,212.093,455.481z"/> <path fill="#f4f0ff" d="M70.661,314.053l28.29-28.28c3.906-3.904,3.907-10.236,0.003-14.142s-10.235-3.906-14.142-0.002l-28.29,28.28 c-3.906,3.904-3.907,10.236-0.003,14.142C60.422,317.955,66.753,317.959,70.661,314.053z"/> <path fill="#f4f0ff" d="M155.521,427.199l-67.74,67.73c-3.906,3.905-3.906,10.237-0.001,14.142c3.903,3.905,10.236,3.907,14.142,0.001l67.74-67.73 c3.906-3.905,3.906-10.237,0.001-14.142C165.76,423.295,159.427,423.295,155.521,427.199z"/> <path fill="#f4f0ff" d="M75.521,427.199l-67.74,67.73c-3.906,3.905-3.906,10.237-0.001,14.142c3.903,3.905,10.236,3.907,14.142,0.001l67.74-67.73 c3.906-3.905,3.906-10.237,0.001-14.142C85.759,423.295,79.426,423.295,75.521,427.199z"/> <path fill="#f4f0ff" d="M17.073,424.221l67.73-67.74c3.905-3.906,3.905-10.237-0.001-14.143c-3.904-3.904-10.237-3.904-14.142,0.001l-67.73,67.74 c-3.905,3.906-3.905,10.237,0.001,14.143C6.836,428.127,13.168,428.127,17.073,424.221z"/> <path fill="#f4f0ff" d="M296.943,229.202l14.14-14.14c3.905-3.905,3.905-10.237,0-14.143c-3.906-3.905-10.236-3.905-14.143,0l-14.14,14.14 c-3.905,3.905-3.905,10.237,0,14.143C286.706,233.107,293.037,233.107,296.943,229.202z"/></svg>
     </div>
@@ -34,11 +41,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
   <ol>
     {passi.map((p, i) => (
-      <li class:list={['passo', i % 2 ? 'destra' : 'sinistra']} style={`--y: ${[50, 34, 62, 42, 58, 38][i % 6]}%; --xn: ${(i % 2 ? [30, 22, 34] : [70, 78, 66])[Math.floor(i / 2) % 3]}%`} data-passo>
-        <span class="nodo" aria-hidden="true" data-nodo><Icona nome={p.icona} size={18} /></span>
-        <div class="card" data-card>
+      <li class:list={['passo', i % 2 ? 'destra' : 'sinistra']} style={`--r: ${i + 1}`} data-passo>
+        <div class="card">
           <p class="segno">
             <span class="numero">{pad(i + 1)}</span>
+            <span class="ico" aria-hidden="true"><Icona nome={p.icona} size={18} /></span>
             {p.etichetta && <span class="etichetta">{p.etichetta}</span>}
           </p>
           {p.domanda && <p class="domanda">{p.domanda}</p>}
@@ -55,18 +62,18 @@ const pad = (n: number) => String(n).padStart(2, '0');
 </div>
 
 <script>
-  type Punto = { x: number; y: number };
-  const desktop = matchMedia('(min-width: 48rem)');
-
   for (const el of document.querySelectorAll<HTMLElement>('[data-percorso]')) {
     const svg = el.querySelector<SVGSVGElement>('[data-tracciato]')!;
     const base = el.querySelector<SVGPathElement>('[data-base]')!;
+    const alone = el.querySelector<SVGPathElement>('[data-alone]')!;
     const pieno = el.querySelector<SVGPathElement>('[data-pieno]')!;
-    const scia = el.querySelector<SVGLinearGradientElement>('[data-scia]')!;
+    const gradiente = el.querySelector<SVGLinearGradientElement>('[data-scia]')!;
     const navicella = el.querySelector<HTMLElement>('[data-navicella]')!;
     const scafo = el.querySelector<HTMLElement>('[data-scafo]')!;
+    const scia = [...el.querySelectorAll<HTMLElement>('[data-scia-punti] span')];
     const arrivo = el.querySelector<HTMLElement>('[data-arrivo]')!;
     const passi = [...el.querySelectorAll<HTMLElement>('[data-passo]')];
+    const card = passi.map((p) => p.querySelector<HTMLElement>('.card')!);
     const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Campioni del tracciato (x, y, lunghezza) per trovare in fretta il punto all'altezza dello schermo.
@@ -74,8 +81,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
     let cx: number[] = [];
     let cy: number[] = [];
     let cl: number[] = [];
-    let lunghezzaNodi: number[] = [];
-
+    let box: DOMRect[] = [];
 
     function indiceA(y: number) {
       let lo = 0;
@@ -93,99 +99,37 @@ const pad = (n: number) => String(n).padStart(2, '0');
       const H = el.clientHeight;
       if (!W || !H) return;
       svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-      scia.setAttribute('y2', String(H));
+      gradiente.setAttribute('y2', String(H));
 
-      type Tratto = [Punto, Punto, Punto, Punto];
-      const card: DOMRect[] = [];
-      const nodi: Punto[] = [];
-      for (const li of passi) {
-        const c = li.querySelector<HTMLElement>('[data-card]')!;
-        const nodo = li.querySelector<HTMLElement>('[data-nodo]')!;
-        card.push(new DOMRect(li.offsetLeft + c.offsetLeft, li.offsetTop + c.offsetTop, c.offsetWidth, c.offsetHeight));
-        nodi.push({ x: li.offsetLeft + nodo.offsetLeft + nodo.offsetWidth / 2, y: li.offsetTop + nodo.offsetTop + nodo.offsetHeight / 2 });
+      // Il sentiero attraversa il centro di ogni box (passandoci sotto), da metà in alto a metà in fondo.
+      box = passi.map((li, i) => new DOMRect(li.offsetLeft + card[i].offsetLeft, li.offsetTop + card[i].offsetTop, card[i].offsetWidth, card[i].offsetHeight));
+      const punti = [{ x: W / 2, y: 0 }, ...box.map((r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 })), { x: W / 2, y: H }];
+      // Curva di Catmull-Rom: passa da tutti i punti senza spigoli. Le tangenti verticali restano ampie (curve morbide).
+      let d = `M ${punti[0].x} ${punti[0].y}`;
+      for (let i = 0; i < punti.length - 1; i++) {
+        const a = punti[Math.max(0, i - 1)];
+        const p = punti[i];
+        const q = punti[i + 1];
+        const b = punti[Math.min(punti.length - 1, i + 2)];
+        const c1 = { x: p.x + (q.x - a.x) / 6, y: p.y + Math.max(0, q.y - a.y) / 4 };
+        const c2 = { x: q.x - (b.x - p.x) / 6, y: q.y - Math.max(0, b.y - p.y) / 4 };
+        d += ` C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${q.x} ${q.y}`;
       }
-      const margine = 14;
-      const libero = (tt: Tratto[]) =>
-        tt.every(([p0, p1, p2, p3]) => {
-          for (let t = 0.02; t < 1; t += 0.02) {
-            const u = 1 - t;
-            const x = u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x;
-            const y = u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y;
-            if (card.some((r) => x > r.left - margine && x < r.right + margine && y > r.top - margine && y < r.bottom + margine)) return false;
-          }
-          return true;
-        });
-
-      // Desktop: una curva continua (spline) passa da un nodo all'altro, senza pieghe.
-      // Dove passerebbe sopra una card, la curva si "tende" un po' in quel punto finché non la tocca più.
-      const punti: Punto[] = [];
-      punti.push({ x: W / 2, y: 0 }, ...nodi, { x: W / 2, y: H });
-      const morbidezza = punti.map(() => 1);
-      const costruisci = () =>
-        punti.slice(0, -1).map((p, i): Tratto => {
-          const q = punti[i + 1];
-          const tangente = (k: number) => {
-            const prima = punti[Math.max(0, k - 1)];
-            const dopo = punti[Math.min(punti.length - 1, k + 1)];
-            return { x: ((dopo.x - prima.x) / 5) * morbidezza[k], y: (dopo.y - prima.y) / 3.2 };
-          };
-          const tp = tangente(i);
-          const tq = tangente(i + 1);
-          return [p, { x: p.x + tp.x, y: p.y + tp.y }, { x: q.x - tq.x, y: q.y - tq.y }, q];
-        });
-      let tratti = costruisci();
-      if (desktop.matches) {
-        for (let giro = 0; giro < 8; giro++) {
-          let ok = true;
-          tratti.forEach((t, i) => {
-            if (!libero([t])) {
-              ok = false;
-              morbidezza[i] *= 0.6;
-              morbidezza[i + 1] *= 0.6;
-            }
-          });
-          if (ok) break;
-          tratti = costruisci();
-        }
-      } else {
-        // Telefono: il sentiero scende nella striscia accanto alla card e cambia lato tra una card e l'altra
-        // con una lunga curva a S (verticale alle estremità, quindi senza pieghe).
-        const s = (a: Punto, b: Punto): Tratto => {
-          const k = (b.y - a.y) * 0.5;
-          return [a, { x: a.x, y: a.y + k }, { x: b.x, y: b.y - k }, b];
-        };
-        tratti = [];
-        let da: Punto = { x: nodi[0]?.x ?? W / 2, y: 0 };
-        nodi.forEach((n, i) => {
-          const a = { x: n.x, y: card[i].top };
-          const b = { x: n.x, y: card[i].bottom };
-          tratti.push(s(da, a), s(a, n), s(n, b));
-          da = b;
-        });
-        tratti.push(s(da, { x: da.x, y: H }));
-      }
-      const fine = tratti[tratti.length - 1][3];
-      arrivo.style.left = `${fine.x}px`;
-      let d = `M ${tratti[0][0].x} ${tratti[0][0].y}`;
-      for (const [, c1, c2, p] of tratti) d += ` C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p.x} ${p.y}`;
-      base.setAttribute('d', d);
-      pieno.setAttribute('d', d);
+      for (const path of [base, alone, pieno]) path.setAttribute('d', d);
 
       lunghezza = pieno.getTotalLength();
-      pieno.style.strokeDasharray = `${lunghezza} ${lunghezza}`;
-      const passo = 3;
+      for (const path of [alone, pieno]) path.style.strokeDasharray = `${lunghezza} ${lunghezza}`;
       cx = [];
       cy = [];
       cl = [];
       let maxY = -Infinity;
-      for (let l = 0; l <= lunghezza; l += passo) {
-        const p = pieno.getPointAtLength(l);
-        maxY = Math.max(maxY, p.y); // y sempre crescente: la ricerca binaria resta valida
-        cx.push(p.x);
+      for (let l = 0; l <= lunghezza; l += 3) {
+        const pt = pieno.getPointAtLength(l);
+        maxY = Math.max(maxY, pt.y); // y sempre crescente: la ricerca binaria resta valida
+        cx.push(pt.x);
         cy.push(maxY);
         cl.push(l);
       }
-      lunghezzaNodi = nodi.map((n) => cl[indiceA(n.y)]);
     }
 
     let ultimaY = scrollY;
@@ -202,22 +146,37 @@ const pad = (n: number) => String(n).padStart(2, '0');
       const punta = calmo ? Infinity : innerHeight * 0.55 - r.top;
       const i = punta <= 0 ? 0 : Math.min(cl.length - 1, indiceA(punta));
       const l = cl[i];
-      pieno.style.strokeDashoffset = String(lunghezza - l);
+      for (const path of [alone, pieno]) path.style.strokeDashoffset = String(lunghezza - l);
 
       // Il razzo punta nella direzione del sentiero (nel disegno guarda a 45° in alto a destra).
       const i0 = Math.max(0, i - 2);
       const i1 = Math.min(cl.length - 1, i + 2);
       const angolo = (Math.atan2(cy[i1] - cy[i0], cx[i1] - cx[i0]) * 180) / Math.PI + 45;
-      navicella.style.transform = `translate3d(${cx[i]}px, ${cy[i]}px, 0) rotate(${angolo.toFixed(1)}deg)`;
-      el.classList.toggle('in-volo', i > 0 && i < cl.length - 1);
-
-      let attivo: HTMLElement | undefined;
-      passi.forEach((p, k) => {
-        const raggiunto = lunghezzaNodi[k] <= l + 1;
-        p.classList.toggle('raggiunto', raggiunto);
-        if (raggiunto) attivo = p;
+      const x = cx[i];
+      const y = cy[i];
+      navicella.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${angolo.toFixed(1)}deg)`;
+      // Scia: scintille sempre più piccole e trasparenti nei punti appena percorsi.
+      scia.forEach((s, k) => {
+        const j = Math.max(0, i - (k + 1) * 5);
+        s.style.transform = `translate3d(${cx[j]}px, ${cy[j]}px, 0)`;
       });
-      passi.forEach((p) => p.classList.toggle('attivo', p === attivo));
+      const inVolo = i > 0 && i < cl.length - 1;
+      el.classList.toggle('in-volo', inVolo);
+
+      // Box: luce che segue il razzo quando ci passa sotto; acceso quando il razzo ne ha raggiunto il centro.
+      let sotto = -1;
+      box.forEach((b, k) => {
+        const dentro = x > b.left - 40 && x < b.right + 40 && y > b.top - 40 && y < b.bottom + 40;
+        const c = card[k];
+        if (dentro) {
+          sotto = k;
+          c.style.setProperty('--mx', `${x - b.left}px`);
+          c.style.setProperty('--my', `${y - b.top}px`);
+        }
+        c.classList.toggle('illuminato', dentro && inVolo);
+        passi[k].classList.toggle('raggiunto', y >= b.top + b.height / 2 - 1);
+      });
+      navicella.classList.toggle('sotto-box', sotto >= 0 && inVolo);
       arrivo.classList.toggle('raggiunto', i >= cl.length - 2);
     }
     const pianifica = () => {
@@ -240,7 +199,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
             }
           }
         },
-        { rootMargin: '0px 0px -12% 0px' },
+        { rootMargin: '0px 0px -10% 0px' },
       );
       passi.forEach((p) => io.observe(p));
       addEventListener('scroll', pianifica, { passive: true });
@@ -253,90 +212,120 @@ const pad = (n: number) => String(n).padStart(2, '0');
 </script>
 
 <style>
-  .percorso { --striscia: 4.5rem; position: relative; max-width: 72rem; margin: 0 auto; padding-bottom: 2.5rem; }
+  .percorso { position: relative; max-width: 72rem; margin: 0 auto; padding: 3rem 0 4rem; }
 
   .tracciato { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-  .base, .pieno { fill: none; stroke-linecap: round; }
-  .base { stroke: var(--border); stroke-width: 2; }
-  .pieno { stroke: url(#pc-scia); stroke-width: 3; }
+  .base, .alone, .pieno { fill: none; stroke-linecap: round; }
+  .base { stroke: var(--border); stroke-width: 2; stroke-dasharray: 2 10; }
+  .alone { stroke: url(#pc-scia); stroke-width: 14; opacity: 0.22; }
+  .pieno { stroke: url(#pc-scia); stroke-width: 3.5; }
 
-  /* ---------- Navicella ---------- */
-  .navicella { position: absolute; z-index: 3; top: 0; left: 0; width: 0; height: 0; will-change: transform; pointer-events: none; }
-  /* Il razzo nel disegno punta in alto a destra (45°): lo si ruota nella direzione del sentiero. */
+  /* ---------- Navicella e scia ---------- */
+  /* Razzo e scia passano SOTTO i box: attraverso il vetro si vedono sfocati, nello spazio tra i box sono nitidi. */
+  .navicella { position: absolute; z-index: 0; top: 0; left: 0; width: 0; height: 0; will-change: transform; pointer-events: none; }
+  .bagliore {
+    position: absolute;
+    left: -60px;
+    top: -60px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent-light) 55%, transparent), transparent 65%);
+    opacity: 0;
+    transition: opacity 0.4s, scale 0.4s;
+  }
+  .in-volo .bagliore { opacity: 0.55; }
+  .sotto-box .bagliore { opacity: 0.9; scale: 1.3; }
   .scafo {
     position: absolute;
-    left: -32px;
-    top: -32px;
-    width: 64px;
-    height: 64px;
-    transition: transform 0.6s cubic-bezier(.3, 1.4, .5, 1);
+    left: -26px;
+    top: -26px;
+    width: 52px;
+    height: 52px;
+    transition: transform 0.6s cubic-bezier(.3, 1.4, .5, 1), scale 0.35s cubic-bezier(.3, 1.6, .5, 1);
   }
+  .sotto-box .scafo { scale: 1.2; }
   .scafo.su { transform: rotate(180deg); }
   .scafo svg { display: block; width: 100%; height: 100%; overflow: visible; }
 
-  /* ---------- Fasi: card alternate, il sentiero passa nello spazio libero accanto ---------- */
-  ol { list-style: none; margin: 0; padding: 2.5rem 0 0; display: grid; gap: 8rem; }
-  .passo { position: relative; display: flex; }
-  .destra { justify-content: flex-end; }
+  .scia { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+  .scia span { position: absolute; top: 0; left: 0; will-change: transform; opacity: 0; transition: opacity 0.3s; }
+  .scia span::before { content: ''; position: absolute; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); border-radius: 50%; background: var(--accent-glow); box-shadow: 0 0 10px var(--accent-light); }
+  .in-volo .scia span { opacity: var(--o); }
+  .scia span:nth-child(1) { --d: 7px; --o: 0.9; }
+  .scia span:nth-child(2) { --d: 6px; --o: 0.75; }
+  .scia span:nth-child(3) { --d: 5px; --o: 0.6; }
+  .scia span:nth-child(4) { --d: 4px; --o: 0.45; }
+  .scia span:nth-child(5) { --d: 3px; --o: 0.3; }
+  .scia span:nth-child(6) { --d: 2px; --o: 0.2; }
+
+  /* ---------- Fasi: box ravvicinati, sfalsati a zig-zag ---------- */
+  ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.25rem; }
+  .passo { position: relative; z-index: 1; display: flex; }
+  .sinistra { padding-right: 2.25rem; }
+  .destra { padding-left: 2.25rem; }
   .card {
+    --mx: 50%;
+    --my: 50%;
     position: relative;
-    z-index: 1;
-    width: calc(100% - var(--striscia));
-    padding: 1.25rem;
-    background: var(--surface);
+    width: 100%;
+    padding: 1.4rem 1.4rem 1.5rem;
+    overflow: hidden;
+    /* Vetro: il sentiero luminoso si vede sfocato sotto il box */
+    background: color-mix(in srgb, var(--surface) 62%, transparent);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     opacity: 0;
-    transform: translateX(-1.5rem);
-    transition: border-color 0.35s, opacity 0.6s ease, transform 0.7s cubic-bezier(.2, .8, .2, 1);
+    transform: translateY(1.5rem) scale(0.98);
+    transition: border-color 0.4s, box-shadow 0.5s, opacity 0.6s ease, transform 0.7s cubic-bezier(.2, .8, .2, 1);
   }
-  .destra .card { transform: translateX(1.5rem); }
-  .visibile .card { opacity: 1; transform: none; }
-  .attivo .card { border-color: var(--accent-border); }
-  .card > * { margin: 0; }
-
-  .segno { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.75rem !important; font-family: var(--mono); }
-  .numero { font-size: var(--fs-sm); color: var(--muted); transition: color 0.3s; }
-  .etichetta { font-size: var(--fs-xs); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); transition: color 0.3s; }
-  .raggiunto .numero, .raggiunto .etichetta { color: var(--accent); }
-  .domanda { font-family: var(--mono); font-size: var(--fs-sm); color: var(--accent); margin-bottom: 0.6rem !important; }
-  h3 { font-size: clamp(1.25rem, 2.2vw, 1.6rem); line-height: 1.2; }
-  .testo { margin-top: 0.75rem !important; color: var(--text-soft); line-height: 1.7; }
-
-  .nodo {
+  /* Luce del razzo che attraversa il box */
+  .card::before {
+    content: '';
     position: absolute;
-    z-index: 2;
-    top: var(--y, 50%);
-    left: calc(100% - var(--striscia) / 2);
-    width: 2.6rem;
-    height: 2.6rem;
-    margin: -1.3rem 0 0 -1.3rem;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--muted);
-    transition: background-color 0.35s, border-color 0.35s, color 0.35s, box-shadow 0.35s, scale 0.4s cubic-bezier(.3, 1.6, .5, 1);
+    inset: 0;
+    background: radial-gradient(260px circle at var(--mx) var(--my), color-mix(in srgb, var(--accent-light) 22%, transparent), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.35s;
+    pointer-events: none;
   }
-  .destra .nodo { left: calc(var(--striscia) / 2); }
-  .raggiunto .nodo { background: var(--accent-btn); border-color: var(--accent-btn); color: var(--white); }
-  .attivo .nodo { scale: 1.12; box-shadow: 0 0 0 6px var(--accent-soft), 0 0 28px color-mix(in srgb, var(--accent-light) 45%, transparent); }
+  .card.illuminato::before { opacity: 1; }
+  .visibile .card { opacity: 1; transform: none; }
+  .raggiunto .card { border-color: var(--accent-border); }
+  .card.illuminato { border-color: color-mix(in srgb, var(--accent-light) 60%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-light) 25%, transparent), 0 18px 50px -20px color-mix(in srgb, var(--accent-light) 60%, transparent); }
+  .card > * { position: relative; margin: 0; }
 
+  .segno { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.9rem !important; }
+  .numero { font-family: var(--font-display); font-size: 1.75rem; line-height: 1; letter-spacing: 0.02em; color: var(--muted); transition: color 0.4s; }
+  .raggiunto .numero { background: var(--accent-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .ico { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 50%; border: 1px solid var(--border); color: var(--muted); transition: background-color 0.4s, border-color 0.4s, color 0.4s, scale 0.4s cubic-bezier(.3, 1.6, .5, 1); }
+  .raggiunto .ico { background: var(--accent-btn); border-color: var(--accent-btn); color: var(--white); }
+  .illuminato .ico { scale: 1.12; }
+  .etichetta { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: var(--fs-2xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); transition: color 0.4s; }
+  .raggiunto .etichetta { color: var(--accent); }
+  .domanda { font-family: var(--mono); font-size: var(--fs-sm); color: var(--accent); margin-bottom: 0.5rem !important; }
+  h3 { font-size: clamp(1.2rem, 2vw, 1.45rem); line-height: 1.2; }
+  .testo { margin-top: 0.7rem !important; color: var(--text-soft); line-height: 1.65; }
+
+  /* Desktop: due colonne, ogni box parte a metà del precedente (zig-zag compatto) */
   @media (min-width: 48rem) {
-    ol { padding-top: 3rem; gap: 9rem; }
-    .card { width: 46%; padding: 1.75rem 2rem; }
-    .sinistra .nodo, .destra .nodo { left: var(--xn); }
-    .numero { font-family: var(--font-display); font-size: 2rem; line-height: 1; letter-spacing: 0.02em; }
-    .raggiunto .numero { color: var(--text); }
-    .segno { gap: 1rem; margin-bottom: 1rem !important; }
+    .percorso { padding: 3.5rem 0 5rem; }
+    ol { grid-template-columns: 1fr 1fr; column-gap: 4rem; row-gap: 1.5rem; grid-auto-rows: auto; }
+    .passo { grid-row: var(--r) / span 2; }
+    .sinistra { grid-column: 1; padding: 0; }
+    .destra { grid-column: 2; padding: 0; }
+    .card { padding: 1.75rem 2rem 1.9rem; }
+    .numero { font-size: 2.25rem; }
+    .scafo { left: -32px; top: -32px; width: 64px; height: 64px; }
   }
 
   /* ---------- Pianeta d'arrivo ---------- */
-  .arrivo { position: absolute; left: 50%; bottom: 0; z-index: 2; translate: -50% 50%; width: 4.75rem; height: 4.75rem; }
-  @media (min-width: 48rem) { .arrivo { width: 6.5rem; height: 6.5rem; } .scafo { left: -38px; top: -38px; width: 76px; height: 76px; } }
-  .arrivo svg { display: block; width: 100%; height: 100%; overflow: visible; opacity: 0.7; transition: opacity 0.5s, scale 0.6s cubic-bezier(.3, 1.6, .5, 1); }
-  .arrivo.raggiunto svg { opacity: 1; scale: 1.08; }
+  .arrivo { position: absolute; left: 50%; bottom: 0; z-index: 2; translate: -50% 35%; width: 4.75rem; height: 4.75rem; }
+  @media (min-width: 48rem) { .arrivo { width: 6rem; height: 6rem; } }
+  .arrivo svg { display: block; width: 100%; height: 100%; overflow: visible; opacity: 0.6; transition: opacity 0.5s, scale 0.6s cubic-bezier(.3, 1.6, .5, 1); }
+  .arrivo.raggiunto svg { opacity: 1; scale: 1.12; filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent-light) 50%, transparent)); }
 
   @media (prefers-reduced-motion: reduce) {
     .card { opacity: 1; transform: none; transition: none; }
