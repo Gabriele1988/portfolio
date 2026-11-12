@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.19.1
+ * Version:     1.20.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -2558,6 +2558,7 @@ function portfolio_blog_opzioni() {
 		'modello_testo'   => 'gemini-3.6-flash',
 		'modello_immagine'=> 'gemini-3.1-flash-image',
 		'avvisa'          => 1,
+		'immagine'        => 'grafica',
 	) );
 }
 
@@ -2748,6 +2749,110 @@ function portfolio_blog_testo( $argomento ) {
 	return $a;
 }
 
+function portfolio_copertina_png( $titolo, $etichetta, $bold, $medium, $seme ) {
+	$w = 1600; $h = 900;
+	mt_srand( crc32( $seme ) );
+	// Sfondo: macchie di luce viola e fucsia disegnate in piccolo e ingrandite (sfumature morbide).
+	$pw = 160; $ph = 90;
+	$p = imagecreatetruecolor( $pw, $ph );
+	$macchie = array(
+		array( mt_rand( 95, 150 ), mt_rand( -10, 40 ), mt_rand( 55, 80 ), array( 97, 9, 250 ) ),
+		array( mt_rand( 110, 165 ), mt_rand( 50, 100 ), mt_rand( 40, 65 ), array( 229, 0, 255 ) ),
+		array( mt_rand( -20, 30 ), mt_rand( 60, 100 ), mt_rand( 35, 55 ), array( 80, 0, 244 ) ),
+	);
+	for ( $y = 0; $y < $ph; $y++ ) {
+		for ( $x = 0; $x < $pw; $x++ ) {
+			$c = array( 10, 10, 14 );
+			foreach ( $macchie as $m ) {
+				$d = sqrt( ( $x - $m[0] ) ** 2 + ( ( $y - $m[1] ) * 1.2 ) ** 2 ) / $m[2];
+				$k = max( 0, 1 - $d ); $k = $k * $k * 0.75;
+				for ( $i = 0; $i < 3; $i++ ) { $c[ $i ] += ( $m[3][ $i ] - $c[ $i ] ) * $k; }
+			}
+			imagesetpixel( $p, $x, $y, imagecolorallocate( $p, (int) $c[0], (int) $c[1], (int) $c[2] ) );
+		}
+	}
+	$im = imagecreatetruecolor( $w, $h );
+	imagecopyresampled( $im, $p, 0, 0, 0, 0, $w, $h, $pw, $ph );
+	imagedestroy( $p );
+	imagealphablending( $im, true );
+	// Velo scuro a sinistra, dove sta il testo.
+	for ( $x = 0; $x < $w; $x += 4 ) {
+		$a = (int) max( 0, min( 127, 127 - ( 1 - $x / ( $w * 0.75 ) ) * 90 ) );
+		imagefilledrectangle( $im, $x, 0, $x + 3, $h, imagecolorallocatealpha( $im, 8, 8, 12, $a ) );
+	}
+	// Stelle.
+	for ( $i = 0; $i < 140; $i++ ) {
+		$r = mt_rand( 1, 100 ) > 92 ? 2 : 1;
+		imagefilledellipse( $im, mt_rand( 0, $w ), mt_rand( 0, $h ), $r * 2, $r * 2, imagecolorallocatealpha( $im, 255, 255, 255, mt_rand( 30, 100 ) ) );
+	}
+	// Anelli di un pianeta in basso a destra.
+	$cx = 1330 + mt_rand( -60, 60 ); $cy = 640 + mt_rand( -60, 60 );
+	imagesetthickness( $im, 3 );
+	imagefilledellipse( $im, $cx, $cy, 230, 230, imagecolorallocatealpha( $im, 244, 240, 255, 112 ) );
+	imageellipse( $im, $cx, $cy, 230, 230, imagecolorallocatealpha( $im, 244, 240, 255, 60 ) );
+	imagearc( $im, $cx, $cy, 420, 110, 160, 380, imagecolorallocatealpha( $im, 240, 138, 255, 40 ) );
+
+	$bianco = imagecolorallocate( $im, 255, 255, 255 );
+	$viola  = imagecolorallocate( $im, 196, 160, 255 );
+	$x0 = 110;
+	// Titolo: la dimensione si riduce finché sta in 4 righe.
+	$maxw = 1000;
+	foreach ( array( 84, 76, 68, 60, 54 ) as $size ) {
+		$righe = array(); $riga = '';
+		foreach ( preg_split( '/\s+/', trim( $titolo ) ) as $parola ) {
+			$prova = $riga === '' ? $parola : $riga . ' ' . $parola;
+			$b = imagettfbbox( $size, 0, $bold, $prova );
+			if ( $b[2] - $b[0] > $maxw && $riga !== '' ) { $righe[] = $riga; $riga = $parola; } else { $riga = $prova; }
+		}
+		$righe[] = $riga;
+		if ( count( $righe ) <= 4 ) break;
+	}
+	$alto = $size * 1.22;
+	$y = (int) ( $h / 2 - ( count( $righe ) * $alto ) / 2 + $size * 0.9 + 30 );
+	if ( $etichetta ) {
+		imagettftext( $im, 24, 0, $x0, (int) ( $y - $size - 40 ), $viola, $medium, mb_strtoupper( $etichetta ) );
+	}
+	foreach ( $righe as $r ) {
+		imagettftext( $im, $size, 0, $x0, (int) $y, $bianco, $bold, $r );
+		$y += $alto;
+	}
+	imagefilledrectangle( $im, $x0, 780, $x0 + 90, 785, imagecolorallocate( $im, 229, 0, 255 ) );
+	imagettftext( $im, 22, 0, $x0, 830, imagecolorallocatealpha( $im, 255, 255, 255, 40 ), $medium, 'gabrielevilardo.it' );
+	ob_start(); imagepng( $im, null, 6 ); imagedestroy( $im );
+	return ob_get_clean();
+}
+
+/** Scarica una volta i font della copertina (Space Grotesk, licenza OFL) nella cartella uploads. */
+function portfolio_copertina_font( $peso ) {
+	$dir  = trailingslashit( wp_upload_dir()['basedir'] ) . 'portfolio-font/';
+	$file = $dir . 'SpaceGrotesk-' . $peso . '.ttf';
+	if ( file_exists( $file ) && filesize( $file ) > 50000 ) {
+		return $file;
+	}
+	wp_mkdir_p( $dir );
+	$res = wp_remote_get( 'https://raw.githubusercontent.com/floriankarsten/space-grotesk/master/fonts/ttf/static/SpaceGrotesk-' . $peso . '.ttf', array( 'timeout' => 30 ) );
+	if ( is_wp_error( $res ) || 200 !== wp_remote_retrieve_response_code( $res ) ) {
+		return '';
+	}
+	file_put_contents( $file, wp_remote_retrieve_body( $res ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+	return $file;
+}
+
+/** Copertina grafica gratuita (senza AI): sfondo spaziale nei colori del sito con il titolo dell'articolo. */
+function portfolio_blog_copertina_grafica( $articolo, $post_id ) {
+	if ( ! function_exists( 'imagettftext' ) ) {
+		return new WP_Error( 'portfolio_copertina', 'Sul server manca la libreria GD con FreeType per creare la copertina.' );
+	}
+	$bold   = portfolio_copertina_font( 'Bold' );
+	$medium = portfolio_copertina_font( 'Medium' );
+	if ( ! $bold || ! $medium ) {
+		return new WP_Error( 'portfolio_copertina', 'Font della copertina non scaricato.' );
+	}
+	$tag  = (array) ( $articolo['tag'] ?? array() );
+	$png  = portfolio_copertina_png( $articolo['titolo'], 'Blog' . ( $tag ? ' · ' . $tag[0] : '' ), $bold, $medium, $articolo['titolo'] );
+	return portfolio_blog_allega( base64_encode( $png ), 'image/png', $articolo, $post_id, sanitize_text_field( $articolo['titolo'] ) );
+}
+
 /** Crea l'immagine con Gemini e la carica nella libreria media. Restituisce l'ID allegato o WP_Error. */
 function portfolio_blog_immagine( $articolo, $post_id ) {
 	$o      = portfolio_blog_opzioni();
@@ -2773,9 +2878,14 @@ function portfolio_blog_immagine( $articolo, $post_id ) {
 		return new WP_Error( 'portfolio_gemini', 'Gemini non ha restituito un\'immagine.' );
 	}
 	$mime = $img['mimeType'] ?? ( $img['mime_type'] ?? 'image/png' );
+	return portfolio_blog_allega( $img['data'], $mime, $articolo, $post_id, sanitize_text_field( $articolo['alt_immagine'] ?? $articolo['titolo'] ) );
+}
+
+/** Carica un'immagine (base64) nella libreria media, collegata all'articolo. */
+function portfolio_blog_allega( $base64, $mime, $articolo, $post_id, $alt ) {
 	$est  = array( 'image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp' )[ $mime ] ?? 'png';
 	$nome = sanitize_file_name( ( $articolo['slug'] ?: 'articolo' ) . '.' . $est );
-	$file = wp_upload_bits( $nome, null, base64_decode( $img['data'] ) );
+	$file = wp_upload_bits( $nome, null, base64_decode( $base64 ) );
 	if ( ! empty( $file['error'] ) ) {
 		return new WP_Error( 'portfolio_upload', $file['error'] );
 	}
@@ -2789,7 +2899,7 @@ function portfolio_blog_immagine( $articolo, $post_id ) {
 		return is_wp_error( $id ) ? $id : new WP_Error( 'portfolio_upload', 'Allegato non creato.' );
 	}
 	wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $file['file'] ) );
-	update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( $articolo['alt_immagine'] ?? $articolo['titolo'] ) );
+	update_post_meta( $id, '_wp_attachment_image_alt', $alt );
 	return $id;
 }
 
@@ -2832,10 +2942,17 @@ function portfolio_blog_genera() {
 		portfolio_blog_consuma_argomento( $argomento );
 	}
 
-	$img  = portfolio_blog_immagine( $a, $id );
+	// Immagine: con Gemini (a pagamento) o copertina grafica gratuita; se Gemini non riesce si usa la grafica.
 	$nota = '';
+	$img  = 'gemini' === $o['immagine'] ? portfolio_blog_immagine( $a, $id ) : new WP_Error( 'portfolio_skip', '' );
 	if ( is_wp_error( $img ) ) {
-		$nota = ' Immagine non creata: ' . $img->get_error_message();
+		if ( 'gemini' === $o['immagine'] ) {
+			$nota = ' Immagine AI non creata (' . $img->get_error_message() . '): uso la copertina grafica.';
+		}
+		$img = portfolio_blog_copertina_grafica( $a, $id );
+	}
+	if ( is_wp_error( $img ) ) {
+		$nota .= ' Immagine non creata: ' . $img->get_error_message();
 	} else {
 		set_post_thumbnail( $id, $img );
 	}
@@ -2911,6 +3028,7 @@ add_action( 'admin_post_portfolio_blog_salva', function () {
 		'modello_testo'    => sanitize_text_field( $in['modello_testo'] ?? '' ) ?: $def['modello_testo'],
 		'modello_immagine' => sanitize_text_field( $in['modello_immagine'] ?? '' ) ?: $def['modello_immagine'],
 		'avvisa'           => empty( $in['avvisa'] ) ? 0 : 1,
+		'immagine'         => ( $in['immagine'] ?? '' ) === 'gemini' ? 'gemini' : 'grafica',
 	);
 	update_option( 'portfolio_blog', $o );
 	portfolio_blog_pianifica();
@@ -2958,7 +3076,11 @@ function portfolio_blog_pagina() {
 				<tr><th scope="row"><label for="pb-pubblico">A chi scrivi</label></th><td><textarea id="pb-pubblico" name="pubblico" rows="2" class="large-text"><?php echo esc_textarea( $o['pubblico'] ); ?></textarea></td></tr>
 				<tr><th scope="row"><label for="pb-tono">Tono</label></th><td><textarea id="pb-tono" name="tono" rows="2" class="large-text"><?php echo esc_textarea( $o['tono'] ); ?></textarea></td></tr>
 				<tr><th scope="row"><label for="pb-parole">Lunghezza</label></th><td><input id="pb-parole" type="number" name="parole" min="400" max="2500" step="100" value="<?php echo esc_attr( $o['parole'] ); ?>"> parole circa</td></tr>
-				<tr><th scope="row"><label for="pb-stile">Stile immagine</label></th><td><textarea id="pb-stile" name="stile_immagine" rows="2" class="large-text"><?php echo esc_textarea( $o['stile_immagine'] ); ?></textarea></td></tr>
+				<tr><th scope="row">Immagine in evidenza</th><td>
+					<label><input type="radio" name="immagine" value="grafica" <?php checked( $o['immagine'], 'grafica' ); ?>> Copertina grafica con il titolo, nei colori del sito (gratuita)</label><br>
+					<label><input type="radio" name="immagine" value="gemini" <?php checked( $o['immagine'], 'gemini' ); ?>> Illustrazione creata da Gemini (serve la fatturazione attiva o i crediti Google Cloud)</label>
+					<p class="description">Se Gemini non riesce a creare l'immagine si usa la copertina grafica.</p></td></tr>
+				<tr><th scope="row"><label for="pb-stile">Stile immagine AI</label></th><td><textarea id="pb-stile" name="stile_immagine" rows="2" class="large-text"><?php echo esc_textarea( $o['stile_immagine'] ); ?></textarea></td></tr>
 				<tr><th scope="row">Modelli Gemini</th><td>
 					<label>Testo <input type="text" name="modello_testo" value="<?php echo esc_attr( $o['modello_testo'] ); ?>" class="regular-text"></label><br>
 					<label>Immagine <input type="text" name="modello_immagine" value="<?php echo esc_attr( $o['modello_immagine'] ); ?>" class="regular-text"></label>
