@@ -1,10 +1,9 @@
 ---
-// Pagina di un singolo servizio: cosa include, il percorso fase per fase (con la navicella),
-// i progetti realizzati con quel servizio, gli altri servizi e la chiamata finale.
+// Pagina di un singolo servizio, in stile "pannelli scuri con bagliori viola": titoli maiuscoli su righe sfalsate,
+// elenchi a righe sottili, il percorso a gradini in diagonale, i progetti realizzati, gli altri servizi e la chiamata finale.
 import type { GetStaticPaths } from 'astro';
 import Base from '../../layouts/Base.astro';
 import Icona from '../../components/Icona.astro';
-import PercorsoServizio from '../../components/PercorsoServizio.astro';
 import ProgettoCard from '../../components/ProgettoCard.astro';
 import RigheTesto from '../../components/RigheTesto.astro';
 import { icone } from '../../lib/icone';
@@ -25,6 +24,31 @@ const collegati = progettiDi(s, progetti).slice(0, 3);
 const altri = pagine.filter((p) => p.slug !== s.slug);
 const indice = pagine.findIndex((p) => p.slug === s.slug);
 const pad = (n: number) => String(n).padStart(2, '0');
+
+// Divide un titolo in 1-3 righe di lunghezza simile: ogni riga poi viene spostata un po' a destra (effetto sfalsato).
+const sfalsa = (testo: string, massimo = 3): string[] => {
+  const parole = testo.trim().split(/\s+/).filter(Boolean);
+  const n = Math.min(massimo, parole.length <= 1 ? 1 : parole.length <= 4 ? 2 : 3);
+  const totale = parole.join(' ').length;
+  const righe: string[] = [];
+  let corrente: string[] = [];
+  for (const parola of parole) {
+    const lunghezza = [...corrente, parola].join(' ').length;
+    const resto = n - righe.length - 1;
+    if (corrente.length && resto > 0 && lunghezza > totale / n + 2) {
+      righe.push(corrente.join(' '));
+      corrente = [];
+    }
+    corrente.push(parola);
+  }
+  if (corrente.length) righe.push(corrente.join(' '));
+  return righe;
+};
+// Quanto si sposta ogni riga (in multipli del passo dello sfalsamento).
+const scarti = [0, 1, 0.45];
+// Il percorso a gradini: fino a 4 fasi in una sola scala, oltre si va a capo con scale da 3.
+const perGradino = s.passi.length <= 4 ? Math.max(1, s.passi.length) : 3;
+const nastro = (s.include.length ? s.include : s.vantaggi.map((v) => v.titolo)).slice(0, 8);
 
 const url = new URL(Astro.url.pathname, Astro.site).href;
 const jsonLd = {
@@ -55,101 +79,149 @@ const jsonLd = {
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <RigheTesto slot="head" />
 
-  <section class="wrap section testa">
-    <nav class="briciole" aria-label="Percorso">
-      <a href="/servizi/">Servizi</a>
-      <span aria-hidden="true">/</span>
-      <span aria-current="page">{s.titolo}</span>
-    </nav>
-    <span class="icona" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={icone[s.icona] ?? icone.globe} />
-    </span>
-    <p class="contatore">Servizio {pad(indice + 1)} / {pad(pagine.length)}</p>
-    <h1 data-righe="subito">{s.titolo}</h1>
-    {s.sottotitolo && <p class="sottotitolo" data-righe="subito" style="--ritardo: 0.15s">{s.sottotitolo}</p>}
-    {s.intro && <p class="intro" data-righe="subito" style="--ritardo: 0.25s">{s.intro}</p>}
-    <div class="azioni">
-      <a class="btn" href="/contatti/">Richiedi un preventivo</a>
-      {s.passi.length > 0 && <a class="btn btn-ghost" href="#percorso">Come lavoro <span aria-hidden="true">↓</span></a>}
-    </div>
-  </section>
+  <div class="wrap">
+    <section class="pannello eroe">
+      <span class="bagliore b1" aria-hidden="true"></span>
+      <span class="bagliore b2" aria-hidden="true"></span>
+      <nav class="briciole" aria-label="Percorso">
+        <a href="/servizi/">Servizi</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{s.titolo}</span>
+        <span class="contatore">{pad(indice + 1)} / {pad(pagine.length)}</span>
+      </nav>
+      <div class="eroe-griglia">
+        <h1 class="sfalsato" data-righe="subito">
+          {sfalsa(s.titolo).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
+        </h1>
+        <div class="eroe-lato">
+          {s.sottotitolo && <p class="sottotitolo" data-righe="subito" style="--ritardo: 0.15s">{s.sottotitolo}</p>}
+          {s.intro && <p class="intro" data-righe="subito" style="--ritardo: 0.25s">{s.intro}</p>}
+          <p class="link-riga">
+            <a class="sottolineato" href="/contatti/">Richiedi un preventivo <span aria-hidden="true">↘</span></a>
+            {s.passi.length > 0 && <a class="sottolineato tenue" href="#percorso">Come lavoro <span aria-hidden="true">↓</span></a>}
+          </p>
+        </div>
+      </div>
+      {nastro.length > 0 && (
+        <div class="nastro" aria-hidden="true">
+          <div class="nastro-scorre">
+            {[0, 1].map(() => (
+              <span class="nastro-gruppo">{nastro.map((v) => <span>{v}<i>✦</i></span>)}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  </div>
 
   {s.problema_titolo && (
     <section class="wrap section problema">
       <p class="etichetta">Il problema</p>
-      <h2 data-righe>{s.problema_titolo}</h2>
-      {s.problema_testo && <p class="testo-problema" data-righe style="--ritardo: 0.2s">{s.problema_testo}</p>}
+      <div class="due-colonne">
+        <h2 class="sfalsato medio" data-righe>
+          {sfalsa(s.problema_titolo).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
+        </h2>
+        {s.problema_testo && <p class="testo-lato" data-righe style="--ritardo: 0.2s">{s.problema_testo}</p>}
+      </div>
     </section>
   )}
 
   {s.vantaggi.length > 0 && (
     <section class="wrap section">
-      <header class="intestazione">
-        <p class="etichetta">La soluzione</p>
-        <h2 class="titolo-sezione frase" data-righe>
-          {s.vantaggi_titolo || 'Un servizio che'}{' '}
-          <span class="evidenza ruota"><span class="ruota-testo" data-ruota={JSON.stringify(s.vantaggi.map((v) => v.titolo))}>{s.vantaggi[0].titolo}</span></span>
-        </h2>
-      </header>
-      <ul class="vantaggi">
-        {s.vantaggi.map((v, i) => (
-          <li class="vantaggio" style={`--i: ${i % 3}`} data-appari>
-            <span class="ico-vantaggio" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={icone[v.icona] ?? icone.zap} />
-            </span>
-            <h3><span class="puntini" aria-hidden="true">…</span>{v.titolo}</h3>
+      <div class="due-colonne testa-sezione">
+        <div>
+          <p class="etichetta">La soluzione</p>
+          <h2 class="sfalsato medio" data-righe>
+            {sfalsa(`${s.vantaggi_titolo || 'Un servizio che'}…`).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
+          </h2>
+        </div>
+        <p class="link-riga fine"><a class="sottolineato" href="/contatti/">Parliamone <span aria-hidden="true">↘</span></a></p>
+      </div>
+      <ul class="righe-lista">
+        {s.vantaggi.map((v) => (
+          <li data-appari>
+            <span class="punto" aria-hidden="true"></span>
+            <h3>{v.titolo}</h3>
             {v.testo && <p>{v.testo}</p>}
           </li>
         ))}
       </ul>
-      <p class="azioni-centro"><a class="btn" href="/contatti/">Parliamone <Icona nome="arrowRight" /></a></p>
     </section>
   )}
 
   {s.include.length > 0 && (
     <section class="wrap section">
-      <h2 class="titolo-sezione" data-righe>Cosa <span class="evidenza">include</span></h2>
+      <p class="etichetta">Cosa include</p>
       <ul class="include">
-        {s.include.map((v, i) => <li style={`--i: ${i % 3}`} data-appari>{v}</li>)}
+        {s.include.map((v, i) => <li style={`--i: ${i % 3}`} data-appari><span class="num">{pad(i + 1)}</span>{v}</li>)}
       </ul>
     </section>
   )}
 
   {s.passi.length > 0 && (
-    <section class="wrap section" id="percorso">
-      <header class="intestazione">
-        <p class="etichetta">Il percorso</p>
-        <h2 class="titolo-sezione" data-righe>Dall’idea <span class="evidenza">alla messa online</span></h2>
-        <p class="intro" data-righe style="--ritardo: 0.2s">Ogni fase risponde a una domanda precisa. Scorri e segui la navicella: sai sempre a che punto siamo e cosa succede dopo.</p>
-      </header>
-      <PercorsoServizio passi={s.passi} seme={s.slug} />
-    </section>
+    <div class="wrap" id="percorso">
+      <section class="pannello percorso" style={`--colonne: repeat(${perGradino}, minmax(0, 1fr))`}>
+        <span class="bagliore b3" aria-hidden="true"></span>
+        <span class="bagliore b4" aria-hidden="true"></span>
+        <div class="percorso-testa">
+          <div class="percorso-info">
+            <p class="etichetta">Il percorso</p>
+            <p class="testo-lato" data-righe>Ogni fase risponde a una domanda precisa: sai sempre a che punto siamo e cosa succede dopo.</p>
+            <p class="link-riga"><a class="sottolineato" href="/contatti/">Iniziamo <span aria-hidden="true">↘</span></a></p>
+          </div>
+          <h2 class="sfalsato medio a-destra" data-righe>
+            <span class="riga-s" style="--s: 0">Le fasi</span>
+            <span class="riga-s" style="--s: 1">del lavoro</span>
+            <span class="riga-s" style="--s: 0.45">insieme</span>
+          </h2>
+        </div>
+        <ol class="scala">
+          {s.passi.map((p, i) => (
+            <li style={`--g: ${i % perGradino}; --gm: ${(i / Math.max(1, s.passi.length - 1)).toFixed(3)}`} data-appari>
+              <span class="num">{pad(i + 1)}</span>
+              {p.domanda && <p class="domanda">{p.domanda}</p>}
+              <h3>{p.titolo}</h3>
+              {p.testo && <p>{p.testo}</p>}
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
   )}
 
   {collegati.length > 0 && (
     <section class="wrap section">
-      <h2 class="titolo-sezione" data-righe>Progetti <span class="evidenza">realizzati</span></h2>
+      <div class="due-colonne testa-sezione">
+        <h2 class="sfalsato medio" data-righe>
+          <span class="riga-s" style="--s: 0">Progetti</span>
+          <span class="riga-s" style="--s: 1">realizzati</span>
+        </h2>
+        <p class="link-riga fine"><a class="sottolineato" href="/progetti/">Tutti i progetti <span aria-hidden="true">↘</span></a></p>
+      </div>
       <div class="progetti">
         {collegati.map((p) => <ProgettoCard progetto={p} testi={testi.progetti} sizes="(min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 100vw" />)}
       </div>
-      <p class="tutti"><a class="btn btn-ghost" href="/progetti/">Tutti i progetti <Icona nome="arrowRight" /></a></p>
     </section>
   )}
 
-  <hr class="sep" />
-
   <section class="wrap section dopo">
-    <h2 class="titolo-sezione" data-righe>Dopo la <span class="evidenza">consegna</span></h2>
-    {s.dopo && <p class="intro" data-righe style="--ritardo: 0.2s">{s.dopo}</p>}
+    <div class="due-colonne">
+      <h2 class="sfalsato medio" data-righe>
+        <span class="riga-s" style="--s: 0">Dopo la</span>
+        <span class="riga-s" style="--s: 1">consegna</span>
+      </h2>
+      {s.dopo && <p class="testo-lato" data-righe style="--ritardo: 0.2s">{s.dopo}</p>}
+    </div>
     {altri.length > 0 && (
       <>
-        <p class="etichetta">Altri servizi</p>
+        <p class="etichetta spazio">Altri servizi</p>
         <ul class="altri">
-          {altri.map((a) => (
-            <li>
+          {altri.map((a, i) => (
+            <li data-appari>
               <a href={`/servizi/${a.slug}/`}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={icone[a.icona] ?? icone.globe} />
-                {a.titolo}
+                <span class="num">{pad(i + 1)}</span>
+                <span class="nome">{a.titolo}</span>
+                <span class="freccia" aria-hidden="true">↗</span>
               </a>
             </li>
           ))}
@@ -158,109 +230,150 @@ const jsonLd = {
     )}
   </section>
 
-  <hr class="sep" />
-
-  <section class="wrap section chiusura">
-    <h2 data-righe>{t.cta_titolo}</h2>
-    {t.cta_testo && <p class="intro" data-righe style="--ritardo: 0.2s">{t.cta_testo}</p>}
-    <a class="btn grande" href="/contatti/">{t.cta_pulsante}<Icona nome="arrowRight" /></a>
-  </section>
+  <div class="wrap fondo">
+    <section class="pannello chiusura">
+      <span class="bagliore b5" aria-hidden="true"></span>
+      <h2 class="sfalsato medio" data-righe>
+        {sfalsa(t.cta_titolo).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
+      </h2>
+      <div class="chiusura-lato">
+        {t.cta_testo && <p class="testo-lato" data-righe style="--ritardo: 0.2s">{t.cta_testo}</p>}
+        <a class="btn grande" href="/contatti/">{t.cta_pulsante}<Icona nome="arrowRight" /></a>
+      </div>
+    </section>
+  </div>
 </Base>
 
-<script>
-  // "Un sito che … vende / non si blocca / …": la parola evidenziata cambia ogni pochi secondi.
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    for (const el of document.querySelectorAll<HTMLElement>('[data-ruota]')) {
-      const parole: string[] = JSON.parse(el.dataset.ruota || '[]');
-      if (parole.length < 2) continue;
-      let i = 0;
-      setInterval(() => {
-        if (document.hidden) return;
-        el.classList.add('esce');
-        setTimeout(() => {
-          i = (i + 1) % parole.length;
-          el.textContent = parole[i];
-          // riparte da sotto e sale al suo posto
-          el.classList.remove('esce');
-          el.classList.add('entra');
-          el.getBoundingClientRect();
-          el.classList.remove('entra');
-        }, 350);
-      }, 2600);
-    }
-  }
-</script>
-
 <style>
-  .testa { text-align: center; padding-top: 5rem; }
-  @media (max-width: 39.99rem) { .testa { padding-top: 20px; } }
-  .briciole { display: flex; justify-content: center; gap: 0.6rem; margin-bottom: 2.5rem; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  /* Righe sottili e bagliori: tutto a partire dai colori del sito. */
+  .pannello {
+    --linea: color-mix(in srgb, var(--text) 14%, transparent);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: clamp(18px, 2vw, 28px);
+    background: color-mix(in srgb, var(--surface) 70%, var(--bg));
+    padding: clamp(1.25rem, 4vw, 3.5rem);
+  }
+  .section { --linea: color-mix(in srgb, var(--text) 14%, transparent); }
+  .bagliore {
+    position: absolute;
+    z-index: -1;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(closest-side, var(--c) , transparent);
+    animation: deriva 18s ease-in-out infinite alternate;
+  }
+  .b1 { --c: color-mix(in srgb, var(--accent-btn) 85%, transparent); width: 85%; height: 150%; right: -25%; bottom: -70%; }
+  .b2 { --c: color-mix(in srgb, var(--accent-light) 35%, transparent); width: 50%; height: 90%; right: 5%; bottom: -55%; animation-duration: 23s; animation-direction: alternate-reverse; }
+  .b3 { --c: color-mix(in srgb, var(--accent-btn) 75%, transparent); width: 90%; height: 90%; left: -20%; bottom: -35%; }
+  .b4 { --c: color-mix(in srgb, var(--accent-light) 28%, transparent); width: 55%; height: 60%; right: -15%; top: -25%; animation-duration: 21s; }
+  .b5 { --c: color-mix(in srgb, var(--accent-btn) 85%, transparent); width: 90%; height: 170%; left: 15%; top: -60%; }
+  @keyframes deriva { to { transform: translate3d(-6%, 5%, 0) scale(1.08); } }
+  @media (prefers-reduced-motion: reduce) { .bagliore, .nastro-scorre { animation: none !important; } }
+
+  .etichetta { font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin: 0 0 1rem; }
+  .etichetta.spazio { margin-top: clamp(3rem, 6vw, 5rem); }
+
+  /* Titoli maiuscoli su righe sfalsate. */
+  .sfalsato { --passo: clamp(1.25rem, 9vw, 10rem); font-family: var(--font-display); text-transform: uppercase; font-weight: 600; line-height: 0.95; letter-spacing: -0.01em; margin: 0; overflow-wrap: anywhere; }
+  .riga-s { display: block; padding-left: calc(var(--s) * var(--passo)); }
+  .sfalsato.medio { --passo: clamp(1rem, 6vw, 6rem); font-size: clamp(2rem, 5vw, 4.5rem); }
+  .sfalsato.a-destra { text-align: right; }
+  .sfalsato.a-destra .riga-s { padding-left: 0; padding-right: calc((1 - var(--s)) * var(--passo)); }
+
+  .sottolineato { display: inline-flex; align-items: center; gap: 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px solid currentColor; color: var(--text); text-decoration: none; font-weight: 600; font-size: var(--fs-sm); letter-spacing: 0.14em; text-transform: uppercase; transition: color 0.25s, gap 0.25s; }
+  .sottolineato:hover { color: var(--accent); gap: 0.8rem; }
+  .sottolineato.tenue { color: var(--muted); }
+  .link-riga { display: flex; flex-wrap: wrap; gap: 1.5rem 2.25rem; margin: 2rem 0 0; }
+  .link-riga.fine { margin: 0; align-self: end; justify-content: flex-end; }
+
+  .testo-lato { margin: 0; color: var(--text-soft); font-size: var(--fs-lead); line-height: 1.65; max-width: 36rem; }
+  .due-colonne { display: grid; gap: 1.75rem; }
+  @media (min-width: 64rem) { .due-colonne { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 3rem; align-items: end; } }
+  .testa-sezione { margin-bottom: clamp(2rem, 4vw, 3.5rem); }
+
+  /* Eroe */
+  .eroe { margin-top: clamp(0.5rem, 2vw, 1.5rem); padding-bottom: 0; }
+  .briciole { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-bottom: clamp(2.5rem, 7vw, 6rem); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
   .briciole a { color: var(--text-soft); text-decoration: none; }
   .briciole a:hover { color: var(--accent); }
   .briciole [aria-current] { color: var(--accent); }
-  .icona { display: inline-grid; place-items: center; width: 4rem; height: 4rem; border-radius: 1rem; background: var(--accent-soft); color: var(--accent); }
-  .contatore { margin: 1.25rem 0 0.75rem; font-family: var(--mono); font-size: var(--fs-sm); color: var(--accent); }
-  h1 { font-size: var(--fs-page); margin: 0 auto 1.25rem; max-width: 16ch; }
-  .sottotitolo { margin: 0 0 1.5rem; color: var(--accent); text-transform: uppercase; font-weight: 600; font-size: var(--fs-sm); letter-spacing: 0.12em; }
-  .intro { color: var(--text-soft); font-size: var(--fs-lead); max-width: 42rem; margin: 0 auto; }
-  .azioni { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; margin-top: 2.25rem; }
+  .contatore { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .eroe-griglia { display: grid; gap: 2rem; }
+  @media (min-width: 64rem) { .eroe-griglia { grid-template-columns: minmax(0, 1fr) minmax(16rem, 26rem); align-items: end; gap: 3rem; } }
+  .eroe h1 { font-size: clamp(2.5rem, 10.5vw, 4.5rem); color: var(--white); }
+  @media (min-width: 64rem) { .eroe h1 { font-size: clamp(4rem, 8.5vw, 8rem); } }
+  .sottotitolo { margin: 0 0 1rem; color: var(--accent); text-transform: uppercase; font-weight: 600; font-size: var(--fs-sm); letter-spacing: 0.14em; }
+  .intro { color: var(--text-soft); font-size: var(--fs-md); line-height: 1.7; margin: 0; }
 
-  .titolo-sezione { font-size: var(--fs-section); text-align: center; margin: 0 0 3rem; }
-  .intestazione { text-align: center; margin-bottom: 4rem; }
-  .intestazione .titolo-sezione { margin-bottom: 1rem; }
-  .etichetta { font-family: var(--mono); font-size: var(--fs-sm); letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.75rem; }
+  .nastro { margin: clamp(2.5rem, 6vw, 5rem) calc(-1 * clamp(1.25rem, 4vw, 3.5rem)) 0; border-top: 1px solid var(--linea); padding: 1.4rem 0; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .nastro-scorre { display: flex; width: max-content; animation: scorre 40s linear infinite; }
+  .nastro-gruppo { display: flex; flex-shrink: 0; }
+  .nastro-gruppo > span { display: inline-flex; align-items: center; gap: 2.5rem; padding-right: 2.5rem; white-space: nowrap; font-size: var(--fs-sm); font-weight: 500; letter-spacing: 0.35em; text-transform: uppercase; color: var(--text-soft); }
+  .nastro i { font-style: normal; color: var(--accent); letter-spacing: 0; }
+  @keyframes scorre { to { transform: translateX(-50%); } }
 
-  .problema { text-align: center; }
-  .problema h2 { font-size: var(--fs-section); line-height: 1.1; max-width: 22ch; margin: 0 auto 1.5rem; }
-  .testo-problema { color: var(--text-soft); font-size: var(--fs-lead); max-width: 44rem; margin: 0 auto; line-height: 1.7; }
+  /* Il problema */
+  .problema .sfalsato { color: var(--white); }
 
-  .frase { margin-inline: auto; line-height: 1.1; }
-  /* La parola che cambia sta su una riga sua, alta sempre uguale: cambiando non sposta nulla (niente CLS). */
-  /* Cambia scorrendo dentro la sua riga (senza dissolvenza, così il contrasto del testo resta sempre pieno). */
-  .ruota { display: flex; align-items: flex-start; justify-content: center; height: 2.3em; overflow: hidden; }
-  .ruota-testo { display: block; text-wrap: balance; transition: transform 0.35s cubic-bezier(.6, 0, .4, 1); }
-  @media (min-width: 64rem) { .ruota { height: 1.2em; } .ruota-testo { white-space: nowrap; } }
-  .ruota-testo:global(.esce) { transform: translateY(-120%); }
-  .ruota-testo:global(.entra) { transform: translateY(120%); transition: none; }
-  .vantaggi { list-style: none; margin: 0 auto; padding: 0; display: grid; gap: 1rem; }
-  @media (min-width: 40rem) { .vantaggi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (min-width: 64rem) { .vantaggi { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; } }
-  .vantaggio { padding: 1.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
-  .vantaggio:hover { border-color: var(--accent-border); }
-  .ico-vantaggio { display: inline-grid; place-items: center; width: 3rem; height: 3rem; margin-bottom: 1.1rem; border: 1px solid var(--accent-border); border-radius: 12px; color: var(--accent-light); }
-  .vantaggio h3 { font-size: var(--fs-lg); line-height: 1.25; margin: 0 0 0.6rem; }
-  .puntini { color: var(--accent); }
-  .vantaggio p { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.65; }
-  .azioni-centro { text-align: center; margin: 2.5rem 0 0; }
-  .azioni-centro .btn { display: inline-flex; align-items: center; gap: 0.5rem; }
+  /* Vantaggi: righe sottili, punto · titolo · descrizione */
+  .righe-lista { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--linea); }
+  .righe-lista li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.4rem 1.25rem; padding: 1.5rem 0; border-top: 1px solid var(--linea); }
+  @media (min-width: 64rem) { .righe-lista li { grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1.1fr); align-items: baseline; gap: 2rem; padding: 2rem 0; } }
+  .punto { width: 0.45rem; height: 0.45rem; margin-top: 0.55rem; border-radius: 50%; background: var(--text); align-self: start; }
+  .righe-lista h3 { margin: 0; font-family: var(--font-display); font-size: clamp(1.15rem, 2vw, 1.6rem); font-weight: 600; line-height: 1.2; text-transform: uppercase; color: var(--accent); }
+  .righe-lista p { margin: 0; color: var(--text-soft); line-height: 1.65; grid-column: 2; }
+  @media (min-width: 64rem) { .righe-lista p { grid-column: 3; } }
 
-  .include { list-style: none; margin: 0 auto; padding: 0; display: grid; gap: 0.75rem; }
-  @media (min-width: 40rem) { .include { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (min-width: 64rem) { .include { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; } }
-  .include li { display: flex; align-items: center; gap: 0.9rem; padding: 1.1rem 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); font-weight: 500; line-height: 1.4; transition: border-color 0.3s; }
-  .include li:hover { border-color: var(--accent-border); }
-  .include li::before { content: ''; flex-shrink: 0; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  /* Cosa include */
+  .include { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--linea); }
+  @media (min-width: 40rem) { .include { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 2rem; } }
+  @media (min-width: 64rem) { .include { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 3rem; } }
+  .include li { display: flex; align-items: baseline; gap: 1rem; padding: 1.15rem 0; border-bottom: 1px solid var(--linea); font-weight: 500; line-height: 1.45; }
+  .num { flex-shrink: 0; color: var(--accent); font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.05em; }
 
-  .progetti { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; }
+  /* Il percorso a gradini */
+  #percorso { scroll-margin-top: 5rem; }
+  .percorso { padding-block: clamp(2rem, 5vw, 4.5rem); }
+  .percorso-testa { display: grid; gap: 2rem; margin-bottom: clamp(2.5rem, 6vw, 5rem); }
+  @media (min-width: 64rem) { .percorso-testa { grid-template-columns: minmax(0, 26rem) minmax(0, 1fr); align-items: end; } }
+  .percorso .sfalsato { color: var(--white); }
+  .scala { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.75rem; }
+  .scala li { padding-top: 1.1rem; border-top: 1px solid var(--linea); margin-left: calc(var(--gm) * 14%); }
+  @media (min-width: 40rem) and (max-width: 63.99rem) { .scala li { width: 70%; margin-left: calc(var(--gm) * 30%); } }
+  @media (min-width: 64rem) {
+    .scala { grid-template-columns: var(--colonne); gap: 3rem 2.5rem; align-items: start; }
+    /* ogni fase scende di un gradino rispetto alla precedente */
+    .scala li { margin: calc(var(--g) * clamp(5rem, 9vw, 9rem)) 0 0; }
+  }
+  .scala .num { display: block; margin-bottom: 0.9rem; font-size: var(--fs-lg); color: var(--text); }
+  .domanda { margin: 0 0 0.35rem; color: var(--muted); font-size: var(--fs-sm); }
+  .scala h3 { margin: 0 0 0.6rem; font-family: var(--font-display); font-size: clamp(1.15rem, 1.8vw, 1.5rem); font-weight: 600; text-transform: uppercase; color: var(--accent); line-height: 1.2; }
+  .scala li > p:last-child { margin: 0 0 1.5rem; color: var(--text-soft); font-size: var(--fs-sm); line-height: 1.65; max-width: 30rem; }
+
+  /* Progetti */
+  .progetti { display: flex; flex-wrap: wrap; gap: 1.5rem; }
   .progetti > :global(*) { flex: 0 1 100%; }
   .progetti > :global(.card) { height: auto; }
   @media (min-width: 40rem) { .progetti > :global(*) { flex-basis: calc((100% - 1.5rem) / 2); } }
   @media (min-width: 64rem) { .progetti > :global(*) { flex-basis: calc((100% - 3rem) / 3); } }
-  .tutti { text-align: center; margin: 2.5rem 0 0; }
-  .tutti .btn { display: inline-flex; align-items: center; gap: 0.5rem; }
 
-  .sep { border: 0; height: 1px; margin: 0; background: linear-gradient(90deg, transparent, var(--accent-border), transparent); }
+  /* Dopo la consegna e altri servizi */
+  .dopo .sfalsato { color: var(--white); }
+  .altri { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--linea); }
+  .altri a { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: 1.25rem 0; border-top: 1px solid var(--linea); color: var(--text); text-decoration: none; transition: color 0.25s, padding 0.3s; }
+  .altri .nome { font-family: var(--font-display); font-size: clamp(1.2rem, 2.6vw, 2.1rem); font-weight: 600; text-transform: uppercase; line-height: 1.15; }
+  .altri .freccia { font-size: 1.5rem; transition: transform 0.3s; }
+  .altri a:hover { color: var(--accent); padding-left: 0.75rem; }
+  .altri a:hover .freccia { transform: translate(4px, -4px); }
 
-  .dopo { text-align: center; }
-  .dopo .titolo-sezione { margin-bottom: 1.25rem; }
-  .dopo .intro { margin-bottom: 3rem; }
-  .altri { list-style: none; margin: 0 auto; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; }
-  .altri a { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1.2rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); text-decoration: none; font-size: var(--fs-sm); font-weight: 500; transition: border-color 0.25s, color 0.25s; }
-  .altri a:hover { border-color: var(--accent-border); color: var(--accent); }
-  .altri svg { color: var(--accent); }
-
-  .chiusura { text-align: center; }
-  .chiusura h2 { font-size: var(--fs-section); margin: 0 0 1rem; }
-  .chiusura .intro { margin-bottom: 2.25rem; }
+  /* Chiamata finale */
+  .fondo { margin-bottom: var(--spazio-sezione); }
+  .chiusura { display: grid; gap: 2rem; padding-block: clamp(2.5rem, 7vw, 6rem); }
+  @media (min-width: 64rem) { .chiusura { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: end; gap: 3rem; } }
+  .chiusura .sfalsato { color: var(--white); }
+  .chiusura-lato { display: grid; gap: 2rem; justify-items: start; }
   .grande { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.95rem 1.75rem; font-family: var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; font-size: var(--fs-sm); }
 </style>
