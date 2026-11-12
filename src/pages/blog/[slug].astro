@@ -7,7 +7,6 @@ import { CMS_URL } from 'astro:env/client';
 import Base from '../../layouts/Base.astro';
 import ArticoloCard from '../../components/ArticoloCard.astro';
 import Icona from '../../components/Icona.astro';
-import RigheTesto from '../../components/RigheTesto.astro';
 import { dataItaliana, getArticoli, type Articolo } from '../../lib/blog';
 import { getTesti } from '../../lib/testi';
 import { ottimizzaImmaginiContenuto } from '../../lib/immaginiContenuto';
@@ -65,14 +64,13 @@ const jsonLd = {
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <meta slot="head" property="og:type" content="article" />
   <link slot="head" rel="alternate" type="application/rss+xml" title="Blog" href="/blog/rss.xml" />
-  <RigheTesto slot="head" />
 
   <article class="wrap section articolo">
     <header class="testa">
       <nav class="briciole" aria-label="Percorso">
         <a href="/blog/">Blog</a>
       </nav>
-      <h1 data-righe="subito">{a.titolo}</h1>
+      <h1>{a.titolo}</h1>
       <p class="meta">
         <time datetime={a.data}>{dataItaliana(a.data)}</time>
         <span aria-hidden="true">·</span>
@@ -111,7 +109,7 @@ const jsonLd = {
 
   {altri.length > 0 && (
     <section class="wrap section altri">
-      <h2 class="titolo-sezione" data-righe>Altri <span class="evidenza">articoli</span></h2>
+      <h2 class="titolo-sezione">Altri <span class="evidenza">articoli</span></h2>
       <div class="griglia">
         {altri.map((b) => <ArticoloCard articolo={b} livello="h3" />)}
       </div>
@@ -124,11 +122,12 @@ const jsonLd = {
   .articolo { padding-top: 4rem; }
   @media (max-width: 39.99rem) { .articolo { padding-top: 20px; } }
   .testa { max-width: 48rem; margin: 0 auto; text-align: center; }
-  .briciole { margin-bottom: 1.5rem; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; }
+  /* In alto niente carattere monospazio: sarebbe un font in più da scaricare prima del primo disegno (PageSpeed). */
+  .briciole { margin-bottom: 1.5rem; font-weight: 600; font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; }
   .briciole a { color: var(--accent); text-decoration: none; }
   .briciole a::before { content: '← '; }
   h1 { font-size: clamp(2.1rem, 5vw, 3.75rem); line-height: 1.1; margin: 0 0 1.25rem; text-wrap: balance; }
-  .meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem; margin: 0; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+  .meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem; margin: 0; font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
   .cover { display: block; width: 100%; max-width: 56rem; height: auto; margin: 2.5rem auto; border-radius: var(--radius); border: 1px solid var(--border); }
   .testo { margin: 0 auto; font-size: 1.125rem; line-height: 1.75; }
   .testo :global(h2) { font-size: var(--fs-h2); line-height: 1.2; margin: 2.75rem 0 1rem; }
