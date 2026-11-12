@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.22.0
+ * Version:     1.22.1
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -3256,7 +3256,19 @@ add_action( 'rest_api_init', function () {
 } );
 
 add_action( 'admin_menu', function () {
-	$hook = add_submenu_page( 'portfolio-testi', 'Ordine del menu', 'Ordine del menu', 'edit_posts', 'portfolio-menu-ordine', 'portfolio_menu_pagina', 99 );
+	// Con "redirect" ACF dà al menu "Testi del sito" lo slug della sua prima sottopagina (es. portfolio-generale),
+	// quindi il genitore si cerca tra i sottomenu esistenti invece di dare per scontato "portfolio-testi".
+	global $submenu;
+	$genitore = 'portfolio-testi';
+	foreach ( (array) $submenu as $chiave => $voci ) {
+		foreach ( (array) $voci as $v ) {
+			if ( isset( $v[2] ) && 'portfolio-generale' === $v[2] ) {
+				$genitore = $chiave;
+				break 2;
+			}
+		}
+	}
+	$hook = add_submenu_page( $genitore, 'Ordine del menu', 'Ordine del menu', 'edit_posts', 'portfolio-menu-ordine', 'portfolio_menu_pagina', 99 );
 	add_action( 'load-' . $hook, function () {
 		wp_enqueue_script( 'jquery-ui-sortable' );
 	} );
