@@ -3132,11 +3132,14 @@ function portfolio_blog_copertina_per_post( $post_id ) {
 	return true;
 }
 
-add_action( 'transition_post_status', function ( $new, $old, $post ) {
-	if ( 'publish' === $new && 'post' === $post->post_type && ! wp_is_post_revision( $post ) && trim( $post->post_title ) !== '' ) {
-		portfolio_blog_copertina_per_post( $post->ID );
+// wp_after_insert_post: dopo che l'editor ha salvato anche l'immagine in evidenza scelta (o nessuna).
+add_action( 'wp_after_insert_post', function ( $post_id, $post ) {
+	if ( 'publish' === $post->post_status && 'post' === $post->post_type && ! wp_is_post_revision( $post ) && trim( $post->post_title ) !== '' && ! has_post_thumbnail( $post ) ) {
+		if ( true === portfolio_blog_copertina_per_post( $post_id ) ) {
+			portfolio_rebuild_later();
+		}
 	}
-}, 5, 3 );
+}, 10, 2 );
 
 add_action( 'admin_post_portfolio_blog_copertine', function () {
 	if ( ! current_user_can( 'manage_options' ) ) {
