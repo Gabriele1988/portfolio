@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.19.0
+ * Version:     1.19.1
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -2555,7 +2555,7 @@ function portfolio_blog_opzioni() {
 		'tono'            => 'Chiaro, concreto e amichevole, in prima persona come web designer freelance. Niente gergo tecnico non spiegato.',
 		'parole'          => 1000,
 		'stile_immagine'  => 'Illustrazione digitale moderna e pulita, palette viola, blu notte e lilla, atmosfera spaziale leggera, nessun testo né logo nell\'immagine.',
-		'modello_testo'   => 'gemini-3.5-flash',
+		'modello_testo'   => 'gemini-3.6-flash',
 		'modello_immagine'=> 'gemini-3.1-flash-image',
 		'avvisa'          => 1,
 	) );
@@ -2721,13 +2721,18 @@ function portfolio_blog_testo( $argomento ) {
 		'required'   => array( 'titolo', 'slug', 'estratto', 'meta_descrizione', 'contenuto_html', 'tag', 'prompt_immagine', 'alt_immagine' ),
 	);
 
-	$parti = portfolio_gemini( $o['modello_testo'], array(
+	$corpo = array(
 		'contents'         => array( array( 'role' => 'user', 'parts' => array( array( 'text' => $prompt ) ) ) ),
 		'generationConfig' => array(
 			'responseMimeType' => 'application/json',
 			'responseSchema'   => $schema,
 		),
-	) );
+	);
+	$parti = portfolio_gemini( $o['modello_testo'], $corpo );
+	// Modello ritirato o nome sbagliato: si riprova con l'ultimo Flash disponibile.
+	if ( is_wp_error( $parti ) && false !== strpos( $parti->get_error_message(), ' 404' ) && 'gemini-flash-latest' !== $o['modello_testo'] ) {
+		$parti = portfolio_gemini( 'gemini-flash-latest', $corpo );
+	}
 	if ( is_wp_error( $parti ) ) {
 		return $parti;
 	}
