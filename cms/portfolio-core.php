@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.20.1
+ * Version:     1.21.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -536,7 +536,8 @@ function portfolio_testi_schema() {
 					'menu_servizi'  => array( 'Voce Servizi', 'text', 'Servizi' ),
 					'menu_progetti' => array( 'Voce Progetti', 'text', 'Progetti' ),
 					'menu_chisono'  => array( 'Voce Chi sono', 'text', 'Chi sono' ),
-					'menu_contatti' => array( 'Voce Contatti', 'text', 'Contatti' ),
+					'menu_blog'     => array( 'Voce Blog', 'text', 'Blog', 'Compare nel menu solo quando c\'è almeno un articolo pubblicato.' ),
+					'menu_contatti' => array( 'Voce Contatti', 'text', 'Contatti', 'L\'ordine delle voci si cambia in Testi del sito → Ordine del menu.' ),
 					'menu_cta'      => array( 'Pulsante', 'text', 'Richiedi un preventivo' ),
 				),
 				'Footer' => array(
@@ -3164,3 +3165,111 @@ add_action( 'admin_post_portfolio_blog_copertine', function () {
 	wp_safe_redirect( admin_url( 'edit.php?page=portfolio-blog&esito=copertine' ) );
 	exit;
 } );
+
+/* -------------------------------------------------------------------------
+ * Ordine del menu (Testi del sito → Ordine del menu)
+ * Le voci si trascinano nell'ordine voluto e si possono nascondere. Vale per header e footer.
+ * GET /wp-json/portfolio/v1/menu: { ordine: [chiavi], nascoste: [chiavi] }
+ * ---------------------------------------------------------------------- */
+function portfolio_menu_voci() {
+	return array(
+		'home'     => 'Home',
+		'servizi'  => 'Servizi',
+		'progetti' => 'Progetti',
+		'chisono'  => 'Chi sono',
+		'blog'     => 'Blog',
+		'contatti' => 'Contatti',
+	);
+}
+
+function portfolio_menu_data() {
+	$voci     = array_keys( portfolio_menu_voci() );
+	$salvato  = get_option( 'portfolio_menu', array() );
+	$ordine   = array_values( array_intersect( (array) ( $salvato['ordine'] ?? array() ), $voci ) );
+	// Voci nuove (o mai ordinate) in fondo, nell'ordine predefinito.
+	$ordine   = array_merge( $ordine, array_values( array_diff( $voci, $ordine ) ) );
+	$nascoste = array_values( array_intersect( (array) ( $salvato['nascoste'] ?? array() ), $voci ) );
+	return array( 'ordine' => $ordine, 'nascoste' => $nascoste );
+}
+
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'portfolio/v1', '/menu', array(
+		'methods'             => 'GET',
+		'callback'            => 'portfolio_menu_data',
+		'permission_callback' => '__return_true',
+	) );
+} );
+
+add_action( 'admin_menu', function () {
+	$hook = add_submenu_page( 'portfolio-testi', 'Ordine del menu', 'Ordine del menu', 'edit_posts', 'portfolio-menu-ordine', 'portfolio_menu_pagina', 99 );
+	add_action( 'load-' . $hook, function () {
+		wp_enqueue_script( 'jquery-ui-sortable' );
+	} );
+}, 100 ); // dopo ACF, che crea "Testi del sito"
+
+add_action( 'admin_post_portfolio_menu_salva', function () {
+	if ( ! current_user_can( 'edit_posts' ) ) {
+		wp_die( 'Permesso negato.' );
+	}
+	check_admin_referer( 'portfolio_menu_salva' );
+	$voci     = array_keys( portfolio_menu_voci() );
+	$ordine   = array_values( array_intersect( array_map( 'sanitize_key', (array) wp_unslash( $_POST['ordine'] ?? array() ) ), $voci ) );
+	$visibili = array_map( 'sanitize_key', (array) wp_unslash( $_POST['visibile'] ?? array() ) );
+	update_option( 'portfolio_menu', array( 'ordine' => $ordine, 'nascoste' => array_values( array_diff( $voci, $visibili ) ) ) );
+	portfolio_rebuild_later();
+	wp_safe_redirect( admin_url( 'admin.php?page=portfolio-menu-ordine&salvato=1' ) );
+	exit;
+} );
+
+function portfolio_menu_pagina() {
+	$d     = portfolio_menu_data();
+	$nomi  = portfolio_menu_voci();
+	$label = function ( $k ) use ( $nomi ) {
+		$v = get_option( 'options_generale_menu_' . $k, '' );
+		return is_string( $v ) && trim( $v ) !== '' ? trim( $v ) : $nomi[ $k ];
+	};
+	?>
+	<div class="wrap">
+		<h1>Ordine del menu</h1>
+		<?php if ( ! empty( $_GET['salvato'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification ?>
+			<div class="notice notice-success is-dismissible"><p>Ordine salvato: il sito si aggiorna tra un paio di minuti.</p></div>
+		<?php endif; ?>
+		<p>Trascina le voci nell'ordine che vuoi. Togli la spunta per nascondere una voce. Vale per il menu in alto e per il footer. I nomi delle voci si cambiano in Testi del sito → Generale → Menu.</p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="portfolio_menu_salva">
+			<?php wp_nonce_field( 'portfolio_menu_salva' ); ?>
+			<ul id="portfolio-menu-voci">
+				<?php foreach ( $d['ordine'] as $k ) : ?>
+					<li>
+						<span class="dashicons dashicons-menu" aria-hidden="true"></span>
+						<input type="hidden" name="ordine[]" value="<?php echo esc_attr( $k ); ?>">
+						<label><input type="checkbox" name="visibile[]" value="<?php echo esc_attr( $k ); ?>" <?php checked( ! in_array( $k, $d['nascoste'], true ) ); ?>> <?php echo esc_html( $label( $k ) ); ?></label>
+						<?php if ( 'blog' === $k ) : ?><span class="description">(solo con almeno un articolo pubblicato)</span><?php endif; ?>
+						<span class="sposta">
+							<button type="button" class="button-link su" aria-label="Sposta su">▲</button>
+							<button type="button" class="button-link giu" aria-label="Sposta giù">▼</button>
+						</span>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+			<?php submit_button( 'Salva l\'ordine' ); ?>
+		</form>
+	</div>
+	<style>
+		#portfolio-menu-voci { max-width: 32rem; margin: 1.5rem 0; }
+		#portfolio-menu-voci li { display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; margin: 0 0 .5rem; background: #fff; border: 1px solid #c3c4c7; border-radius: 6px; cursor: move; }
+		#portfolio-menu-voci li.ui-sortable-placeholder { visibility: visible !important; background: #f0f0f1; border-style: dashed; }
+		#portfolio-menu-voci label { font-weight: 600; }
+		#portfolio-menu-voci .sposta { margin-left: auto; display: flex; gap: .25rem; }
+		#portfolio-menu-voci .sposta button { padding: 2px 6px; color: #50575e; cursor: pointer; }
+	</style>
+	<script>
+		jQuery( function ( $ ) {
+			var lista = $( '#portfolio-menu-voci' );
+			lista.sortable( { axis: 'y', placeholder: 'ui-sortable-placeholder', forcePlaceholderSize: true } );
+			lista.on( 'click', '.su', function () { var li = $( this ).closest( 'li' ); li.prev().before( li ); } );
+			lista.on( 'click', '.giu', function () { var li = $( this ).closest( 'li' ); li.next().after( li ); } );
+		} );
+	</script>
+	<?php
+}

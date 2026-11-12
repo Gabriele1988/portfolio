@@ -26,6 +26,7 @@ export const TESTI_DEFAULT = {
     menu_servizi: 'Servizi',
     menu_progetti: 'Progetti',
     menu_chisono: 'Chi sono',
+    menu_blog: 'Blog',
     menu_contatti: 'Contatti',
     menu_cta: 'Richiedi un preventivo',
     footer_descrizione: 'Sviluppatore web a Palermo.\nCreo siti che funzionano, per attività che contano.',

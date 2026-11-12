@@ -3,21 +3,14 @@ import Logo from './Logo.astro';
 import { getTesti } from '../lib/testi';
 import { getPagineServizi } from '../lib/pagineServizi';
 import { getArticoli } from '../lib/blog';
+import { getVociMenu } from '../lib/menu';
 import { icone } from '../lib/icone';
 
 const [testi, pagine, articoli] = await Promise.all([getTesti(), getPagineServizi(), getArticoli()]);
 const g = testi.generale;
 // Sottomenu di "Servizi": una voce per ogni pagina servizio.
 const sotto = pagine.map((p) => ({ href: `/servizi/${p.slug}/`, label: p.titolo, testo: p.sottotitolo, icona: icone[p.icona] ?? icone.globe }));
-const voci = [
-  { href: '/', label: g.menu_home },
-  { href: '/servizi/', label: g.menu_servizi },
-  { href: '/progetti/', label: g.menu_progetti },
-  { href: '/chi-sono-web-designer-palermo/', label: g.menu_chisono },
-  // "Blog" compare solo quando c'è almeno un articolo pubblicato.
-  ...(articoli.length ? [{ href: '/blog/', label: 'Blog' }] : []),
-  { href: '/contatti/', label: g.menu_contatti },
-];
+const voci = await getVociMenu(g, articoli.length > 0);
 const { overlay = false } = Astro.props as { overlay?: boolean };
 const path = Astro.url.pathname;
 const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('#') && path.startsWith(href));
@@ -31,7 +24,7 @@ const attiva = (href: string) => (href === '/' ? path === '/' : !href.includes('
 
   <!-- Desktop -->
   <nav class="desktop" aria-label="Principale">
-    {voci.slice(1).map((v) =>
+    {voci.filter((v) => v.chiave !== 'home').map((v) =>
       v.href === '/servizi/' && sotto.length ? (
         <div class="tendina" data-tendina>
           <a href={v.href} aria-current={attiva(v.href) ? 'page' : undefined}>{v.label}</a>

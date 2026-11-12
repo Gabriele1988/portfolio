@@ -7,17 +7,15 @@ import Social from './Social.astro';
 import { getTesti } from '../lib/testi';
 import { getPagineServizi } from '../lib/pagineServizi';
 import { getArticoli } from '../lib/blog';
+import { getVociMenu } from '../lib/menu';
 
 const [testi, pagine, articoli] = await Promise.all([getTesti(), getPagineServizi(), getArticoli()]);
 const g = testi.generale;
 const anno = new Date().getFullYear();
 const righe = (t: string) => t.split('\n').map((r) => r.trim()).filter(Boolean);
+// Stesso ordine del menu in alto (senza Home, che è il logo), poi i link legali.
 const voci = [
-  { href: '/progetti/', label: g.menu_progetti },
-  { href: '/servizi/', label: g.menu_servizi },
-  { href: '/chi-sono-web-designer-palermo/', label: g.menu_chisono },
-  ...(articoli.length ? [{ href: '/blog/', label: 'Blog' }] : []),
-  { href: '/contatti/', label: g.menu_contatti },
+  ...(await getVociMenu(g, articoli.length > 0)).filter((v) => v.chiave !== 'home'),
   { href: '/privacy/', label: g.footer_privacy },
   { href: '/cookie-policy/', label: g.footer_cookie },
 ];
