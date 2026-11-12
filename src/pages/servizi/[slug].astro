@@ -5,6 +5,7 @@ import type { GetStaticPaths } from 'astro';
 import Base from '../../layouts/Base.astro';
 import Icona from '../../components/Icona.astro';
 import ProgettoCard from '../../components/ProgettoCard.astro';
+import Fascia from '../../components/Fascia.astro';
 import RigheTesto from '../../components/RigheTesto.astro';
 import { icone } from '../../lib/icone';
 import { getPagineServizi, progettiDi, type PaginaServizio } from '../../lib/pagineServizi';
@@ -126,36 +127,40 @@ const jsonLd = {
     </section>
   )}
 
+  {(s.vantaggi.length > 0 || s.include.length > 0) && (
+    <Fascia seme={`${s.slug}-soluzione`}>
   {s.vantaggi.length > 0 && (
-    <section class="wrap section">
-      <div class="due-colonne testa-sezione">
-        <div>
-          <p class="etichetta">La soluzione</p>
-          <h2 class="sfalsato medio" data-righe>
-            {sfalsa(`${s.vantaggi_titolo || 'Un servizio che'}…`).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
-          </h2>
+      <section class="wrap section">
+        <div class="due-colonne testa-sezione">
+          <div>
+            <p class="etichetta">La soluzione</p>
+            <h2 class="sfalsato medio" data-righe>
+              {sfalsa(`${s.vantaggi_titolo || 'Un servizio che'}…`).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
+            </h2>
+          </div>
+          <p class="link-riga fine"><a class="sottolineato" href="/contatti/">Parliamone <span aria-hidden="true">↘</span></a></p>
         </div>
-        <p class="link-riga fine"><a class="sottolineato" href="/contatti/">Parliamone <span aria-hidden="true">↘</span></a></p>
-      </div>
-      <ul class="righe-lista">
-        {s.vantaggi.map((v) => (
-          <li data-appari>
-            <span class="punto" aria-hidden="true"></span>
-            <h3>{v.titolo}</h3>
-            {v.testo && <p>{v.testo}</p>}
-          </li>
-        ))}
-      </ul>
-    </section>
-  )}
-
-  {s.include.length > 0 && (
-    <section class="wrap section">
-      <p class="etichetta">Cosa include</p>
-      <ul class="include">
-        {s.include.map((v, i) => <li style={`--i: ${i % 3}`} data-appari><span class="num">{pad(i + 1)}</span>{v}</li>)}
-      </ul>
-    </section>
+        <ul class="righe-lista">
+          {s.vantaggi.map((v) => (
+            <li data-appari>
+              <span class="punto" aria-hidden="true"></span>
+              <h3>{v.titolo}</h3>
+              {v.testo && <p>{v.testo}</p>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+  
+    {s.include.length > 0 && (
+      <section class="wrap section">
+        <p class="etichetta">Cosa include</p>
+        <ul class="include">
+          {s.include.map((v, i) => <li style={`--i: ${i % 3}`} data-appari><span class="num">{pad(i + 1)}</span>{v}</li>)}
+        </ul>
+      </section>
+    )}
+    </Fascia>
   )}
 
   {s.passi.length > 0 && (
@@ -204,31 +209,33 @@ const jsonLd = {
     </section>
   )}
 
+  <Fascia seme={`${s.slug}-dopo`}>
   <section class="wrap section dopo">
-    <div class="due-colonne">
-      <h2 class="sfalsato medio" data-righe>
-        <span class="riga-s" style="--s: 0">Dopo la</span>
-        <span class="riga-s" style="--s: 1">consegna</span>
-      </h2>
-      {s.dopo && <p class="testo-lato" data-righe style="--ritardo: 0.2s">{s.dopo}</p>}
-    </div>
-    {altri.length > 0 && (
-      <>
-        <p class="etichetta spazio">Altri servizi</p>
-        <ul class="altri">
-          {altri.map((a, i) => (
-            <li data-appari>
-              <a href={`/servizi/${a.slug}/`}>
-                <span class="num">{pad(i + 1)}</span>
-                <span class="nome">{a.titolo}</span>
-                <span class="freccia" aria-hidden="true">↗</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </>
-    )}
-  </section>
+      <div class="due-colonne">
+        <h2 class="sfalsato medio" data-righe>
+          <span class="riga-s" style="--s: 0">Dopo la</span>
+          <span class="riga-s" style="--s: 1">consegna</span>
+        </h2>
+        {s.dopo && <p class="testo-lato" data-righe style="--ritardo: 0.2s">{s.dopo}</p>}
+      </div>
+      {altri.length > 0 && (
+        <>
+          <p class="etichetta spazio">Altri servizi</p>
+          <ul class="altri">
+            {altri.map((a, i) => (
+              <li data-appari>
+                <a href={`/servizi/${a.slug}/`}>
+                  <span class="num">{pad(i + 1)}</span>
+                  <span class="nome">{a.titolo}</span>
+                  <span class="freccia" aria-hidden="true">↗</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  </Fascia>
 
   <div class="wrap fondo">
     <section class="pannello chiusura">
