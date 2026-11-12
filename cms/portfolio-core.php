@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.20.0
+ * Version:     1.20.1
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -3053,6 +3053,7 @@ function portfolio_blog_pagina() {
 		<h1>Blog automatico</h1>
 		<?php if ( 'salvato' === $esito ) : ?><div class="notice notice-success is-dismissible"><p>Impostazioni salvate.</p></div><?php endif; ?>
 		<?php if ( 'generato' === $esito ) : ?><div class="notice notice-success is-dismissible"><p>Articolo creato. Lo trovi in cima al registro qui sotto.</p></div><?php endif; ?>
+		<?php if ( 'copertine' === $esito ) : ?><div class="notice notice-info is-dismissible"><p><?php echo esc_html( $log[0]['messaggio'] ?? '' ); ?></p></div><?php endif; ?>
 		<?php if ( 'errore' === $esito ) : ?><div class="notice notice-error is-dismissible"><p>Articolo non creato: <?php echo esc_html( $log[0]['messaggio'] ?? '' ); ?></p></div><?php endif; ?>
 		<?php if ( ! $chiave ) : ?>
 			<div class="notice notice-warning"><p>Per usare il blog automatico aggiungi in <code>wp-config.php</code> la riga <code>define( 'PORTFOLIO_GEMINI_API_KEY', 'la-tua-chiave' );</code> con la chiave creata su Google AI Studio.</p></div>
@@ -3091,6 +3092,13 @@ function portfolio_blog_pagina() {
 				<?php submit_button( 'Salva e genera un articolo ora', 'secondary', 'genera_ora', false, $chiave ? array( 'onclick' => "this.value='Sto scrivendo… (1-2 minuti)'" ) : array( 'disabled' => 'disabled' ) ); ?>
 			</p>
 		</form>
+		<h2>Copertine mancanti</h2>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="portfolio_blog_copertine">
+			<?php wp_nonce_field( 'portfolio_blog_copertine' ); ?>
+			<p>Gli articoli senza immagine in evidenza ricevono la copertina grafica quando li pubblichi. Con questo pulsante la crei subito per tutti, bozze comprese.</p>
+			<?php submit_button( 'Crea le copertine mancanti', 'secondary', 'copertine', false ); ?>
+		</form>
 		<?php if ( $log ) : ?>
 			<h2>Ultime esecuzioni</h2>
 			<table class="widefat striped"><thead><tr><th>Quando</th><th>Esito</th><th>Dettagli</th></tr></thead><tbody>
@@ -3103,3 +3111,53 @@ function portfolio_blog_pagina() {
 	</div>
 	<?php
 }
+
+/* Articoli senza immagine in evidenza (scritti a mano o creati prima della copertina grafica):
+ * la copertina si crea da sola alla pubblicazione, oppure per tutti con il pulsante in Blog automatico. */
+function portfolio_blog_copertina_per_post( $post_id ) {
+	$post = get_post( $post_id );
+	if ( ! $post || 'post' !== $post->post_type || has_post_thumbnail( $post ) ) {
+		return false;
+	}
+	$tag = wp_get_post_tags( $post->ID, array( 'fields' => 'names' ) );
+	$img = portfolio_blog_copertina_grafica( array(
+		'titolo' => get_the_title( $post ),
+		'slug'   => $post->post_name ?: sanitize_title( $post->post_title ),
+		'tag'    => is_array( $tag ) ? $tag : array(),
+	), $post->ID );
+	if ( is_wp_error( $img ) ) {
+		return $img;
+	}
+	set_post_thumbnail( $post->ID, $img );
+	return true;
+}
+
+add_action( 'transition_post_status', function ( $new, $old, $post ) {
+	if ( 'publish' === $new && 'post' === $post->post_type && ! wp_is_post_revision( $post ) && trim( $post->post_title ) !== '' ) {
+		portfolio_blog_copertina_per_post( $post->ID );
+	}
+}, 5, 3 );
+
+add_action( 'admin_post_portfolio_blog_copertine', function () {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( 'Permesso negato.' );
+	}
+	check_admin_referer( 'portfolio_blog_copertine' );
+	$fatti = 0;
+	$errore = '';
+	foreach ( get_posts( array( 'post_type' => 'post', 'post_status' => array( 'publish', 'draft', 'pending', 'future' ), 'numberposts' => 100, 'meta_query' => array( array( 'key' => '_thumbnail_id', 'compare' => 'NOT EXISTS' ) ) ) ) as $p ) {
+		$r = portfolio_blog_copertina_per_post( $p->ID );
+		if ( true === $r ) {
+			$fatti++;
+		} elseif ( is_wp_error( $r ) ) {
+			$errore = $r->get_error_message();
+			break;
+		}
+	}
+	portfolio_blog_log( $errore ? 'errore' : 'ok', 'Copertine create: ' . $fatti . '.' . ( $errore ? ' ' . $errore : '' ) );
+	if ( $fatti ) {
+		portfolio_rebuild_later();
+	}
+	wp_safe_redirect( admin_url( 'edit.php?page=portfolio-blog&esito=copertine' ) );
+	exit;
+} );
