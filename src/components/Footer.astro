@@ -6,8 +6,9 @@ import Icona from './Icona.astro';
 import Social from './Social.astro';
 import { getTesti } from '../lib/testi';
 import { getPagineServizi } from '../lib/pagineServizi';
+import { getArticoli } from '../lib/blog';
 
-const [testi, pagine] = await Promise.all([getTesti(), getPagineServizi()]);
+const [testi, pagine, articoli] = await Promise.all([getTesti(), getPagineServizi(), getArticoli()]);
 const g = testi.generale;
 const anno = new Date().getFullYear();
 const righe = (t: string) => t.split('\n').map((r) => r.trim()).filter(Boolean);
@@ -15,6 +16,7 @@ const voci = [
   { href: '/progetti/', label: g.menu_progetti },
   { href: '/servizi/', label: g.menu_servizi },
   { href: '/chi-sono-web-designer-palermo/', label: g.menu_chisono },
+  ...(articoli.length ? [{ href: '/blog/', label: 'Blog' }] : []),
   { href: '/contatti/', label: g.menu_contatti },
   { href: '/privacy/', label: g.footer_privacy },
   { href: '/cookie-policy/', label: g.footer_cookie },

@@ -1,0 +1,72 @@
+---
+// Lista del blog (usata da /blog/ e /blog/pagina/N/): intestazione, griglia di articoli e paginazione.
+import Base from '../layouts/Base.astro';
+import ArticoloCard from './ArticoloCard.astro';
+import Icona from './Icona.astro';
+import type { Articolo } from '../lib/blog';
+
+interface Props {
+  articoli: Articolo[];
+  pagina: number;
+  totalePagine: number;
+}
+const { articoli, pagina, totalePagine } = Astro.props;
+const href = (n: number) => (n === 1 ? '/blog/' : `/blog/pagina/${n}/`);
+const titolo = pagina > 1 ? `Blog su siti web, SEO e WordPress · ${pagina}` : 'Blog su siti web, SEO e WordPress';
+---
+
+<Base title={titolo} description="Guide pratiche e consigli su siti web, WordPress, e-commerce, SEO e velocità, pensati per piccole imprese e professionisti." noindex={articoli.length === 0}>
+  <link slot="head" rel="alternate" type="application/rss+xml" title="Blog" href="/blog/rss.xml" />
+  <section class="wrap section prima">
+    <header class="testa">
+      <h1>Il <span class="evidenza">blog</span></h1>
+      <p class="intro">Guide pratiche su siti web, WordPress, SEO e velocità: cosa conviene fare, cosa evitare e perché.</p>
+    </header>
+
+    {articoli.length > 0 ? (
+      <div class="griglia">
+        {articoli.map((a, i) => <ArticoloCard articolo={a} eager={pagina === 1 && i < 1} />)}
+      </div>
+    ) : (
+      <p class="muted vuoto">I primi articoli sono in arrivo.</p>
+    )}
+
+    {totalePagine > 1 && (
+      <nav class="paginazione" aria-label="Pagine del blog">
+        {pagina > 1 ? (
+          <a class="freccia" href={href(pagina - 1)} rel="prev"><Icona nome="arrowLeft" />Più recenti</a>
+        ) : <span class="freccia" aria-hidden="true" />}
+        <ol>
+          {Array.from({ length: totalePagine }, (_, i) => i + 1).map((n) => (
+            <li><a href={href(n)} aria-current={n === pagina ? 'page' : undefined}>{n}</a></li>
+          ))}
+        </ol>
+        {pagina < totalePagine ? (
+          <a class="freccia" href={href(pagina + 1)} rel="next">Meno recenti<Icona nome="arrowRight" /></a>
+        ) : <span class="freccia" aria-hidden="true" />}
+      </nav>
+    )}
+  </section>
+</Base>
+
+<style>
+  .testa { text-align: center; max-width: 52rem; margin: 2rem auto 4rem; }
+  .prima { padding-top: 4rem; }
+  @media (max-width: 39.99rem) { .prima { padding-top: 20px; } .testa { margin-top: 0; } }
+  h1 { font-size: var(--fs-page); margin: 0 0 1.25rem; }
+  .intro { color: var(--muted); font-size: var(--fs-lead); margin: 0 auto; max-width: 36rem; }
+  .griglia { display: grid; gap: 1.5rem; }
+  @media (min-width: 40rem) { .griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 64rem) { .griglia { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; } }
+  .vuoto { text-align: center; }
+
+  .paginazione { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 3.5rem; }
+  .paginazione ol { display: flex; gap: 0.5rem; list-style: none; padding: 0; margin: 0; }
+  .paginazione ol a { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border: 1px solid var(--border); border-radius: 50%; color: var(--muted); text-decoration: none; font-family: var(--mono); font-size: var(--fs-sm); transition: border-color 0.2s, color 0.2s; }
+  .paginazione ol a:hover { border-color: var(--accent-border); color: var(--text); }
+  .paginazione ol a[aria-current='page'] { background: var(--accent-btn); border-color: var(--accent-btn); color: var(--accent-text); }
+  .freccia { flex: 1; display: inline-flex; align-items: center; gap: 0.5rem; color: var(--muted); text-decoration: none; font-size: var(--fs-sm); }
+  .freccia:last-child { justify-content: flex-end; }
+  a.freccia:hover { color: var(--accent-light); }
+  @media (max-width: 30rem) { .freccia { font-size: 0; gap: 0; } }
+</style>

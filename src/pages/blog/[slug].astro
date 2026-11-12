@@ -1,0 +1,153 @@
+---
+// Pagina di un articolo del blog: titolo, data e tempo di lettura, immagine in evidenza, testo,
+// tag, invito al contatto e altri articoli.
+import type { GetStaticPaths } from 'astro';
+import { Image, getImage } from 'astro:assets';
+import { CMS_URL } from 'astro:env/client';
+import Base from '../../layouts/Base.astro';
+import ArticoloCard from '../../components/ArticoloCard.astro';
+import Icona from '../../components/Icona.astro';
+import RigheTesto from '../../components/RigheTesto.astro';
+import { dataItaliana, getArticoli, type Articolo } from '../../lib/blog';
+import { getTesti } from '../../lib/testi';
+import { ottimizzaImmaginiContenuto } from '../../lib/immaginiContenuto';
+
+export const getStaticPaths = (async () => {
+  const articoli = await getArticoli();
+  return articoli.map((articolo) => ({ params: { slug: articolo.slug }, props: { articolo } }));
+}) satisfies GetStaticPaths;
+
+const { articolo: a } = Astro.props as { articolo: Articolo };
+const [tutti, testi] = await Promise.all([getArticoli(), getTesti()]);
+const g = testi.generale;
+// Altri articoli: prima quelli con tag in comune, poi i più recenti.
+const comuni = (b: Articolo) => b.tag.filter((t) => a.tag.includes(t)).length;
+const altri = tutti
+  .filter((b) => b.slug !== a.slug)
+  .map((b, i) => ({ b, punti: comuni(b) * 100 - i }))
+  .sort((x, y) => y.punti - x.punti)
+  .slice(0, 3)
+  .map((x) => x.b);
+
+const contenuto = await ottimizzaImmaginiContenuto(a.contenuto, CMS_URL ?? '');
+const og = a.copertina ? await getImage({ src: a.copertina.src, width: 1200, height: 630, fit: 'cover', format: 'jpg' }) : undefined;
+const url = new URL(Astro.url.pathname, Astro.site).href;
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'BlogPosting',
+      headline: a.titolo,
+      description: a.descrizione,
+      datePublished: a.data,
+      dateModified: a.modificato,
+      mainEntityOfPage: url,
+      url,
+      inLanguage: 'it-IT',
+      image: og ? new URL(og.src, Astro.site).href : undefined,
+      keywords: a.tag.join(', ') || undefined,
+      author: { '@type': 'Person', name: g.nome, url: new URL('/chi-sono-web-designer-palermo/', Astro.site).href },
+      publisher: { '@type': 'Person', name: g.nome, url: new URL('/', Astro.site).href },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', Astro.site).href },
+        { '@type': 'ListItem', position: 2, name: 'Blog', item: new URL('/blog/', Astro.site).href },
+        { '@type': 'ListItem', position: 3, name: a.titolo, item: url },
+      ],
+    },
+  ],
+};
+---
+
+<Base title={a.titolo} description={a.descrizione} image={og?.src}>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  <meta slot="head" property="og:type" content="article" />
+  <link slot="head" rel="alternate" type="application/rss+xml" title="Blog" href="/blog/rss.xml" />
+  <RigheTesto slot="head" />
+
+  <article class="wrap section articolo">
+    <header class="testa">
+      <nav class="briciole" aria-label="Percorso">
+        <a href="/blog/">Blog</a>
+      </nav>
+      <h1 data-righe="subito">{a.titolo}</h1>
+      <p class="meta">
+        <time datetime={a.data}>{dataItaliana(a.data)}</time>
+        <span aria-hidden="true">·</span>
+        <span>{a.minuti} min di lettura</span>
+      </p>
+    </header>
+
+    {a.copertina && (
+      <Image
+        class="cover"
+        src={a.copertina.src}
+        alt={a.copertina.alt || a.titolo}
+        width={a.copertina.width ?? 1344}
+        height={a.copertina.height ?? 768}
+        widths={[640, 1024, 1600]}
+        sizes="(min-width: 60rem) 56rem, 100vw"
+        loading="eager"
+        fetchpriority="high"
+      />
+    )}
+
+    <div class="prose testo" set:html={contenuto} />
+
+    {a.tag.length > 0 && (
+      <ul class="tags argomenti" aria-label="Argomenti">
+        {a.tag.map((t) => <li>{t}</li>)}
+      </ul>
+    )}
+
+    <aside class="invito">
+      <p class="invito-titolo">Vuoi applicarlo al tuo sito?</p>
+      <p class="muted">Raccontami la tua attività: ti dico cosa conviene fare, con tempi e costi chiari.</p>
+      <a class="btn" href="/contatti/">Chiedi un parere <Icona nome="arrowRight" /></a>
+    </aside>
+  </article>
+
+  {altri.length > 0 && (
+    <section class="wrap section altri">
+      <h2 class="titolo-sezione" data-righe>Altri <span class="evidenza">articoli</span></h2>
+      <div class="griglia">
+        {altri.map((b) => <ArticoloCard articolo={b} livello="h3" />)}
+      </div>
+      <p class="tutti"><a class="btn btn-ghost" href="/blog/">Tutti gli articoli <Icona nome="arrowRight" /></a></p>
+    </section>
+  )}
+</Base>
+
+<style>
+  .articolo { padding-top: 4rem; }
+  @media (max-width: 39.99rem) { .articolo { padding-top: 20px; } }
+  .testa { max-width: 48rem; margin: 0 auto; text-align: center; }
+  .briciole { margin-bottom: 1.5rem; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; }
+  .briciole a { color: var(--accent); text-decoration: none; }
+  .briciole a::before { content: '← '; }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.75rem); line-height: 1.1; margin: 0 0 1.25rem; text-wrap: balance; }
+  .meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem; margin: 0; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+  .cover { display: block; width: 100%; max-width: 56rem; height: auto; margin: 2.5rem auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  .testo { margin: 0 auto; font-size: 1.125rem; line-height: 1.75; }
+  .testo :global(h2) { font-size: var(--fs-h2); line-height: 1.2; margin: 2.75rem 0 1rem; }
+  .testo :global(h3) { font-size: var(--fs-lg); margin: 2rem 0 0.75rem; }
+  .testo :global(p), .testo :global(ul), .testo :global(ol) { margin: 0 0 1.25rem; }
+  .testo :global(li) { margin-bottom: 0.5rem; }
+  .testo :global(a) { color: var(--accent-light); text-underline-offset: 3px; }
+  .testo :global(strong) { color: var(--text); }
+  .testo :global(blockquote) { margin: 2rem 0; padding: 1rem 1.5rem; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 var(--radius) var(--radius) 0; }
+  .testo :global(blockquote p:last-child) { margin-bottom: 0; }
+  .argomenti { max-width: 44rem; margin: 2rem auto 0; }
+  .invito { max-width: 44rem; margin: 3rem auto 0; padding: 2rem; display: grid; gap: 0.75rem; justify-items: start; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--accent-border); }
+  .invito p { margin: 0; }
+  .invito-titolo { font-family: var(--font-display); font-size: var(--fs-lg); }
+  .invito .btn { margin-top: 0.5rem; }
+  .altri { padding-top: 0; }
+  .titolo-sezione { text-align: center; font-size: var(--fs-section); margin: 0 0 3rem; }
+  .griglia { display: grid; gap: 1.5rem; }
+  @media (min-width: 40rem) { .griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 64rem) { .griglia { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; } }
+  .tutti { text-align: center; margin-top: 2.5rem; }
+</style>

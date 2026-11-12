@@ -59,7 +59,7 @@ async function getJson(url: string): Promise<{ data: any; totalPages: number }> 
 }
 
 /** Scarica tutte le pagine di una collezione REST. */
-async function getAll(path: string): Promise<any[]> {
+export async function getAll(path: string): Promise<any[]> {
   const items: any[] = [];
   let page = 1;
   let totalPages = 1;
@@ -73,7 +73,7 @@ async function getAll(path: string): Promise<any[]> {
   return items;
 }
 
-const decode = (s = '') =>
+export const decode = (s = '') =>
   s
     .replace(/&#8217;|&rsquo;/g, '’')
     .replace(/&#8216;|&lsquo;/g, '‘')
@@ -93,10 +93,10 @@ const decode = (s = '') =>
     .replace(/&#038;|&amp;/g, '&')
     .replace(/&nbsp;/g, ' ');
 
-const stripTags = (s = '') => decode(s.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
+export const stripTags = (s = '') => decode(s.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim();
 
 // L'estratto automatico di WordPress finisce con " […]": diventa i normali puntini.
-const pulisciEstratto = (s = '') => stripTags(s).replace(/\s*\[(…|\.\.\.)\]\s*$/, '…');
+export const pulisciEstratto = (s = '') => stripTags(s).replace(/\s*\[(…|\.\.\.)\]\s*$/, '…');
 
 // Paragrafi del testo del progetto, senza HTML: titoli e voci di elenco contano come paragrafi.
 const paragrafi = (html = '') =>
@@ -108,7 +108,7 @@ function toList(v: unknown): string[] {
   return [];
 }
 
-function copertina(p: any): Immagine | undefined {
+export function copertina(p: any): Immagine | undefined {
   // Campo pronto esposto dal mu-plugin…
   const c = p.copertina;
   if (c?.src || c?.url) {

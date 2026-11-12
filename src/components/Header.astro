@@ -2,9 +2,10 @@
 import Logo from './Logo.astro';
 import { getTesti } from '../lib/testi';
 import { getPagineServizi } from '../lib/pagineServizi';
+import { getArticoli } from '../lib/blog';
 import { icone } from '../lib/icone';
 
-const [testi, pagine] = await Promise.all([getTesti(), getPagineServizi()]);
+const [testi, pagine, articoli] = await Promise.all([getTesti(), getPagineServizi(), getArticoli()]);
 const g = testi.generale;
 // Sottomenu di "Servizi": una voce per ogni pagina servizio.
 const sotto = pagine.map((p) => ({ href: `/servizi/${p.slug}/`, label: p.titolo, testo: p.sottotitolo, icona: icone[p.icona] ?? icone.globe }));
@@ -13,6 +14,8 @@ const voci = [
   { href: '/servizi/', label: g.menu_servizi },
   { href: '/progetti/', label: g.menu_progetti },
   { href: '/chi-sono-web-designer-palermo/', label: g.menu_chisono },
+  // "Blog" compare solo quando c'è almeno un articolo pubblicato.
+  ...(articoli.length ? [{ href: '/blog/', label: 'Blog' }] : []),
   { href: '/contatti/', label: g.menu_contatti },
 ];
 const { overlay = false } = Astro.props as { overlay?: boolean };

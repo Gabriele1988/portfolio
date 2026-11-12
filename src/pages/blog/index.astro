@@ -1,0 +1,8 @@
+---
+import PaginaBlog from '../../components/PaginaBlog.astro';
+import { getArticoli, ARTICOLI_PER_PAGINA } from '../../lib/blog';
+
+const articoli = await getArticoli();
+---
+
+<PaginaBlog articoli={articoli.slice(0, ARTICOLI_PER_PAGINA)} pagina={1} totalePagine={Math.max(1, Math.ceil(articoli.length / ARTICOLI_PER_PAGINA))} />

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.18.0
+ * Version:     1.19.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -11,6 +11,7 @@
  *   define( 'PORTFOLIO_GITHUB_TOKEN', 'github_pat_...' );               // fine-grained token, solo questo repo, "Contents: Read and write"
  *   define( 'PORTFOLIO_CONTACT_EMAIL', 'tu@esempio.it' );               // facoltativo, altrimenti l'email admin
  *   define( 'PORTFOLIO_TURNSTILE_SECRET', '' );                         // facoltativo, Cloudflare Turnstile
+ *   define( 'PORTFOLIO_GEMINI_API_KEY', '...' );                        // facoltativo, blog automatico (Google AI Studio)
  *
  *   // SMTP facoltativo (in alternativa usa un plugin come FluentSMTP)
  *   define( 'PORTFOLIO_SMTP_HOST', 'smtp.esempio.it' );
@@ -235,6 +236,10 @@ add_action( 'template_redirect', function () {
 		$path = '/servizi/' . get_post_field( 'post_name', get_queried_object_id() ) . '/';
 	} elseif ( is_post_type_archive( 'progetti' ) || is_tax( 'servizi' ) ) {
 		$path = '/progetti/';
+	} elseif ( is_singular( 'post' ) ) {
+		$path = '/blog/' . get_post_field( 'post_name', get_queried_object_id() ) . '/';
+	} elseif ( is_home() || is_category() || is_tag() || is_author() || is_date() ) {
+		$path = '/blog/';
 	}
 	wp_redirect( $site . $path, 301 );
 	exit;
@@ -2529,4 +2534,445 @@ function portfolio_pagine_servizi_predefinite() {
 	}
 ]
 JSON;
+}
+
+/* -------------------------------------------------------------------------
+ * Blog automatico con Gemini (Articoli → Blog automatico)
+ * Scrive l'articolo (titolo, testo, riassunto, meta description, tag) e crea l'immagine in evidenza,
+ * a orari fissi con WP-Cron oppure con il pulsante "Genera ora". Gli articoli restano in bozza
+ * per essere riletti, a meno di scegliere la pubblicazione diretta.
+ * Serve la chiave in wp-config.php: define( 'PORTFOLIO_GEMINI_API_KEY', '...' );
+ * ---------------------------------------------------------------------- */
+define( 'PORTFOLIO_BLOG_HOOK', 'portfolio_blog_genera' );
+
+function portfolio_blog_opzioni() {
+	return wp_parse_args( get_option( 'portfolio_blog', array() ), array(
+		'attivo'          => 0,
+		'frequenza'       => 'portfolio_settimanale',
+		'stato'           => 'draft',
+		'argomenti'       => '',
+		'pubblico'        => 'Piccole imprese, professionisti e attività locali che vogliono un sito che porti clienti.',
+		'tono'            => 'Chiaro, concreto e amichevole, in prima persona come web designer freelance. Niente gergo tecnico non spiegato.',
+		'parole'          => 1000,
+		'stile_immagine'  => 'Illustrazione digitale moderna e pulita, palette viola, blu notte e lilla, atmosfera spaziale leggera, nessun testo né logo nell\'immagine.',
+		'modello_testo'   => 'gemini-3.5-flash',
+		'modello_immagine'=> 'gemini-3.1-flash-image',
+		'avvisa'          => 1,
+	) );
+}
+
+add_filter( 'cron_schedules', function ( $s ) {
+	$s['portfolio_3giorni']      = array( 'interval' => 3 * DAY_IN_SECONDS, 'display' => 'Ogni 3 giorni' );
+	$s['portfolio_settimanale']  = array( 'interval' => WEEK_IN_SECONDS, 'display' => 'Una volta a settimana' );
+	$s['portfolio_quindicinale'] = array( 'interval' => 2 * WEEK_IN_SECONDS, 'display' => 'Ogni due settimane' );
+	return $s;
+} );
+
+function portfolio_blog_frequenze() {
+	return array(
+		'daily'                  => 'Ogni giorno',
+		'portfolio_3giorni'      => 'Ogni 3 giorni',
+		'portfolio_settimanale'  => 'Una volta a settimana',
+		'portfolio_quindicinale' => 'Ogni due settimane',
+	);
+}
+
+// Tiene il calendario allineato alle impostazioni (anche dopo l'aggiornamento del plugin).
+function portfolio_blog_pianifica() {
+	$o    = portfolio_blog_opzioni();
+	$next = wp_next_scheduled( PORTFOLIO_BLOG_HOOK );
+	$ora  = wp_get_schedule( PORTFOLIO_BLOG_HOOK );
+	if ( ! $o['attivo'] ) {
+		if ( $next ) {
+			wp_clear_scheduled_hook( PORTFOLIO_BLOG_HOOK );
+		}
+		return;
+	}
+	if ( $next && $ora === $o['frequenza'] ) {
+		return;
+	}
+	wp_clear_scheduled_hook( PORTFOLIO_BLOG_HOOK );
+	// Primo articolo domani alle 9 (ora del sito), poi con la frequenza scelta.
+	$domani = new DateTime( 'tomorrow 09:00', wp_timezone() );
+	wp_schedule_event( $domani->getTimestamp(), $o['frequenza'], PORTFOLIO_BLOG_HOOK );
+}
+add_action( 'init', function () {
+	if ( is_admin() || wp_doing_cron() ) {
+		portfolio_blog_pianifica();
+	}
+} );
+
+add_action( PORTFOLIO_BLOG_HOOK, function () {
+	portfolio_blog_genera();
+} );
+
+function portfolio_blog_log( $esito, $messaggio, $post_id = 0 ) {
+	$log = get_option( 'portfolio_blog_log', array() );
+	array_unshift( $log, array( 'quando' => time(), 'esito' => $esito, 'messaggio' => $messaggio, 'post' => (int) $post_id ) );
+	update_option( 'portfolio_blog_log', array_slice( $log, 0, 20 ), false );
+}
+
+/** Chiamata a Gemini (generateContent). Restituisce le "parts" della risposta o WP_Error. */
+function portfolio_gemini( $modello, $corpo, $timeout = 120 ) {
+	if ( ! defined( 'PORTFOLIO_GEMINI_API_KEY' ) || ! PORTFOLIO_GEMINI_API_KEY ) {
+		return new WP_Error( 'portfolio_gemini', 'Manca PORTFOLIO_GEMINI_API_KEY in wp-config.php.' );
+	}
+	$res = wp_remote_post( 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode( $modello ) . ':generateContent', array(
+		'timeout' => $timeout,
+		'headers' => array(
+			'Content-Type'   => 'application/json',
+			'x-goog-api-key' => PORTFOLIO_GEMINI_API_KEY,
+		),
+		'body'    => wp_json_encode( $corpo ),
+	) );
+	if ( is_wp_error( $res ) ) {
+		return $res;
+	}
+	$codice = wp_remote_retrieve_response_code( $res );
+	$dati   = json_decode( wp_remote_retrieve_body( $res ), true );
+	if ( 200 !== $codice ) {
+		$msg = $dati['error']['message'] ?? wp_remote_retrieve_body( $res );
+		return new WP_Error( 'portfolio_gemini', 'Gemini (' . $modello . ') ha risposto ' . $codice . ': ' . wp_trim_words( wp_strip_all_tags( (string) $msg ), 40 ) );
+	}
+	$parti = $dati['candidates'][0]['content']['parts'] ?? array();
+	// Le parti "thought" sono ragionamenti o bozze intermedie, non il risultato.
+	$parti = array_values( array_filter( $parti, function ( $p ) {
+		return empty( $p['thought'] );
+	} ) );
+	if ( ! $parti ) {
+		$motivo = $dati['candidates'][0]['finishReason'] ?? ( $dati['promptFeedback']['blockReason'] ?? 'risposta vuota' );
+		return new WP_Error( 'portfolio_gemini', 'Gemini (' . $modello . ') non ha restituito contenuti: ' . $motivo );
+	}
+	return $parti;
+}
+
+/** Pagine servizio pubblicate (titolo e indirizzo), per i link interni negli articoli. */
+function portfolio_blog_servizi() {
+	$sito  = portfolio_site_url();
+	$lista = array();
+	foreach ( get_posts( array( 'post_type' => 'pagina_servizio', 'post_status' => 'publish', 'numberposts' => 20, 'orderby' => 'menu_order', 'order' => 'ASC' ) ) as $p ) {
+		$lista[] = array( 'titolo' => get_the_title( $p ), 'url' => $sito . '/servizi/' . $p->post_name . '/' );
+	}
+	return $lista;
+}
+
+function portfolio_blog_prossimo_argomento() {
+	$righe = array_values( array_filter( array_map( 'trim', explode( "\n", portfolio_blog_opzioni()['argomenti'] ) ) ) );
+	return $righe[0] ?? '';
+}
+
+// Toglie dall'elenco l'argomento appena usato, così il prossimo articolo parla d'altro.
+function portfolio_blog_consuma_argomento( $argomento ) {
+	$o     = portfolio_blog_opzioni();
+	$righe = array_values( array_filter( array_map( 'trim', explode( "\n", $o['argomenti'] ) ) ) );
+	$k     = array_search( $argomento, $righe, true );
+	if ( false !== $k ) {
+		unset( $righe[ $k ] );
+		$o['argomenti'] = implode( "\n", $righe );
+		update_option( 'portfolio_blog', $o );
+	}
+}
+
+function portfolio_blog_testo( $argomento ) {
+	$o        = portfolio_blog_opzioni();
+	$esistenti = wp_list_pluck( get_posts( array( 'post_type' => 'post', 'post_status' => array( 'publish', 'draft', 'pending', 'future' ), 'numberposts' => 60 ) ), 'post_title' );
+	$servizi  = portfolio_blog_servizi();
+	$sito     = portfolio_site_url();
+
+	$prompt  = "Sei il copywriter SEO del blog di un web designer e sviluppatore freelance italiano.\n";
+	$prompt .= 'Pubblico: ' . $o['pubblico'] . "\n";
+	$prompt .= 'Tono: ' . $o['tono'] . "\n";
+	$prompt .= $argomento
+		? "Argomento dell'articolo: " . $argomento . "\n"
+		: "Scegli tu un argomento utile e cercato su Google dal pubblico indicato, legato ai servizi qui sotto. Deve essere diverso dagli articoli già scritti.\n";
+	if ( $servizi ) {
+		$prompt .= "Servizi offerti (puoi collegarne uno o due nel testo, solo se pertinenti, con link HTML a questi indirizzi esatti):\n";
+		foreach ( $servizi as $s ) {
+			$prompt .= '- ' . $s['titolo'] . ': ' . $s['url'] . "\n";
+		}
+	}
+	if ( $esistenti ) {
+		$prompt .= "Articoli già presenti, da non ripetere:\n- " . implode( "\n- ", array_map( 'wp_strip_all_tags', $esistenti ) ) . "\n";
+	}
+	$prompt .= "\nRegole:\n";
+	$prompt .= '- Circa ' . (int) $o['parole'] . " parole, in italiano corretto.\n";
+	$prompt .= "- contenuto_html: solo <p>, <h2>, <h3>, <ul>, <ol>, <li>, <strong>, <em>, <a>, <blockquote>. Niente <h1>, niente titolo all'inizio, niente stili o classi.\n";
+	$prompt .= "- Apri con un paragrafo che dica subito il problema del lettore. Usa sottotitoli <h2> chiari, esempi pratici e consigli applicabili.\n";
+	$prompt .= "- Chiudi con un breve paragrafo che inviti a chiedere un parere o un preventivo, con un link a " . $sito . "/contatti/.\n";
+	$prompt .= "- Non inventare dati, statistiche, clienti o citazioni. Se citi numeri, devono essere prudenti e generali.\n";
+	$prompt .= "- titolo: massimo 65 caratteri, con la parola chiave principale. meta_descrizione: 140-155 caratteri. estratto: 1-2 frasi.\n";
+	$prompt .= "- slug: breve, minuscolo, parole separate da trattini, senza articoli inutili.\n";
+	$prompt .= "- tag: da 2 a 5, brevi.\n";
+	$prompt .= "- prompt_immagine: descrizione in inglese di un'immagine di copertina che rappresenti il tema in modo visivo e metaforico, senza testo, scritte, loghi o persone riconoscibili.\n";
+	$prompt .= "- alt_immagine: testo alternativo in italiano, massimo 120 caratteri.\n";
+
+	$schema = array(
+		'type'       => 'OBJECT',
+		'properties' => array(
+			'titolo'           => array( 'type' => 'STRING' ),
+			'slug'             => array( 'type' => 'STRING' ),
+			'estratto'         => array( 'type' => 'STRING' ),
+			'meta_descrizione' => array( 'type' => 'STRING' ),
+			'contenuto_html'   => array( 'type' => 'STRING' ),
+			'tag'              => array( 'type' => 'ARRAY', 'items' => array( 'type' => 'STRING' ) ),
+			'prompt_immagine'  => array( 'type' => 'STRING' ),
+			'alt_immagine'     => array( 'type' => 'STRING' ),
+		),
+		'required'   => array( 'titolo', 'slug', 'estratto', 'meta_descrizione', 'contenuto_html', 'tag', 'prompt_immagine', 'alt_immagine' ),
+	);
+
+	$parti = portfolio_gemini( $o['modello_testo'], array(
+		'contents'         => array( array( 'role' => 'user', 'parts' => array( array( 'text' => $prompt ) ) ) ),
+		'generationConfig' => array(
+			'responseMimeType' => 'application/json',
+			'responseSchema'   => $schema,
+		),
+	) );
+	if ( is_wp_error( $parti ) ) {
+		return $parti;
+	}
+	$json = '';
+	foreach ( $parti as $p ) {
+		$json .= $p['text'] ?? '';
+	}
+	$json = trim( preg_replace( '/^```(?:json)?|```$/m', '', $json ) );
+	$a    = json_decode( $json, true );
+	if ( ! is_array( $a ) || empty( $a['titolo'] ) || empty( $a['contenuto_html'] ) ) {
+		return new WP_Error( 'portfolio_gemini', 'La risposta di Gemini non è un articolo valido.' );
+	}
+	return $a;
+}
+
+/** Crea l'immagine con Gemini e la carica nella libreria media. Restituisce l'ID allegato o WP_Error. */
+function portfolio_blog_immagine( $articolo, $post_id ) {
+	$o      = portfolio_blog_opzioni();
+	$prompt = trim( $articolo['prompt_immagine'] ) . "\nStyle: " . $o['stile_immagine'] . "\nWide 16:9 blog cover. No text, no letters, no watermark, no logos.";
+	$parti  = portfolio_gemini( $o['modello_immagine'], array(
+		'contents'         => array( array( 'role' => 'user', 'parts' => array( array( 'text' => $prompt ) ) ) ),
+		'generationConfig' => array(
+			'responseModalities' => array( 'TEXT', 'IMAGE' ),
+			'imageConfig'        => array( 'aspectRatio' => '16:9' ),
+		),
+	), 180 );
+	if ( is_wp_error( $parti ) ) {
+		return $parti;
+	}
+	$img = null;
+	foreach ( $parti as $p ) {
+		$d = $p['inlineData'] ?? ( $p['inline_data'] ?? null );
+		if ( $d && ! empty( $d['data'] ) ) {
+			$img = $d;
+		}
+	}
+	if ( ! $img ) {
+		return new WP_Error( 'portfolio_gemini', 'Gemini non ha restituito un\'immagine.' );
+	}
+	$mime = $img['mimeType'] ?? ( $img['mime_type'] ?? 'image/png' );
+	$est  = array( 'image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp' )[ $mime ] ?? 'png';
+	$nome = sanitize_file_name( ( $articolo['slug'] ?: 'articolo' ) . '.' . $est );
+	$file = wp_upload_bits( $nome, null, base64_decode( $img['data'] ) );
+	if ( ! empty( $file['error'] ) ) {
+		return new WP_Error( 'portfolio_upload', $file['error'] );
+	}
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$id = wp_insert_attachment( array(
+		'post_mime_type' => $mime,
+		'post_title'     => sanitize_text_field( $articolo['titolo'] ),
+		'post_status'    => 'inherit',
+	), $file['file'], $post_id );
+	if ( is_wp_error( $id ) || ! $id ) {
+		return is_wp_error( $id ) ? $id : new WP_Error( 'portfolio_upload', 'Allegato non creato.' );
+	}
+	wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $file['file'] ) );
+	update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( $articolo['alt_immagine'] ?? $articolo['titolo'] ) );
+	return $id;
+}
+
+/** Genera un articolo completo. Restituisce l'ID dell'articolo o WP_Error. */
+function portfolio_blog_genera() {
+	if ( get_transient( 'portfolio_blog_in_corso' ) ) {
+		return new WP_Error( 'portfolio_blog', 'Un articolo è già in preparazione.' );
+	}
+	set_transient( 'portfolio_blog_in_corso', 1, 10 * MINUTE_IN_SECONDS );
+	if ( function_exists( 'set_time_limit' ) ) {
+		@set_time_limit( 600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+	}
+	$o         = portfolio_blog_opzioni();
+	$argomento = portfolio_blog_prossimo_argomento();
+	$a         = portfolio_blog_testo( $argomento );
+	if ( is_wp_error( $a ) ) {
+		delete_transient( 'portfolio_blog_in_corso' );
+		portfolio_blog_log( 'errore', $a->get_error_message() );
+		return $a;
+	}
+
+	$id = wp_insert_post( array(
+		'post_type'    => 'post',
+		'post_status'  => 'draft',
+		'post_author'  => get_current_user_id() ?: (int) ( get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ) )[0] ?? 0 ),
+		'post_title'   => sanitize_text_field( $a['titolo'] ),
+		'post_name'    => sanitize_title( $a['slug'] ?: $a['titolo'] ),
+		'post_excerpt' => sanitize_textarea_field( $a['estratto'] ),
+		'post_content' => wp_kses_post( $a['contenuto_html'] ),
+		'tags_input'   => array_map( 'sanitize_text_field', array_slice( (array) ( $a['tag'] ?? array() ), 0, 5 ) ),
+	), true );
+	if ( is_wp_error( $id ) ) {
+		delete_transient( 'portfolio_blog_in_corso' );
+		portfolio_blog_log( 'errore', $id->get_error_message() );
+		return $id;
+	}
+	update_post_meta( $id, 'portfolio_meta_descrizione', sanitize_text_field( $a['meta_descrizione'] ) );
+	update_post_meta( $id, 'portfolio_generato', $o['modello_testo'] );
+	if ( $argomento ) {
+		portfolio_blog_consuma_argomento( $argomento );
+	}
+
+	$img  = portfolio_blog_immagine( $a, $id );
+	$nota = '';
+	if ( is_wp_error( $img ) ) {
+		$nota = ' Immagine non creata: ' . $img->get_error_message();
+	} else {
+		set_post_thumbnail( $id, $img );
+	}
+
+	// Pubblicazione diretta solo con l'immagine pronta; altrimenti resta in bozza da completare.
+	$pubblica = 'publish' === $o['stato'] && ! is_wp_error( $img );
+	if ( $pubblica ) {
+		wp_update_post( array( 'ID' => $id, 'post_status' => 'publish' ) );
+	}
+	delete_transient( 'portfolio_blog_in_corso' );
+	portfolio_blog_log( $nota ? 'attenzione' : 'ok', ( $pubblica ? 'Pubblicato: ' : 'Bozza pronta: ' ) . $a['titolo'] . '.' . $nota, $id );
+
+	if ( $o['avvisa'] ) {
+		$to = defined( 'PORTFOLIO_CONTACT_EMAIL' ) ? PORTFOLIO_CONTACT_EMAIL : get_option( 'admin_email' );
+		wp_mail(
+			$to,
+			( $pubblica ? 'Nuovo articolo pubblicato: ' : 'Nuova bozza da rileggere: ' ) . $a['titolo'],
+			( $pubblica ? "L'articolo è online:\n" . portfolio_site_url() . '/blog/' . get_post_field( 'post_name', $id ) . "/\n\n" : "L'articolo è in bozza: rileggilo e pubblicalo quando sei pronto.\n\n" )
+			. 'Modifica: ' . admin_url( 'post.php?post=' . $id . '&action=edit' ) . "\n" . $nota
+		);
+	}
+	return $id;
+}
+
+// Meta description degli articoli: visibile e modificabile nell'editor (riquadro "Campi personalizzati") e nella REST API.
+add_action( 'init', function () {
+	register_post_meta( 'post', 'portfolio_meta_descrizione', array(
+		'type'          => 'string',
+		'single'        => true,
+		'show_in_rest'  => true,
+		'auth_callback' => function () {
+			return current_user_can( 'edit_posts' );
+		},
+	) );
+} );
+
+add_action( 'add_meta_boxes_post', function () {
+	add_meta_box( 'portfolio_seo_post', 'Meta description (Google)', function ( $post ) {
+		wp_nonce_field( 'portfolio_seo_post', 'portfolio_seo_post_nonce' );
+		$v = get_post_meta( $post->ID, 'portfolio_meta_descrizione', true );
+		echo '<textarea name="portfolio_meta_descrizione" rows="3" style="width:100%" maxlength="170">' . esc_textarea( $v ) . '</textarea>';
+		echo '<p class="description">Circa 150 caratteri. Se vuota si usa il riassunto.</p>';
+	}, 'post', 'side' );
+} );
+
+add_action( 'save_post_post', function ( $id ) {
+	if ( ! isset( $_POST['portfolio_seo_post_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['portfolio_seo_post_nonce'] ), 'portfolio_seo_post' ) || ! current_user_can( 'edit_post', $id ) ) {
+		return;
+	}
+	update_post_meta( $id, 'portfolio_meta_descrizione', sanitize_text_field( wp_unslash( $_POST['portfolio_meta_descrizione'] ?? '' ) ) );
+} );
+
+add_action( 'admin_menu', function () {
+	add_submenu_page( 'edit.php', 'Blog automatico', 'Blog automatico', 'manage_options', 'portfolio-blog', 'portfolio_blog_pagina' );
+} );
+
+add_action( 'admin_post_portfolio_blog_salva', function () {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( 'Permesso negato.' );
+	}
+	check_admin_referer( 'portfolio_blog_salva' );
+	$in  = wp_unslash( $_POST );
+	$def = portfolio_blog_opzioni();
+	$o   = array(
+		'attivo'           => empty( $in['attivo'] ) ? 0 : 1,
+		'frequenza'        => isset( portfolio_blog_frequenze()[ $in['frequenza'] ?? '' ] ) ? $in['frequenza'] : $def['frequenza'],
+		'stato'            => ( $in['stato'] ?? '' ) === 'publish' ? 'publish' : 'draft',
+		'argomenti'        => sanitize_textarea_field( $in['argomenti'] ?? '' ),
+		'pubblico'         => sanitize_textarea_field( $in['pubblico'] ?? '' ),
+		'tono'             => sanitize_textarea_field( $in['tono'] ?? '' ),
+		'parole'           => max( 400, min( 2500, (int) ( $in['parole'] ?? 1000 ) ) ),
+		'stile_immagine'   => sanitize_textarea_field( $in['stile_immagine'] ?? '' ),
+		'modello_testo'    => sanitize_text_field( $in['modello_testo'] ?? '' ) ?: $def['modello_testo'],
+		'modello_immagine' => sanitize_text_field( $in['modello_immagine'] ?? '' ) ?: $def['modello_immagine'],
+		'avvisa'           => empty( $in['avvisa'] ) ? 0 : 1,
+	);
+	update_option( 'portfolio_blog', $o );
+	portfolio_blog_pianifica();
+	$msg = 'salvato';
+	if ( ! empty( $in['genera_ora'] ) ) {
+		$r   = portfolio_blog_genera();
+		$msg = is_wp_error( $r ) ? 'errore' : 'generato';
+	}
+	wp_safe_redirect( admin_url( 'edit.php?page=portfolio-blog&esito=' . $msg ) );
+	exit;
+} );
+
+function portfolio_blog_pagina() {
+	$o      = portfolio_blog_opzioni();
+	$chiave = defined( 'PORTFOLIO_GEMINI_API_KEY' ) && PORTFOLIO_GEMINI_API_KEY;
+	$next   = wp_next_scheduled( PORTFOLIO_BLOG_HOOK );
+	$log    = get_option( 'portfolio_blog_log', array() );
+	$esito  = sanitize_key( $_GET['esito'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification
+	$fmt    = get_option( 'date_format' ) . ' H:i';
+	?>
+	<div class="wrap">
+		<h1>Blog automatico</h1>
+		<?php if ( 'salvato' === $esito ) : ?><div class="notice notice-success is-dismissible"><p>Impostazioni salvate.</p></div><?php endif; ?>
+		<?php if ( 'generato' === $esito ) : ?><div class="notice notice-success is-dismissible"><p>Articolo creato. Lo trovi in cima al registro qui sotto.</p></div><?php endif; ?>
+		<?php if ( 'errore' === $esito ) : ?><div class="notice notice-error is-dismissible"><p>Articolo non creato: <?php echo esc_html( $log[0]['messaggio'] ?? '' ); ?></p></div><?php endif; ?>
+		<?php if ( ! $chiave ) : ?>
+			<div class="notice notice-warning"><p>Per usare il blog automatico aggiungi in <code>wp-config.php</code> la riga <code>define( 'PORTFOLIO_GEMINI_API_KEY', 'la-tua-chiave' );</code> con la chiave creata su Google AI Studio.</p></div>
+		<?php endif; ?>
+		<p>Gemini scrive l'articolo e crea l'immagine in evidenza. Con la pubblicazione il sito si aggiorna da solo.</p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="portfolio_blog_salva">
+			<?php wp_nonce_field( 'portfolio_blog_salva' ); ?>
+			<table class="form-table" role="presentation">
+				<tr><th scope="row">Automatico</th><td><label><input type="checkbox" name="attivo" value="1" <?php checked( $o['attivo'] ); ?>> Crea articoli da solo</label>
+					<p class="description"><?php echo $next ? 'Prossimo articolo: ' . esc_html( wp_date( $fmt, $next ) ) : 'Nessun articolo in programma.'; ?></p></td></tr>
+				<tr><th scope="row"><label for="pb-frequenza">Frequenza</label></th><td><select id="pb-frequenza" name="frequenza">
+					<?php foreach ( portfolio_blog_frequenze() as $k => $v ) : ?><option value="<?php echo esc_attr( $k ); ?>" <?php selected( $o['frequenza'], $k ); ?>><?php echo esc_html( $v ); ?></option><?php endforeach; ?>
+				</select></td></tr>
+				<tr><th scope="row">Quando è pronto</th><td>
+					<label><input type="radio" name="stato" value="draft" <?php checked( $o['stato'], 'draft' ); ?>> Salva in bozza, lo rileggo e pubblico io (consigliato)</label><br>
+					<label><input type="radio" name="stato" value="publish" <?php checked( $o['stato'], 'publish' ); ?>> Pubblica subito</label><br>
+					<label><input type="checkbox" name="avvisa" value="1" <?php checked( $o['avvisa'] ); ?>> Avvisami via email</label></td></tr>
+				<tr><th scope="row"><label for="pb-argomenti">Argomenti</label></th><td><textarea id="pb-argomenti" name="argomenti" rows="6" class="large-text"><?php echo esc_textarea( $o['argomenti'] ); ?></textarea>
+					<p class="description">Uno per riga, usati dall'alto verso il basso e tolti dall'elenco dopo l'uso. Se l'elenco è vuoto l'argomento lo sceglie Gemini, legato ai tuoi servizi e diverso dagli articoli già scritti.</p></td></tr>
+				<tr><th scope="row"><label for="pb-pubblico">A chi scrivi</label></th><td><textarea id="pb-pubblico" name="pubblico" rows="2" class="large-text"><?php echo esc_textarea( $o['pubblico'] ); ?></textarea></td></tr>
+				<tr><th scope="row"><label for="pb-tono">Tono</label></th><td><textarea id="pb-tono" name="tono" rows="2" class="large-text"><?php echo esc_textarea( $o['tono'] ); ?></textarea></td></tr>
+				<tr><th scope="row"><label for="pb-parole">Lunghezza</label></th><td><input id="pb-parole" type="number" name="parole" min="400" max="2500" step="100" value="<?php echo esc_attr( $o['parole'] ); ?>"> parole circa</td></tr>
+				<tr><th scope="row"><label for="pb-stile">Stile immagine</label></th><td><textarea id="pb-stile" name="stile_immagine" rows="2" class="large-text"><?php echo esc_textarea( $o['stile_immagine'] ); ?></textarea></td></tr>
+				<tr><th scope="row">Modelli Gemini</th><td>
+					<label>Testo <input type="text" name="modello_testo" value="<?php echo esc_attr( $o['modello_testo'] ); ?>" class="regular-text"></label><br>
+					<label>Immagine <input type="text" name="modello_immagine" value="<?php echo esc_attr( $o['modello_immagine'] ); ?>" class="regular-text"></label>
+					<p class="description">Da cambiare solo se Google ritira un modello.</p></td></tr>
+			</table>
+			<p class="submit">
+				<?php submit_button( 'Salva', 'primary', 'salva', false ); ?>
+				<?php submit_button( 'Salva e genera un articolo ora', 'secondary', 'genera_ora', false, $chiave ? array( 'onclick' => "this.value='Sto scrivendo… (1-2 minuti)'" ) : array( 'disabled' => 'disabled' ) ); ?>
+			</p>
+		</form>
+		<?php if ( $log ) : ?>
+			<h2>Ultime esecuzioni</h2>
+			<table class="widefat striped"><thead><tr><th>Quando</th><th>Esito</th><th>Dettagli</th></tr></thead><tbody>
+			<?php foreach ( $log as $r ) : ?>
+				<tr><td><?php echo esc_html( wp_date( $fmt, $r['quando'] ) ); ?></td><td><?php echo esc_html( array( 'ok' => 'Fatto', 'attenzione' => 'Da completare', 'errore' => 'Errore' )[ $r['esito'] ] ?? $r['esito'] ); ?></td>
+				<td><?php echo esc_html( $r['messaggio'] ); ?><?php if ( $r['post'] && get_post( $r['post'] ) ) : ?> <a href="<?php echo esc_url( get_edit_post_link( $r['post'] ) ); ?>">Apri</a><?php endif; ?></td></tr>
+			<?php endforeach; ?>
+			</tbody></table>
+		<?php endif; ?>
+	</div>
+	<?php
 }

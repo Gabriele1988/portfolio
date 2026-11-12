@@ -1,0 +1,20 @@
+---
+// Pagine 2, 3, … del blog (la prima è /blog/).
+import type { GetStaticPaths } from 'astro';
+import PaginaBlog from '../../../components/PaginaBlog.astro';
+import { getArticoli, ARTICOLI_PER_PAGINA } from '../../../lib/blog';
+
+export const getStaticPaths = (async () => {
+  const articoli = await getArticoli();
+  const totalePagine = Math.ceil(articoli.length / ARTICOLI_PER_PAGINA);
+  return Array.from({ length: Math.max(0, totalePagine - 1) }, (_, i) => {
+    const pagina = i + 2;
+    return {
+      params: { pagina: String(pagina) },
+      props: { articoli: articoli.slice((pagina - 1) * ARTICOLI_PER_PAGINA, pagina * ARTICOLI_PER_PAGINA), pagina, totalePagine },
+    };
+  });
+}) satisfies GetStaticPaths;
+---
+
+<PaginaBlog {...Astro.props} />
