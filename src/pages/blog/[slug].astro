@@ -8,6 +8,7 @@ import Base from '../../layouts/Base.astro';
 import ArticoloCard from '../../components/ArticoloCard.astro';
 import Icona from '../../components/Icona.astro';
 import { dataItaliana, getArticoli, type Articolo } from '../../lib/blog';
+import { stripTags } from '../../lib/wp';
 import { getTesti } from '../../lib/testi';
 import { ottimizzaImmaginiContenuto } from '../../lib/immaginiContenuto';
 
@@ -28,7 +29,21 @@ const altri = tutti
   .slice(0, 3)
   .map((x) => x.b);
 
-const contenuto = await ottimizzaImmaginiContenuto(a.contenuto, CMS_URL ?? '');
+// Indice: ogni <h2> del testo riceve un id (dal titolo) e diventa una voce numerata.
+const slugTitolo = (t: string) =>
+  t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'sezione';
+const indice: { id: string; titolo: string }[] = [];
+const conId = a.contenuto.replace(/<h2\b([^>]*)>([\s\S]*?)<\/h2>/gi, (_m, attr: string, html: string) => {
+  const titolo = stripTags(html);
+  const esistente = attr.match(/\sid\s*=\s*"([^"]+)"/i)?.[1];
+  let id = esistente || slugTitolo(titolo);
+  while (!esistente && indice.some((v) => v.id === id)) id += '-2';
+  indice.push({ id, titolo });
+  const n = String(indice.length).padStart(2, '0');
+  return `<h2${esistente ? attr : `${attr} id="${id}"`} data-n="${n}">${html}</h2>`;
+});
+const conIndice = indice.length >= 2;
+const contenuto = await ottimizzaImmaginiContenuto(conId, CMS_URL ?? '');
 const og = a.copertina ? await getImage({ src: a.copertina.src, width: 1200, height: 630, fit: 'cover', format: 'jpg' }) : undefined;
 const url = new URL(Astro.url.pathname, Astro.site).href;
 const jsonLd = {
@@ -92,20 +107,61 @@ const jsonLd = {
       />
     )}
 
-    <div class="prose testo" set:html={contenuto} />
+    <div class:list={['corpo', { 'con-indice': conIndice }]}>
+      {conIndice && (
+        <nav class="indice" aria-label="Indice dell'articolo" data-indice>
+          <details open>
+            <summary>Indice <span class="conta">{indice.length} sezioni</span></summary>
+            <ol>
+              {indice.map((v, i) => (
+                <li><a href={`#${v.id}`} data-voce={v.id}><span class="n">{String(i + 1).padStart(2, '0')}</span><span>{v.titolo}</span></a></li>
+              ))}
+            </ol>
+          </details>
+        </nav>
+      )}
 
-    {a.tag.length > 0 && (
-      <ul class="tags argomenti" aria-label="Argomenti">
-        {a.tag.map((t) => <li>{t}</li>)}
-      </ul>
-    )}
+      <div class="principale">
+        <div class="prose testo" set:html={contenuto} />
 
-    <aside class="invito">
-      <p class="invito-titolo">Vuoi applicarlo al tuo sito?</p>
-      <p class="muted">Raccontami la tua attività: ti dico cosa conviene fare, con tempi e costi chiari.</p>
-      <a class="btn" href="/contatti/">Chiedi un parere <Icona nome="arrowRight" /></a>
-    </aside>
+        {a.tag.length > 0 && (
+          <ul class="tags argomenti" aria-label="Argomenti">
+            {a.tag.map((t) => <li>{t}</li>)}
+          </ul>
+        )}
+
+        <aside class="invito">
+          <p class="invito-titolo">Vuoi applicarlo al tuo sito?</p>
+          <p class="muted">Raccontami la tua attività: ti dico cosa conviene fare, con tempi e costi chiari.</p>
+          <a class="btn" href="/contatti/">Chiedi un parere <Icona nome="arrowRight" /></a>
+        </aside>
+      </div>
+    </div>
   </article>
+
+  <script>
+    // Indice: evidenzia la sezione che si sta leggendo. Su telefono l'indice parte chiuso.
+    const nav = document.querySelector<HTMLElement>('[data-indice]');
+    if (nav) {
+      const det = nav.querySelector('details')!;
+      if (!matchMedia('(min-width: 64rem)').matches) det.open = false;
+      const voci = [...nav.querySelectorAll<HTMLAnchorElement>('[data-voce]')];
+      const titoli = voci.map((v) => document.getElementById(v.dataset.voce!)).filter((t): t is HTMLElement => !!t);
+      const attiva = () => {
+        let corrente = titoli[0];
+        for (const t of titoli) if (t.getBoundingClientRect().top < innerHeight * 0.3) corrente = t;
+        voci.forEach((v) => v.classList.toggle('attiva', v.dataset.voce === corrente?.id));
+      };
+      let attesa = false;
+      addEventListener('scroll', () => {
+        if (attesa) return;
+        attesa = true;
+        requestAnimationFrame(() => { attesa = false; attiva(); });
+      }, { passive: true });
+      attiva();
+      voci.forEach((v) => v.addEventListener('click', () => { if (!matchMedia('(min-width: 64rem)').matches) det.open = false; }));
+    }
+  </script>
 
   {altri.length > 0 && (
     <section class="wrap section altri">
@@ -141,6 +197,32 @@ const jsonLd = {
   .testo :global(blockquote) { margin: 2rem 0; padding: 1rem 1.5rem; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 var(--radius) var(--radius) 0; }
   .testo :global(blockquote p:last-child) { margin-bottom: 0; }
   .argomenti { margin: 2rem 0 0; }
+
+  /* ---------- Indice ---------- */
+  .corpo { display: grid; gap: 2rem; }
+  @media (min-width: 64rem) { .corpo.con-indice { grid-template-columns: 17rem minmax(0, 1fr); gap: 4rem; align-items: start; } }
+  .indice { position: relative; }
+  @media (min-width: 64rem) { .indice { position: sticky; top: 6.5rem; max-height: calc(100vh - 8rem); overflow-y: auto; } }
+  /* Niente font monospazio in questa pagina: sarebbe un file in più da scaricare (PageSpeed). */
+  .indice details { border-block: 1px solid var(--border); padding-top: 1.25rem; }
+  .indice details:not([open]) summary { margin-bottom: 1.25rem; }
+  @media (min-width: 64rem) { .indice details { border-bottom: 0; } }
+  .indice summary { display: flex; align-items: baseline; justify-content: space-between; list-style: none; cursor: pointer; font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--fs-2xs); letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 1.25rem; }
+  .indice summary::-webkit-details-marker { display: none; }
+  .indice summary::after { content: '+'; font-size: 1rem; letter-spacing: 0; }
+  .indice details[open] summary::after { content: '−'; }
+  .conta { margin-left: auto; margin-right: 0.75rem; letter-spacing: 0.08em; color: var(--muted); }
+  @media (min-width: 64rem) { .indice summary { pointer-events: none; } .indice summary::after, .conta { display: none; } }
+  .indice ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+  .indice a { display: grid; grid-template-columns: 2rem 1fr; gap: 0.5rem; padding: 0.6rem 0.75rem 0.6rem 0.9rem; border-left: 2px solid var(--border); color: var(--text-soft); text-decoration: none; font-size: var(--fs-sm); line-height: 1.35; font-weight: 600; transition: border-color 0.25s, color 0.25s, background-color 0.25s; }
+  .indice a:hover { color: var(--text); border-left-color: var(--accent-border); }
+  .indice a.attiva { color: var(--text); border-left: 3px solid var(--accent-light); background: var(--accent-soft); }
+  .indice .n { font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--fs-xs); color: var(--accent); padding-top: 0.1em; }
+
+  /* Titoli di sezione numerati, con una riga sopra (come le voci dell'indice) */
+  .testo :global(h2[data-n]) { scroll-margin-top: 6rem; position: relative; padding-top: 3.25rem; margin-top: 3.5rem; }
+  .testo :global(h2[data-n])::before { content: attr(data-n); position: absolute; top: 1.25rem; left: 0; font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--fs-xs); font-weight: 400; letter-spacing: 0.1em; color: var(--accent); }
+  .testo :global(h2[data-n])::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, var(--accent-border), var(--border) 40%, transparent); }
   .invito { margin: 3rem 0 0; padding: 2rem; display: grid; gap: 0.75rem; justify-items: start; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--accent-border); }
   .invito p { margin: 0; }
   .invito-titolo { font-family: var(--font-display); font-size: var(--fs-lg); }
