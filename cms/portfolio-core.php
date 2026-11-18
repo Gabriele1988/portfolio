@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.22.2
+ * Version:     1.22.3
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -2992,15 +2992,36 @@ function portfolio_blog_genera() {
 	portfolio_blog_log( $nota ? 'attenzione' : 'ok', ( $pubblica ? 'Pubblicato: ' : 'Bozza pronta: ' ) . $a['titolo'] . '.' . $nota, $id );
 
 	if ( $o['avvisa'] ) {
-		$to = defined( 'PORTFOLIO_CONTACT_EMAIL' ) ? PORTFOLIO_CONTACT_EMAIL : get_option( 'admin_email' );
-		wp_mail(
-			$to,
+		$inviata = portfolio_blog_email(
 			( $pubblica ? 'Nuovo articolo pubblicato: ' : 'Nuova bozza da rileggere: ' ) . $a['titolo'],
 			( $pubblica ? "L'articolo è online:\n" . portfolio_site_url() . '/blog/' . get_post_field( 'post_name', $id ) . "/\n\n" : "L'articolo è in bozza: rileggilo e pubblicalo quando sei pronto.\n\n" )
 			. 'Modifica: ' . admin_url( 'post.php?post=' . $id . '&action=edit' ) . "\n" . $nota
 		);
+		if ( is_wp_error( $inviata ) ) {
+			portfolio_blog_log( 'attenzione', 'Email di avviso non inviata a ' . portfolio_blog_email_destinatario() . ': ' . $inviata->get_error_message(), $id );
+		}
 	}
 	return $id;
+}
+
+// Indirizzo a cui arrivano gli avvisi del blog: lo stesso del modulo contatti.
+function portfolio_blog_email_destinatario() {
+	return defined( 'PORTFOLIO_CONTACT_EMAIL' ) ? PORTFOLIO_CONTACT_EMAIL : get_option( 'admin_email' );
+}
+
+// Invia un avviso e, se il server lo rifiuta, restituisce il motivo (così finisce nel registro invece di perdersi).
+function portfolio_blog_email( $oggetto, $testo ) {
+	$errore = null;
+	$cattura = function ( $e ) use ( &$errore ) {
+		$errore = $e;
+	};
+	add_action( 'wp_mail_failed', $cattura );
+	$ok = wp_mail( portfolio_blog_email_destinatario(), $oggetto, $testo );
+	remove_action( 'wp_mail_failed', $cattura );
+	if ( $ok ) {
+		return true;
+	}
+	return new WP_Error( 'portfolio_email', $errore instanceof WP_Error ? $errore->get_error_message() : 'il server non ha accettato il messaggio' );
 }
 
 // Meta description degli articoli: visibile e modificabile nell'editor (riquadro "Campi personalizzati") e nella REST API.
@@ -3084,6 +3105,8 @@ function portfolio_blog_pagina() {
 		<?php if ( 'salvato' === $esito ) : ?><div class="notice notice-success is-dismissible"><p>Impostazioni salvate.</p></div><?php endif; ?>
 		<?php if ( 'generato' === $esito ) : ?><div class="notice notice-success is-dismissible"><p>Articolo creato. Lo trovi in cima al registro qui sotto.</p></div><?php endif; ?>
 		<?php if ( 'copertine' === $esito ) : ?><div class="notice notice-info is-dismissible"><p><?php echo esc_html( $log[0]['messaggio'] ?? '' ); ?></p></div><?php endif; ?>
+		<?php if ( 'email_ok' === $esito ) : ?><div class="notice notice-success is-dismissible"><p>Email di prova inviata a <?php echo esc_html( portfolio_blog_email_destinatario() ); ?>. Se tra qualche minuto non è arrivata, guarda nello spam: il server l'ha accettata, quindi il problema è nella consegna (di solito serve un SMTP, vedi sotto).</p></div><?php endif; ?>
+		<?php if ( 'email_ko' === $esito ) : ?><div class="notice notice-error is-dismissible"><p><?php echo esc_html( $log[0]['messaggio'] ?? '' ); ?></p></div><?php endif; ?>
 		<?php if ( 'errore' === $esito ) : ?><div class="notice notice-error is-dismissible"><p>Articolo non creato: <?php echo esc_html( $log[0]['messaggio'] ?? '' ); ?></p></div><?php endif; ?>
 		<?php if ( ! $chiave ) : ?>
 			<div class="notice notice-warning"><p>Per usare il blog automatico aggiungi in <code>wp-config.php</code> la riga <code>define( 'PORTFOLIO_GEMINI_API_KEY', 'la-tua-chiave' );</code> con la chiave creata su Google AI Studio.</p></div>
@@ -3101,7 +3124,8 @@ function portfolio_blog_pagina() {
 				<tr><th scope="row">Quando è pronto</th><td>
 					<label><input type="radio" name="stato" value="draft" <?php checked( $o['stato'], 'draft' ); ?>> Salva in bozza, lo rileggo e pubblico io (consigliato)</label><br>
 					<label><input type="radio" name="stato" value="publish" <?php checked( $o['stato'], 'publish' ); ?>> Pubblica subito</label><br>
-					<label><input type="checkbox" name="avvisa" value="1" <?php checked( $o['avvisa'] ); ?>> Avvisami via email</label></td></tr>
+					<label><input type="checkbox" name="avvisa" value="1" <?php checked( $o['avvisa'] ); ?>> Avvisami via email</label>
+					<p class="description">Gli avvisi arrivano a <strong><?php echo esc_html( portfolio_blog_email_destinatario() ); ?></strong>. Se non li ricevi controlla lo spam o usa "Invia un'email di prova" qui sotto.</p></td></tr>
 				<tr><th scope="row"><label for="pb-argomenti">Argomenti</label></th><td><textarea id="pb-argomenti" name="argomenti" rows="6" class="large-text"><?php echo esc_textarea( $o['argomenti'] ); ?></textarea>
 					<p class="description">Uno per riga, usati dall'alto verso il basso e tolti dall'elenco dopo l'uso. Se l'elenco è vuoto l'argomento lo sceglie Gemini, legato ai tuoi servizi e diverso dagli articoli già scritti.</p></td></tr>
 				<tr><th scope="row"><label for="pb-pubblico">A chi scrivi</label></th><td><textarea id="pb-pubblico" name="pubblico" rows="2" class="large-text"><?php echo esc_textarea( $o['pubblico'] ); ?></textarea></td></tr>
@@ -3148,6 +3172,13 @@ function portfolio_blog_pagina() {
 				<?php submit_button( 'Salva', 'primary', 'salva', false ); ?>
 				<?php submit_button( 'Salva e genera un articolo ora', 'secondary', 'genera_ora', false, $chiave ? array( 'onclick' => "this.value='Sto scrivendo… (1-2 minuti)'" ) : array( 'disabled' => 'disabled' ) ); ?>
 			</p>
+		</form>
+		<h2>Email di prova</h2>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="portfolio_blog_prova_email">
+			<?php wp_nonce_field( 'portfolio_blog_prova_email' ); ?>
+			<p>Controlla che gli avvisi arrivino: invia un messaggio a <?php echo esc_html( portfolio_blog_email_destinatario() ); ?>.</p>
+			<?php submit_button( "Invia un'email di prova", 'secondary', 'prova', false ); ?>
 		</form>
 		<h2>Copertine mancanti</h2>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -3197,6 +3228,19 @@ add_action( 'wp_after_insert_post', function ( $post_id, $post ) {
 		}
 	}
 }, 10, 2 );
+
+add_action( 'admin_post_portfolio_blog_prova_email', function () {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( 'Permesso negato.' );
+	}
+	check_admin_referer( 'portfolio_blog_prova_email' );
+	$r = portfolio_blog_email( 'Prova avvisi del blog', "Se leggi questo messaggio, gli avvisi del blog automatico arrivano correttamente.\n\n" . admin_url() );
+	if ( is_wp_error( $r ) ) {
+		portfolio_blog_log( 'errore', 'Email di prova non inviata a ' . portfolio_blog_email_destinatario() . ': ' . $r->get_error_message() );
+	}
+	wp_safe_redirect( add_query_arg( 'esito', is_wp_error( $r ) ? 'email_ko' : 'email_ok', wp_get_referer() ?: admin_url() ) );
+	exit;
+} );
 
 add_action( 'admin_post_portfolio_blog_copertine', function () {
 	if ( ! current_user_can( 'manage_options' ) ) {
