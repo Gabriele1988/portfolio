@@ -1,5 +1,5 @@
 ---
-// Pagina di un singolo servizio, in stile "pannelli scuri con bagliori viola": titoli maiuscoli su righe sfalsate,
+// Pagina di un singolo servizio, in stile "pannelli scuri con bagliori viola": titoli come nelle altre pagine,
 // elenchi a righe sottili, il percorso a gradini in diagonale, i progetti realizzati, gli altri servizi e la chiamata finale.
 import type { GetStaticPaths } from 'astro';
 import Base from '../../layouts/Base.astro';
@@ -25,27 +25,6 @@ const altri = pagine.filter((p) => p.slug !== s.slug);
 const indice = pagine.findIndex((p) => p.slug === s.slug);
 const pad = (n: number) => String(n).padStart(2, '0');
 
-// Divide un titolo in 1-3 righe di lunghezza simile: ogni riga poi viene spostata un po' a destra (effetto sfalsato).
-const sfalsa = (testo: string, massimo = 3): string[] => {
-  const parole = testo.trim().split(/\s+/).filter(Boolean);
-  const n = Math.min(massimo, parole.length <= 1 ? 1 : parole.length <= 4 ? 2 : 3);
-  const totale = parole.join(' ').length;
-  const righe: string[] = [];
-  let corrente: string[] = [];
-  for (const parola of parole) {
-    const lunghezza = [...corrente, parola].join(' ').length;
-    const resto = n - righe.length - 1;
-    if (corrente.length && resto > 0 && lunghezza > totale / n + 2) {
-      righe.push(corrente.join(' '));
-      corrente = [];
-    }
-    corrente.push(parola);
-  }
-  if (corrente.length) righe.push(corrente.join(' '));
-  return righe;
-};
-// Quanto si sposta ogni riga (in multipli del passo dello sfalsamento).
-const scarti = [0, 1, 0.45];
 // Il percorso a gradini: fino a 4 fasi in una sola scala, oltre si va a capo con scale da 3.
 const perGradino = s.passi.length <= 4 ? Math.max(1, s.passi.length) : 3;
 const nastro = (s.include.length ? s.include : s.vantaggi.map((v) => v.titolo)).slice(0, 8);
@@ -90,9 +69,7 @@ const jsonLd = {
         <span class="contatore">{pad(indice + 1)} / {pad(pagine.length)}</span>
       </nav>
       <div class="eroe-griglia">
-        <h1 class="sfalsato" data-righe="subito">
-          {sfalsa(s.titolo).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
-        </h1>
+        <h1 class="titolo-pagina" data-righe="subito">{s.titolo}</h1>
         <div class="eroe-lato">
           {s.sottotitolo && <p class="sottotitolo" data-righe="subito" style="--ritardo: 0.15s">{s.sottotitolo}</p>}
           {s.intro && <p class="intro" data-righe="subito" style="--ritardo: 0.25s">{s.intro}</p>}
@@ -118,9 +95,7 @@ const jsonLd = {
     <section class="wrap section problema">
       <p class="etichetta">Il problema</p>
       <div class="due-colonne">
-        <h2 class="sfalsato medio" data-righe>
-          {sfalsa(s.problema_titolo).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
-        </h2>
+        <h2 class="titolo-sezione" data-righe>{s.problema_titolo}</h2>
         {s.problema_testo && <p class="testo-lato" data-righe style="--ritardo: 0.2s">{s.problema_testo}</p>}
       </div>
     </section>
@@ -131,9 +106,7 @@ const jsonLd = {
       <div class="due-colonne testa-sezione">
         <div>
           <p class="etichetta">La soluzione</p>
-          <h2 class="sfalsato medio" data-righe>
-            {sfalsa(`${s.vantaggi_titolo || 'Un servizio che'}…`).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
-          </h2>
+          <h2 class="titolo-sezione" data-righe>{s.vantaggi_titolo || 'Un servizio che'}<span class="evidenza">…</span></h2>
         </div>
         <p class="link-riga fine"><a class="sottolineato" href="/contatti/">Parliamone <span aria-hidden="true">↘</span></a></p>
       </div>
@@ -169,11 +142,7 @@ const jsonLd = {
             <p class="testo-lato" data-righe>Ogni fase risponde a una domanda precisa: sai sempre a che punto siamo e cosa succede dopo.</p>
             <p class="link-riga"><a class="sottolineato" href="/contatti/">Iniziamo <span aria-hidden="true">↘</span></a></p>
           </div>
-          <h2 class="sfalsato medio a-destra" data-righe>
-            <span class="riga-s" style="--s: 0">Le fasi</span>
-            <span class="riga-s" style="--s: 1">del lavoro</span>
-            <span class="riga-s" style="--s: 0.45">insieme</span>
-          </h2>
+          <h2 class="titolo-sezione" data-righe>Dall’idea <span class="evidenza">alla messa online</span></h2>
         </div>
         <ol class="scala">
           {s.passi.map((p, i) => (
@@ -192,10 +161,7 @@ const jsonLd = {
   {collegati.length > 0 && (
     <section class="wrap section">
       <div class="due-colonne testa-sezione">
-        <h2 class="sfalsato medio" data-righe>
-          <span class="riga-s" style="--s: 0">Progetti</span>
-          <span class="riga-s" style="--s: 1">realizzati</span>
-        </h2>
+        <h2 class="titolo-sezione" data-righe>Progetti <span class="evidenza">realizzati</span></h2>
         <p class="link-riga fine"><a class="sottolineato" href="/progetti/">Tutti i progetti <span aria-hidden="true">↘</span></a></p>
       </div>
       <div class="progetti">
@@ -206,10 +172,7 @@ const jsonLd = {
 
   <section class="wrap section dopo">
     <div class="due-colonne">
-      <h2 class="sfalsato medio" data-righe>
-        <span class="riga-s" style="--s: 0">Dopo la</span>
-        <span class="riga-s" style="--s: 1">consegna</span>
-      </h2>
+      <h2 class="titolo-sezione" data-righe>Dopo la <span class="evidenza">consegna</span></h2>
       {s.dopo && <p class="testo-lato" data-righe style="--ritardo: 0.2s">{s.dopo}</p>}
     </div>
     {altri.length > 0 && (
@@ -233,9 +196,7 @@ const jsonLd = {
   <div class="wrap fondo">
     <section class="pannello chiusura">
       <span class="bagliore b5" aria-hidden="true"></span>
-      <h2 class="sfalsato medio" data-righe>
-        {sfalsa(t.cta_titolo).map((r, i) => <span class="riga-s" style={`--s: ${scarti[i]}`}>{r}</span>)}
-      </h2>
+      <h2 class="titolo-sezione" data-righe>{t.cta_titolo}</h2>
       <div class="chiusura-lato">
         {t.cta_testo && <p class="testo-lato" data-righe style="--ritardo: 0.2s">{t.cta_testo}</p>}
         <a class="btn grande" href="/contatti/">{t.cta_pulsante}<Icona nome="arrowRight" /></a>
@@ -276,12 +237,9 @@ const jsonLd = {
   .etichetta { font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin: 0 0 1rem; }
   .etichetta.spazio { margin-top: clamp(3rem, 6vw, 5rem); }
 
-  /* Titoli maiuscoli su righe sfalsate. */
-  .sfalsato { --passo: clamp(1.25rem, 9vw, 10rem); font-family: var(--font-display); text-transform: uppercase; font-weight: 600; line-height: 0.95; letter-spacing: -0.01em; margin: 0; overflow-wrap: anywhere; }
-  .riga-s { display: block; padding-left: calc(var(--s) * var(--passo)); }
-  .sfalsato.medio { --passo: clamp(1rem, 6vw, 6rem); font-size: clamp(2rem, 5vw, 4.5rem); }
-  .sfalsato.a-destra { text-align: right; }
-  .sfalsato.a-destra .riga-s { padding-left: 0; padding-right: calc((1 - var(--s)) * var(--passo)); }
+  /* Titoli come nelle altre pagine: stesso font, stesse dimensioni, maiuscole normali, parola chiave in viola. */
+  .titolo-pagina { font-size: var(--fs-page); margin: 0; max-width: 14ch; }
+  .titolo-sezione { font-size: var(--fs-section); margin: 0; max-width: 22ch; }
 
   .sottolineato { display: inline-flex; align-items: center; gap: 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px solid currentColor; color: var(--text); text-decoration: none; font-weight: 600; font-size: var(--fs-sm); letter-spacing: 0.14em; text-transform: uppercase; transition: color 0.25s, gap 0.25s; }
   .sottolineato:hover { color: var(--accent); gap: 0.8rem; }
@@ -303,8 +261,6 @@ const jsonLd = {
   .contatore { margin-left: auto; font-variant-numeric: tabular-nums; }
   .eroe-griglia { display: grid; gap: 2rem; }
   @media (min-width: 64rem) { .eroe-griglia { grid-template-columns: minmax(0, 1fr) minmax(16rem, 26rem); align-items: end; gap: 3rem; } }
-  .eroe h1 { font-size: clamp(2.5rem, 10.5vw, 4.5rem); color: var(--white); }
-  @media (min-width: 64rem) { .eroe h1 { font-size: clamp(4rem, 8.5vw, 8rem); } }
   .sottotitolo { margin: 0 0 1rem; color: var(--accent); text-transform: uppercase; font-weight: 600; font-size: var(--fs-sm); letter-spacing: 0.14em; }
   .intro { color: var(--text-soft); font-size: var(--fs-md); line-height: 1.7; margin: 0; }
 
@@ -316,14 +272,13 @@ const jsonLd = {
   @keyframes scorre { to { transform: translateX(-50%); } }
 
   /* Il problema */
-  .problema .sfalsato { color: var(--white); }
 
   /* Vantaggi: righe sottili, punto · titolo · descrizione */
   .righe-lista { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--linea); }
   .righe-lista li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.4rem 1.25rem; padding: 1.5rem 0; border-top: 1px solid var(--linea); }
   @media (min-width: 64rem) { .righe-lista li { grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1.1fr); align-items: baseline; gap: 2rem; padding: 2rem 0; } }
   .punto { width: 0.45rem; height: 0.45rem; margin-top: 0.55rem; border-radius: 50%; background: var(--text); align-self: start; }
-  .righe-lista h3 { margin: 0; font-family: var(--font-display); font-size: clamp(1.15rem, 2vw, 1.6rem); font-weight: 600; line-height: 1.2; text-transform: uppercase; color: var(--accent); }
+  .righe-lista h3 { margin: 0; font-family: var(--font-display); font-size: clamp(1.15rem, 2vw, 1.6rem); font-weight: 600; line-height: 1.2; color: var(--accent); }
   .righe-lista p { margin: 0; color: var(--text-soft); line-height: 1.65; grid-column: 2; }
   @media (min-width: 64rem) { .righe-lista p { grid-column: 3; } }
 
@@ -339,7 +294,6 @@ const jsonLd = {
   .percorso { padding-block: clamp(2rem, 5vw, 4.5rem); }
   .percorso-testa { display: grid; gap: 2rem; margin-bottom: clamp(2.5rem, 6vw, 5rem); }
   @media (min-width: 64rem) { .percorso-testa { grid-template-columns: minmax(0, 26rem) minmax(0, 1fr); align-items: end; } }
-  .percorso .sfalsato { color: var(--white); }
   .scala { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.75rem; }
   .scala li { padding-top: 1.1rem; border-top: 1px solid var(--linea); margin-left: calc(var(--gm) * 14%); }
   @media (min-width: 40rem) and (max-width: 63.99rem) { .scala li { width: 70%; margin-left: calc(var(--gm) * 30%); } }
@@ -350,7 +304,7 @@ const jsonLd = {
   }
   .scala .num { display: block; margin-bottom: 0.9rem; font-size: var(--fs-lg); color: var(--text); }
   .domanda { margin: 0 0 0.35rem; color: var(--muted); font-size: var(--fs-sm); }
-  .scala h3 { margin: 0 0 0.6rem; font-family: var(--font-display); font-size: clamp(1.15rem, 1.8vw, 1.5rem); font-weight: 600; text-transform: uppercase; color: var(--accent); line-height: 1.2; }
+  .scala h3 { margin: 0 0 0.6rem; font-family: var(--font-display); font-size: clamp(1.15rem, 1.8vw, 1.5rem); font-weight: 600; color: var(--accent); line-height: 1.2; }
   .scala li > p:last-child { margin: 0 0 1.5rem; color: var(--text-soft); font-size: var(--fs-sm); line-height: 1.65; max-width: 30rem; }
 
   /* Progetti */
@@ -361,10 +315,9 @@ const jsonLd = {
   @media (min-width: 64rem) { .progetti > :global(*) { flex-basis: calc((100% - 3rem) / 3); } }
 
   /* Dopo la consegna e altri servizi */
-  .dopo .sfalsato { color: var(--white); }
   .altri { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid var(--linea); }
   .altri a { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: 1.25rem 0; border-top: 1px solid var(--linea); color: var(--text); text-decoration: none; transition: color 0.25s, padding 0.3s; }
-  .altri .nome { font-family: var(--font-display); font-size: clamp(1.2rem, 2.6vw, 2.1rem); font-weight: 600; text-transform: uppercase; line-height: 1.15; }
+  .altri .nome { font-family: var(--font-display); font-size: clamp(1.2rem, 2.6vw, 2.1rem); font-weight: 600; line-height: 1.15; }
   .altri .freccia { font-size: 1.5rem; transition: transform 0.3s; }
   .altri a:hover { color: var(--accent); padding-left: 0.75rem; }
   .altri a:hover .freccia { transform: translate(4px, -4px); }
@@ -373,7 +326,6 @@ const jsonLd = {
   .fondo { margin-bottom: var(--spazio-sezione); }
   .chiusura { display: grid; gap: 2rem; padding-block: clamp(2.5rem, 7vw, 6rem); }
   @media (min-width: 64rem) { .chiusura { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: end; gap: 3rem; } }
-  .chiusura .sfalsato { color: var(--white); }
   .chiusura-lato { display: grid; gap: 2rem; justify-items: start; }
   .grande { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.95rem 1.75rem; font-family: var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; font-size: var(--fs-sm); }
 </style>
