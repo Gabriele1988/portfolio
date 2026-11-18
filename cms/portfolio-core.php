@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Portfolio Core
  * Description: WordPress headless per il portfolio Astro: Progetti, Servizi, Pagine servizi, contenuti della Home, campi, REST API, redirect del front-end, rebuild su GitHub e form contatti.
- * Version:     1.22.3
+ * Version:     1.23.0
  *
  * Va in wp-content/mu-plugins/. Configurazione in wp-config.php (nessun dominio scritto qui):
  *
@@ -2709,6 +2709,7 @@ function portfolio_blog_testo( $argomento ) {
 	$prompt .= "- tag: da 2 a 5, brevi.\n";
 	$prompt .= "- prompt_immagine: descrizione in inglese di un'immagine di copertina che rappresenti il tema in modo visivo e metaforico, senza testo, scritte, loghi o persone riconoscibili.\n";
 	$prompt .= "- alt_immagine: testo alternativo in italiano, massimo 120 caratteri.\n";
+	$prompt .= "- post_social: testo per condividere l'articolo su LinkedIn, scritto in prima persona da un web developer professionista. 500-900 caratteri, tono professionale ma umano, niente toni da venditore. Struttura: una prima riga che aggancia (una domanda o un'osservazione dal lavoro con i clienti), 2-3 frasi brevi sul problema e su cosa si impara nell'articolo, una riga finale che invita a leggerlo. Righe brevi separate da una riga vuota, al massimo 1 emoji o nessuna. NON mettere il link (lo aggiunge il sistema). Chiudi con 3-5 hashtag pertinenti in CamelCase su una riga. Non usare parentesi tonde o quadre, graffe, asterischi, trattini bassi, chiocciole o simboli < >.\n";
 
 	$schema = array(
 		'type'       => 'OBJECT',
@@ -2721,8 +2722,9 @@ function portfolio_blog_testo( $argomento ) {
 			'tag'              => array( 'type' => 'ARRAY', 'items' => array( 'type' => 'STRING' ) ),
 			'prompt_immagine'  => array( 'type' => 'STRING' ),
 			'alt_immagine'     => array( 'type' => 'STRING' ),
+			'post_social'      => array( 'type' => 'STRING' ),
 		),
-		'required'   => array( 'titolo', 'slug', 'estratto', 'meta_descrizione', 'contenuto_html', 'tag', 'prompt_immagine', 'alt_immagine' ),
+		'required'   => array( 'titolo', 'slug', 'estratto', 'meta_descrizione', 'contenuto_html', 'tag', 'prompt_immagine', 'alt_immagine', 'post_social' ),
 	);
 
 	$corpo = array(
@@ -2963,6 +2965,7 @@ function portfolio_blog_genera() {
 		return $id;
 	}
 	update_post_meta( $id, 'portfolio_meta_descrizione', sanitize_text_field( $a['meta_descrizione'] ) );
+	update_post_meta( $id, 'portfolio_post_social', sanitize_textarea_field( $a['post_social'] ?? '' ) );
 	update_post_meta( $id, 'portfolio_generato', $o['modello_testo'] );
 	if ( $argomento ) {
 		portfolio_blog_consuma_argomento( $argomento );
@@ -3024,16 +3027,18 @@ function portfolio_blog_email( $oggetto, $testo ) {
 	return new WP_Error( 'portfolio_email', $errore instanceof WP_Error ? $errore->get_error_message() : 'il server non ha accettato il messaggio' );
 }
 
-// Meta description degli articoli: visibile e modificabile nell'editor (riquadro "Campi personalizzati") e nella REST API.
+// Meta description e testo per LinkedIn degli articoli: modificabili nell'editor e letti dal sito tramite la REST API.
 add_action( 'init', function () {
-	register_post_meta( 'post', 'portfolio_meta_descrizione', array(
-		'type'          => 'string',
-		'single'        => true,
-		'show_in_rest'  => true,
-		'auth_callback' => function () {
-			return current_user_can( 'edit_posts' );
-		},
-	) );
+	foreach ( array( 'portfolio_meta_descrizione', 'portfolio_post_social' ) as $chiave ) {
+		register_post_meta( 'post', $chiave, array(
+			'type'          => 'string',
+			'single'        => true,
+			'show_in_rest'  => true,
+			'auth_callback' => function () {
+				return current_user_can( 'edit_posts' );
+			},
+		) );
+	}
 } );
 
 add_action( 'add_meta_boxes_post', function () {
@@ -3043,6 +3048,11 @@ add_action( 'add_meta_boxes_post', function () {
 		echo '<textarea name="portfolio_meta_descrizione" rows="3" style="width:100%" maxlength="170">' . esc_textarea( $v ) . '</textarea>';
 		echo '<p class="description">Circa 150 caratteri. Se vuota si usa il riassunto.</p>';
 	}, 'post', 'side' );
+	add_meta_box( 'portfolio_social_post', 'Testo per LinkedIn', function ( $post ) {
+		$v = get_post_meta( $post->ID, 'portfolio_post_social', true );
+		echo '<textarea name="portfolio_post_social" rows="9" style="width:100%">' . esc_textarea( $v ) . '</textarea>';
+		echo '<p class="description">Il testo con cui Make condivide l\'articolo su LinkedIn (il link viene aggiunto da solo). Lo scrive Gemini con l\'articolo; se è vuoto si usa un testo standard con titolo e descrizione.</p>';
+	}, 'post', 'normal' );
 } );
 
 add_action( 'save_post_post', function ( $id ) {
@@ -3050,6 +3060,9 @@ add_action( 'save_post_post', function ( $id ) {
 		return;
 	}
 	update_post_meta( $id, 'portfolio_meta_descrizione', sanitize_text_field( wp_unslash( $_POST['portfolio_meta_descrizione'] ?? '' ) ) );
+	if ( isset( $_POST['portfolio_post_social'] ) ) {
+		update_post_meta( $id, 'portfolio_post_social', sanitize_textarea_field( wp_unslash( $_POST['portfolio_post_social'] ) ) );
+	}
 } );
 
 add_action( 'admin_menu', function () {

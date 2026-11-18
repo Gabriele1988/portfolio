@@ -10,6 +10,8 @@ export interface Articolo {
   estratto: string;
   /** Meta description (riquadro "Meta description" nell'editor); se vuota, l'estratto. */
   descrizione: string;
+  /** Testo per LinkedIn (riquadro "Testo per LinkedIn" nell'editor, scritto da Gemini); può essere vuoto. */
+  social: string;
   contenuto: string;
   data: string;
   modificato: string;
@@ -32,6 +34,7 @@ function toArticolo(p: any): Articolo {
     titolo: decode(p.title?.rendered),
     estratto,
     descrizione: String(p.meta?.portfolio_meta_descrizione ?? '').trim() || estratto,
+    social: String(p.meta?.portfolio_post_social ?? '').trim(),
     contenuto,
     data: p.date,
     modificato: p.modified ?? p.date,
